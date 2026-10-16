@@ -1,0 +1,8 @@
+docs/
+.git/
+web.env
+.env
+vault/
+temp/
+__pycache__/
+test_web.py

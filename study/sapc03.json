@@ -1,0 +1,45 @@
+{
+  "exam": "SAP-C03",
+  "intro": "75 questions · 180 min · pass 750/1000 · USD 300 · SAP-C03 from 17 Nov 2026 (registration opens 27 Oct 2026; the official exam guide is not public before then).",
+  "start": [
+    {"title": "AWS certification page", "url": "https://aws.amazon.com/certification/certified-solutions-architect-professional/", "note": "Exam guide, sample questions and the SAP-C03 transition dates. Re-check on 27 Oct 2026.", "kind": "official"},
+    {"title": "AWS Well-Architected Framework", "url": "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html", "note": "The six pillars every scenario question is scored against.", "kind": "official"},
+    {"title": "AWS Architecture Center", "url": "https://aws.amazon.com/architecture/", "note": "Reference architectures and decision guides.", "kind": "official"},
+    {"title": "AWS Skill Builder", "url": "https://skillbuilder.aws/", "note": "Official exam prep course and the free official practice question set.", "kind": "official"},
+    {"title": "Your slide deck (study cards)", "url": "#study-cards", "note": "703 notes built from the course slides: Claude writes the card and redraws the diagram with official icons.", "kind": "free"}
+  ],
+  "domains": [
+    {"domain": "Cloud-native design & implementation", "links": [
+      {"title": "Amazon Bedrock AgentCore", "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html", "note": "Runtime, memory, gateway, identity for agents: new SAP-C03 emphasis."},
+      {"title": "Bedrock Knowledge Bases (RAG)", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html", "note": "Retrieval design, chunking, vector stores."},
+      {"title": "Amazon VPC Lattice", "url": "https://docs.aws.amazon.com/vpc-lattice/latest/ug/what-is-vpc-lattice.html", "note": "Service-to-service networking across VPCs and accounts."},
+      {"title": "ECS Service Connect", "url": "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-connect.html", "note": "Service discovery and traffic resilience for ECS."},
+      {"title": "EventBridge", "url": "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html", "note": "Event-driven integration patterns."}
+    ]},
+    {"domain": "Security, compliance & governance", "links": [
+      {"title": "Bedrock Guardrails", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html", "note": "Content filters, PII, grounding checks for GenAI workloads."},
+      {"title": "KMS post-quantum (ML-KEM, ML-DSA)", "url": "https://docs.aws.amazon.com/kms/latest/developerguide/overview.html", "note": "Post-quantum key types and TLS hybrid key exchange."},
+      {"title": "Organizations SCPs and RCPs", "url": "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html", "note": "Preventive guardrails at the org level."},
+      {"title": "Security Hub", "url": "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html", "note": "Central findings and compliance standards."},
+      {"title": "AWS Clean Rooms", "url": "https://docs.aws.amazon.com/clean-rooms/latest/userguide/what-is.html", "note": "Collaborating on data without sharing raw rows."}
+    ]},
+    {"domain": "Cost-optimized design", "links": [
+      {"title": "Cost Optimization pillar", "url": "https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html", "note": "Pricing models, right-sizing, data-transfer costs."},
+      {"title": "Savings Plans", "url": "https://docs.aws.amazon.com/savingsplans/latest/userguide/what-is-savings-plans.html", "note": "Compute vs EC2 Instance plans, commitment maths."},
+      {"title": "S3 storage classes and lifecycle", "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html", "note": "Intelligent-Tiering, Glacier tiers, retrieval costs."}
+    ]},
+    {"domain": "Resilience, migration & business continuity", "links": [
+      {"title": "AWS Resilience Hub", "url": "https://docs.aws.amazon.com/resilience-hub/latest/userguide/what-is.html", "note": "RTO/RPO assessment and recommendations."},
+      {"title": "Fault Injection Service", "url": "https://docs.aws.amazon.com/fis/latest/userguide/what-is.html", "note": "Chaos experiments as a resilience test."},
+      {"title": "Application Recovery Controller", "url": "https://docs.aws.amazon.com/r53recovery/latest/dg/what-is-route53-recovery.html", "note": "Zonal shift, routing controls, readiness checks."},
+      {"title": "Disaster recovery options", "url": "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html", "note": "Backup/restore, pilot light, warm standby, active-active."},
+      {"title": "Migration Hub", "url": "https://docs.aws.amazon.com/migrationhub/latest/ug/whatishub.html", "note": "Discovery, strategy recommendations, migration tracking."}
+    ]},
+    {"domain": "Operational excellence & automation", "links": [
+      {"title": "DevSecOps on AWS", "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/strategy-devsecops/welcome.html", "note": "Security gates in CodePipeline, scanning, policy as code."},
+      {"title": "Lake Formation + Apache Iceberg", "url": "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html", "note": "Lakehouse governance, fine-grained access, Iceberg tables."},
+      {"title": "CloudWatch observability", "url": "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html", "note": "Application Signals, logs insights, cross-account."},
+      {"title": "Systems Manager", "url": "https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html", "note": "Fleet automation, patching, change management."}
+    ]}
+  ]
+}

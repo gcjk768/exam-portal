@@ -1,0 +1,34 @@
+services:
+  exam-portal:
+    build:
+      context: .
+      args:
+        PUID: ${PUID:-1000}
+        PGID: ${PGID:-10}
+    image: exam-portal:local
+    pull_policy: build
+    container_name: exam-portal
+    restart: unless-stopped
+    init: true
+    network_mode: bridge          # the NAS has no free subnet pools for another per-stack network
+    ports:
+      - "3003:8000"               # home LAN only, no login
+    env_file: web.env
+    environment:
+      EXAMS: "ccarp:/exams/ccarp:/vault/ccarp,sapc03:/exams/sapc03:/vault/sapc03,aipc01:/exams/aipc01:/vault/aipc01"
+    volumes:
+      # each quiz bot's stack: code read-only, its data/ (questions + the shared state.json) read-write
+      - "${CCARP_DIR:-/volume1/docker/ccarp-quiz}:/exams/ccarp:ro"
+      - "${CCARP_DIR:-/volume1/docker/ccarp-quiz}/data:/exams/ccarp/data"
+      - "${SAPC03_DIR:-/volume1/docker/sapc03-quiz}:/exams/sapc03:ro"
+      - "${SAPC03_DIR:-/volume1/docker/sapc03-quiz}/data:/exams/sapc03/data"
+      - "${AIPC01_DIR:-/volume1/docker/aipc01-quiz}:/exams/aipc01:ro"
+      - "${AIPC01_DIR:-/volume1/docker/aipc01-quiz}/data:/exams/aipc01/data"
+      # the bots' Obsidian vaults (movement log); set the host paths in .env
+      - "${CCARP_VAULT:-./vault/ccarp}:/vault/ccarp"
+      - "${SAPC03_VAULT:-./vault/sapc03}:/vault/sapc03"
+      - "${AIPC01_VAULT:-./vault/aipc01}:/vault/aipc01"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 1g

@@ -1,0 +1,4 @@
+fastapi~=0.139
+uvicorn[standard]~=0.54
+python-telegram-bot[job-queue]~=22.8
+diagrams~=0.24

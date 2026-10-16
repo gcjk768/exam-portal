@@ -1,0 +1,46 @@
+{
+  "exam": "AIP-C01",
+  "intro": "75 questions (65 scored), 180 min, pass 750/1000, USD 300. Professional level. Out of scope: model training, advanced ML, feature engineering.",
+  "start": [
+    {"title": "Official exam guide (AIP-C01)", "url": "https://docs.aws.amazon.com/aws-certification/latest/ai-professional-01/ai-professional-01.html", "note": "Five domains with task statements and the in-scope service list. Read first.", "kind": "official"},
+    {"title": "Skill Builder exam prep plan", "url": "https://skillbuilder.aws/category/exam-prep/generative-ai-developer-professional-aip-c01", "note": "Official prep course, pretest and the 20-question official practice set (free account).", "kind": "official"},
+    {"title": "Well-Architected Generative AI Lens", "url": "https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html", "note": "GenAI-specific best practices the exam leans on.", "kind": "official"},
+    {"title": "Your slide deck (study cards)", "url": "#study-cards", "note": "610 notes built from the course slides: Claude writes the card and redraws the diagram with official icons.", "kind": "free"},
+    {"title": "JeremyEngineer practice exam (GitHub, MIT)", "url": "https://github.com/JeremyEngineer/aws-aip-c01-practice-exam", "note": "462 original questions tagged to the exam-guide tasks, per-option explanations. Already in your bank.", "kind": "free"},
+    {"title": "GravesXX study vault (GitHub, MIT)", "url": "https://github.com/GravesXX/AWS-GenAI-Developer-Certification", "note": "Obsidian vault, 32 notes by domain.", "kind": "free"},
+    {"title": "vicsz study notes (GitHub)", "url": "https://github.com/vicsz/aip-c01-study-notes", "note": "One long README of condensed notes.", "kind": "free"},
+    {"title": "Pass write-up: Christian Greciano", "url": "https://christiangreciano.com/", "note": "Beta pass at 760: RAG, knowledge bases, guardrails and logging heavy; agents lighter.", "kind": "free"},
+    {"title": "Pass write-up: Isaac Xia", "url": "https://isaacxia.com/blog/posts/aws-genai-developer-certification", "note": "Passed Feb 2026: 25 to 30% RAG; Strands and MCP rising.", "kind": "free"},
+    {"title": "Tutorials Dojo practice exams", "url": "https://portal.tutorialsdojo.com/courses/free-aws-certified-generative-ai-developer-professional-practice-exams-sampler/", "note": "30-question free sampler, full sets paid.", "kind": "paid"}
+  ],
+  "domains": [
+    {"domain": "FM integration, data management and compliance", "weight": 31, "links": [
+      {"title": "What is Amazon Bedrock", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html", "note": "Model access, inference modes, cross-Region inference."},
+      {"title": "Converse API", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html", "note": "One request shape across providers, tools, streaming."},
+      {"title": "Knowledge Bases (RAG)", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html", "note": "Chunking, embeddings, vector stores, S3 Vectors, retrieval tuning."},
+      {"title": "Prompt management", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-management.html", "note": "Versioned prompts, variables, flows."},
+      {"title": "Model customization", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization.html", "note": "Fine-tuning vs continued pre-training vs distillation."},
+      {"title": "Bedrock Data Automation", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/data-automation.html", "note": "Extracting structured data from documents, images, audio, video."},
+      {"title": "SageMaker JumpStart foundation models", "url": "https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models.html", "note": "When to host a model yourself."}
+    ]},
+    {"domain": "Implementation and integration", "weight": 26, "links": [
+      {"title": "Bedrock Agents", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html", "note": "Action groups, knowledge bases, tracing, memory."},
+      {"title": "Bedrock AgentCore", "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html", "note": "Runtime, memory, gateway, identity, observability for agents."},
+      {"title": "Strands Agents", "url": "https://strandsagents.com/", "note": "Open-source agent SDK; MCP tools."}
+    ]},
+    {"domain": "AI safety, security and governance", "weight": 20, "links": [
+      {"title": "Bedrock Guardrails", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html", "note": "Denied topics, PII, contextual grounding, prompt-attack filters."},
+      {"title": "IAM best practices", "url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html", "note": "Least privilege, roles over users, temporary credentials."},
+      {"title": "VPC endpoints for Bedrock", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/vpc-interface-endpoints.html", "note": "PrivateLink, data never leaves the VPC."}
+    ]},
+    {"domain": "Operational efficiency and optimization", "weight": 12, "links": [
+      {"title": "Prompt caching", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html", "note": "Static prefix first; cost and latency."},
+      {"title": "Provisioned Throughput", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html", "note": "When to commit; model units."},
+      {"title": "Batch inference", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html", "note": "About 50% cheaper, separate quotas."},
+      {"title": "Monitoring Bedrock", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/monitoring.html", "note": "CloudWatch metrics, invocation logging, CloudTrail."}
+    ]},
+    {"domain": "Testing, validation and troubleshooting", "weight": 11, "links": [
+      {"title": "Model evaluation", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation.html", "note": "Automatic, human and LLM-as-judge evaluations; RAG evaluation."}
+    ]}
+  ]
+}

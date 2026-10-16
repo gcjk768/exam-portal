@@ -1,0 +1,53 @@
+{
+  "exam": "CCAR-P",
+  "intro": "63 questions · 120 min · pass 720/1000 · USD 175 · registration needs a Claude Partner Network company email.",
+  "start": [
+    {"title": "Exam Guide v1.0 (PDF)", "url": "https://everpath-course-content.s3-accelerate.amazonaws.com/instructor%2F6nizmqk8tpzpfjvt6qmmav7rh%2Fpublic%2F1783542810%2FClaude+Certified+Architect+%E2%80%93+Professional+Exam+Guide.pdf", "note": "The blueprint: 7 domains, 38 task statements, 3 official sample questions with rationale.", "kind": "official"},
+    {"title": "Official prep path (5 courses)", "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional", "note": "Partner Academy, free. Objectives map 1:1 to the domains.", "kind": "official"},
+    {"title": "Public Anthropic Academy", "url": "https://anthropic.skilljar.com/", "note": "Free prerequisites, no partner email: Claude API, MCP intro + advanced, Agent Skills, Subagents, Claude Code in Action.", "kind": "official"},
+    {"title": "Certification FAQ", "url": "https://anthropic-partners.skilljar.com/page/faq-certifications", "note": "Registration, retakes (14/30/90-day waits), renewal.", "kind": "official"},
+    {"title": "vkorost study guide (GitHub)", "url": "https://github.com/vkorost/claude-certified-architect-professional-guide", "note": "21-chapter book covering all 38 objectives; author passed with 973. Best free text.", "kind": "free"},
+    {"title": "Amey-Thakur/CLAUDE-CERTIFICATIONS", "url": "https://github.com/Amey-Thakur/CLAUDE-CERTIFICATIONS", "note": "MIT: notes, cheat sheet, 3 mock exams, flashcards.", "kind": "free"},
+    {"title": "preporato/claude-certification-guide", "url": "https://github.com/preporato/claude-certification-guide", "note": "Guide, 30 questions, timed web test; 18-min video.", "kind": "free"},
+    {"title": "EnkrateiaLucca/claude-architect-pro-cert", "url": "https://github.com/EnkrateiaLucca/claude-architect-pro-cert", "note": "O'Reilly training: slides, 60 questions, 60 Anki cards, cheatsheet.", "kind": "free"},
+    {"title": "Pass write-up: Akshay Kokane", "url": "https://levelup.gitconnected.com/i-passed-the-claude-certified-architect-professional-ccar-p-exam-in-two-days-of-prep-31e0bcbe04de", "note": "Exam tests business judgement, not API trivia; GDPR/HIPAA/FedRAMP was the weak spot.", "kind": "free"},
+    {"title": "Udemy: 6 practice exams (378 Qs)", "url": "https://www.udemy.com/course/claude-architect-professional-ccar-p-6-practice-exams/", "note": "Unofficial, original questions. Price varies.", "kind": "paid"}
+  ],
+  "domains": [
+    {"domain": "Integration", "weight": 19, "links": [
+      {"title": "Tool use overview", "url": "https://docs.claude.com/en/docs/agents-and-tools/tool-use/overview", "note": "Tool schemas, tool_choice, parallel calls, least-privilege tool sets."},
+      {"title": "Model Context Protocol", "url": "https://docs.claude.com/en/docs/agents-and-tools/mcp", "note": "Servers, transports, when MCP beats a bespoke integration."},
+      {"title": "Agent SDK", "url": "https://docs.claude.com/en/api/agent-sdk/overview", "note": "Building agents on Claude Code's loop."},
+      {"title": "Writing tools for agents", "url": "https://www.anthropic.com/engineering/writing-tools-for-agents", "note": "Tool design that models use well."}
+    ]},
+    {"domain": "Solution Design & Architecture", "weight": 17, "links": [
+      {"title": "Building effective agents", "url": "https://www.anthropic.com/engineering/building-effective-agents", "note": "Workflows vs agents, routing, orchestrator-workers, evaluator-optimizer."},
+      {"title": "Use-case guides", "url": "https://docs.claude.com/en/docs/about-claude/use-case-guides/overview", "note": "Reference designs: support, RAG, classification, summarisation."}
+    ]},
+    {"domain": "Evaluation, Testing & Optimization", "weight": 16, "links": [
+      {"title": "Define success criteria", "url": "https://docs.claude.com/en/docs/test-and-evaluate/define-success", "note": "Measurable, task-specific criteria before building."},
+      {"title": "Develop test cases", "url": "https://docs.claude.com/en/docs/test-and-evaluate/develop-tests", "note": "Eval design, graders, LLM-as-judge pitfalls."},
+      {"title": "Batch processing", "url": "https://docs.claude.com/en/docs/build-with-claude/batch-processing", "note": "50% cheaper offline work; when latency does not matter."}
+    ]},
+    {"domain": "Governance, Safety & Risk Management", "weight": 14, "links": [
+      {"title": "Strengthen guardrails: reduce hallucinations", "url": "https://docs.claude.com/en/docs/test-and-evaluate/strengthen-guardrails/reduce-hallucinations", "note": "Fail-closed safety stacks, citations, abstention."},
+      {"title": "Anthropic Trust Center", "url": "https://trust.anthropic.com/", "note": "Compliance evidence (SOC 2, HIPAA, GDPR). Passers name this domain the surprise area."}
+    ]},
+    {"domain": "Stakeholder Communication & Lifecycle Management", "weight": 14, "links": [
+      {"title": "Official prep path: discovery and handoff", "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional", "note": "Non-technical discovery, compliance mapping (control, owner, evidence), handoff."},
+      {"title": "vkorost guide: stakeholder chapters", "url": "https://github.com/vkorost/claude-certified-architect-professional-guide", "note": "Translating business needs to an architecture and back."}
+    ]},
+    {"domain": "Claude Models, Prompting & Context Engineering", "weight": 13, "links": [
+      {"title": "Models overview", "url": "https://docs.claude.com/en/docs/about-claude/models/overview", "note": "Pick by capability, latency, cost; context sizes."},
+      {"title": "Pricing", "url": "https://docs.claude.com/en/docs/about-claude/pricing", "note": "Per-token maths, caching and batch discounts."},
+      {"title": "Prompt engineering", "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview", "note": "System prompts, examples, XML tags, chain of thought."},
+      {"title": "Prompt caching", "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-caching", "note": "Static prefix first; a sample question tests exactly this."},
+      {"title": "Context windows", "url": "https://docs.claude.com/en/docs/build-with-claude/context-windows", "note": "Budgeting tokens across turns."},
+      {"title": "Effective context engineering for agents", "url": "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents", "note": "Compaction, retrieval, sub-agents."},
+      {"title": "Agent Skills", "url": "https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview", "note": "Packaging reusable procedures."}
+    ]},
+    {"domain": "Developer Productivity & Operational Enablement", "weight": 7, "links": [
+      {"title": "Claude Code overview", "url": "https://docs.claude.com/en/docs/claude-code/overview", "note": "Headless mode, hooks, MCP, team rollout."}
+    ]}
+  ]
+}

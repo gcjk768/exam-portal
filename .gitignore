@@ -1,0 +1,7 @@
+web.env
+.env
+vault/
+docs/vault/
+__pycache__/
+*.pyc
+temp/

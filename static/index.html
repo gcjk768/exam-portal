@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en" data-exam="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Exam Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#home" data-view="home">Exam<span>Portal</span></a>
+  <nav class="exams" id="exam-switch" aria-label="Exam"></nav>
+  <nav class="views" aria-label="Section">
+    <a href="#home" data-view="home">Home</a>
+    <a href="#study" data-view="study">Study</a>
+    <a href="#quiz" data-view="quiz">Quiz</a>
+    <a href="#exam" data-view="exam">Exam</a>
+    <a href="#stats" data-view="stats">Stats</a>
+  </nav>
+</header>
+
+<main id="main">
+  <!-- Home -->
+  <section id="view-home" class="view" hidden>
+    <div class="hero">
+      <div class="hero-text">
+        <p class="exam-name" id="home-name"></p>
+        <h1 id="home-title"></h1>
+        <p class="verdict" id="home-verdict"></p>
+        <div class="doors">
+          <a class="door" href="#study" data-view="study">
+            <span class="door-k">Study</span>
+            <span class="door-d" id="door-study">Reading list by domain and study cards</span>
+          </a>
+          <a class="door door-accent" href="#quiz" data-view="quiz" id="door-quiz">
+            <span class="door-k">Quiz</span>
+            <span class="door-d" id="door-quiz-d">A random question, unseen first</span>
+          </a>
+          <a class="door" href="#exam" data-view="exam">
+            <span class="door-k">Exam</span>
+            <span class="door-d" id="door-exam-d">Timed mock exam, scored at the end</span>
+          </a>
+        </div>
+      </div>
+      <div class="hero-ring">
+        <svg viewBox="0 0 120 120" class="ring" aria-hidden="true">
+          <circle cx="60" cy="60" r="52" class="ring-track"/>
+          <circle cx="60" cy="60" r="52" class="ring-fill" id="ring-fill"/>
+        </svg>
+        <div class="ring-label">
+          <strong id="ring-score">0</strong>
+          <small>predicted / <span id="ring-pass">720</span></small>
+        </div>
+        <dl class="facts">
+          <div><dt>Seen</dt><dd id="f-seen">0</dd></div>
+          <div><dt>Right first time</dt><dd id="f-right">0</dd></div>
+          <div><dt>This week</dt><dd id="f-week">0</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- Study -->
+  <section id="view-study" class="view" hidden>
+    <div class="study-head">
+      <h2>Study</h2>
+      <p id="study-intro" class="muted"></p>
+      <button class="btn btn-accent" id="btn-card" type="button">Study card</button>
+    </div>
+    <h3>Start here</h3>
+    <ul class="links start" id="study-start"></ul>
+    <h3>By domain</h3>
+    <div class="domains" id="study-domains"></div>
+  </section>
+
+  <!-- Quiz feed -->
+  <section id="view-quiz" class="view" hidden>
+    <div class="feed" id="feed" aria-live="polite"></div>
+    <div class="working" id="working" hidden>
+      <span class="working-bar"></span>
+      <span id="working-text">Working</span>
+      <span class="mono" id="working-time">0s</span>
+    </div>
+    <div class="feed-actions">
+      <button class="btn btn-accent" type="button" data-act="next">Next question</button>
+      <button class="btn" type="button" data-act="study" id="btn-study-feed">Study card</button>
+      <button class="btn" type="button" data-act="stats">Stats</button>
+      <button class="btn" type="button" data-act="report">Report</button>
+    </div>
+  </section>
+
+  <!-- Exam mode -->
+  <section id="view-exam" class="view" hidden>
+    <div id="exam-setup">
+      <h2>Mock exam</h2>
+      <p class="muted" id="exam-blurb">Like the real sitting: no feedback until you submit, a countdown at the real pace, scored on the 1000 scale.</p>
+      <div class="sizes" id="exam-sizes"></div>
+      <p class="muted small">Answers count towards your progress and the weekly report, the same as the quiz.</p>
+    </div>
+    <div id="exam-run" hidden>
+      <div class="exam-bar">
+        <span class="mono" id="exam-clock">00:00</span>
+        <span id="exam-progress"></span>
+        <button class="btn btn-accent" type="button" id="exam-submit">Submit exam</button>
+      </div>
+      <nav class="qnav" id="exam-nav" aria-label="Questions"></nav>
+      <div id="exam-q"></div>
+      <div class="row exam-move">
+        <button class="btn" type="button" id="exam-prev">Previous</button>
+        <button class="btn" type="button" id="exam-next">Next</button>
+      </div>
+    </div>
+    <div id="exam-result" hidden>
+      <div class="result-head">
+        <div class="score-strip"><strong id="res-score">0</strong><span id="res-verdict"></span></div>
+        <div class="row">
+          <button class="btn" type="button" id="res-again">New exam</button>
+          <a class="btn" href="#stats" data-view="stats">Stats</a>
+        </div>
+      </div>
+      <div class="bars" id="res-domains"></div>
+      <h3>Review</h3>
+      <div class="feed" id="res-list"></div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section id="view-stats" class="view" hidden>
+    <h2>Progress</h2>
+    <p class="muted" id="stats-summary"></p>
+    <div class="bars" id="stats-bars"></div>
+    <div class="danger">
+      <h3>Bank</h3>
+      <div class="row">
+        <button class="btn" type="button" data-act="refresh">Refresh bank</button>
+        <button class="btn btn-danger" type="button" id="btn-reset">Reset progress</button>
+      </div>
+      <p class="muted small">Refresh reloads the question bank. Reset clears every answer for this exam, in Telegram too.</p>
+    </div>
+  </section>
+</main>
+
+<dialog id="lightbox" class="lightbox">
+  <form method="dialog"><button class="close" type="submit" aria-label="Close">Close</button></form>
+  <img id="lightbox-img" alt="Diagram">
+</dialog>
+
+<template id="t-question">
+  <article class="card card-q">
+    <header class="card-h"><span class="mono qid"></span><span class="dom"></span></header>
+    <p class="qtext"></p>
+    <div class="options"></div>
+    <div class="submit-row" hidden><button class="btn btn-accent" type="button">Submit</button><span class="muted small">Pick all that apply</span></div>
+  </article>
+</template>
+
+<script src="/static/app.js" defer></script>
+</body>
+</html>
