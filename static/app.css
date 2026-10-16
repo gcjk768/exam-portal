@@ -50,11 +50,13 @@ h3 { font-size: 1.05rem; color: var(--muted); font-weight: 500; margin: 1.6rem 0
 .views a { text-decoration: none; color: var(--muted); padding: .45rem .7rem; border-radius: 999px; font-weight: 500; }
 .views a[aria-current="true"] { color: var(--text); background: var(--surface); }
 @media (max-width: 640px) {
-  .top { grid-template-columns: 1fr auto; height: auto; padding: .6rem .8rem; row-gap: .5rem; }
+  .top { grid-template-columns: 1fr; height: auto; padding: .5rem .6rem; row-gap: .4rem; }
   .brand { display: none; }
-  .exams { justify-self: start; }
-  .views { grid-column: 1 / -1; justify-content: space-between; }
-  .views a { padding: .4rem .5rem; font-size: .95rem; }
+  .exams { justify-self: start; max-width: 100%; }
+  .exams button { padding: .35rem .6rem; font-size: .88rem; }
+  .views { justify-content: space-between; gap: 0; }
+  .views a { padding: .35rem .4rem; font-size: .9rem; }
+  main { overflow-x: hidden; }
 }
 
 main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.8rem, 3vw, 2rem) 6rem; }
