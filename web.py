@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Exam Portal: one website for the CCAR-P, SAP-C03 and AIP-C01 quiz bots, every Telegram function included,
-plus a Study door (reading list + study cards) and a timed Exam mode.
+"""Exam Portal: one website for the CCAR-P, SAP-C03, AIP-C01 and CKA quiz bots, every Telegram function included,
+plus a Study door (reading list, command playbook, study cards) and a timed Exam mode.
 
 Each exam's own bot.py is imported from its stack folder and driven with a recorder in place of the
 Telegram chat, so the web shows the same message flow (verdict, "drawing", diagram, tutor, report)
 and writes the same data/state.json. Events stream to the browser as NDJSON.
+
+Task exams (CKA): a "question" is a hands-on task with no options. The student types the commands or YAML,
+Claude grades them against the reference solution (or the student reveals it and self-marks), and the mock
+exam grades all tasks in one Claude call.
 
 Env: EXAMS="key:bot_dir[:vault_dir],..."  (default: sibling project folders whose bot.py logger name is a known exam)
      CLAUDE_MODEL, CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY (as for the bots), PORT (8000).
@@ -37,7 +41,8 @@ SGT = timezone(timedelta(hours=8))
 # key (= the bot's logger name) -> short, full name, real exam length, real exam minutes
 META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
         "sapc03": ("SAP-C03", "AWS Solutions Architect Professional", 75, 180),
-        "aipc01": ("AIP-C01", "AWS Generative AI Developer Professional", 75, 180)}
+        "aipc01": ("AIP-C01", "AWS Generative AI Developer Professional", 75, 180),
+        "cka": ("CKA", "Certified Kubernetes Administrator", 17, 120)}   # ~17 hands-on tasks in 120 min
 
 
 # ── Exams: import each bot.py as its own module ──────────────────────────────
@@ -68,6 +73,8 @@ class Exam:
         self.mod = self._load(f"bot_{key}", self.dir / "bot.py")
         if (self.dir / "scrape.py").exists():                  # CCAR-P: refresh_bank does `import scrape` lazily
             sys.modules["scrape"] = self._load("scrape", self.dir / "scrape.py")   # ponytail: one scrape.py across exams
+        if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks
+            sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
         self.mod.vault_log = vault_writer(vault)
         self.lock = asyncio.Lock()
         sj = ROOT / "study" / f"{key}.json"
@@ -84,6 +91,12 @@ class Exam:
     @property
     def has_study(self) -> bool:
         return bool(getattr(self.mod, "NOTES", None))
+
+    @property
+    def tasks(self) -> bool:
+        """A hands-on exam: every bank row is a task without options (CKA)."""
+        Q = self.mod.QUESTIONS
+        return bool(Q) and all(not q["letters"] for q in Q.values())
 
     def coverage(self, state: dict) -> dict:
         """Per-domain seen / right-first-time / total, like stats_text but as data."""
@@ -118,7 +131,8 @@ def load_exams() -> dict[str, Exam]:
     for spec in (os.environ.get("EXAMS") or discover()).split(","):
         key, bot_dir, *vault = spec.strip().split(":", 2) if os.name != "nt" else _split_win(spec.strip())
         exams[key] = Exam(key, bot_dir, vault[0] if vault and vault[0] else None)
-        log.info("exam %s: %d questions, study cards=%s (%s)", key, len(exams[key].mod.QUESTIONS), exams[key].has_study, bot_dir)
+        log.info("exam %s: %d questions, study cards=%s, tasks=%s (%s)", key, len(exams[key].mod.QUESTIONS),
+                 exams[key].has_study, exams[key].tasks, bot_dir)
     return dict(sorted(exams.items(), key=lambda kv: list(META).index(kv[0]) if kv[0] in META else 99))
 
 
@@ -142,7 +156,8 @@ def options_of(q: dict) -> list[dict]:
 
 
 def qview(q: dict) -> dict:
-    return {"id": q["id"], "domain": q["domain"], "question": q["question"], "options": options_of(q), "multi": len(q["answer"]) > 1}
+    return {"id": q["id"], "domain": q["domain"], "question": q["question"], "options": options_of(q),
+            "multi": len(q["answer"]) > 1, "task": not q["letters"]}
 
 
 class Msg:
@@ -195,13 +210,29 @@ class Recorder:
         return Msg(self, self.n)
 
 
+# ── State helpers shared by quiz, tasks and exam mode ────────────────────────
+
+def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = None) -> bool:
+    """Write ok/bad + log like bot.grade() does. Returns whether this was the first attempt."""
+    bucket = "ok" if right else "bad"
+    state[bucket][qid] = state[bucket].get(qid, 0) + 1
+    first = state["ok"].get(qid, 0) + state["bad"].get(qid, 0) == 1
+    state.setdefault("log", []).append({"t": datetime.now(SGT).isoformat(timespec="minutes"), "id": qid,
+                                        "ok": right, "first": first, **(extra or {})})
+    state["log"] = state["log"][-5000:]
+    return first
+
+
 # ── Actions (the bot's button vocabulary) ────────────────────────────────────
 
 async def act(exam: Exam, data: str, rec: Recorder) -> None:
     mod = exam.mod
     state = mod.load_state()
     if data == "next":
-        await mod.send_question(rec, state)
+        if exam.tasks:
+            await send_task(exam, rec, state)
+        else:
+            await mod.send_question(rec, state)
     elif data == "stats":
         await rec.send_message(mod.stats_text(state))
     elif data == "study":
@@ -225,7 +256,10 @@ async def act(exam: Exam, data: str, rec: Recorder) -> None:
         if not q:
             raise HTTPException(404, f"unknown question {qid}")
         if kind == "q":                                   # "Quiz me on this" under a study card
-            await mod.send_question(rec, state, q)
+            if exam.tasks:
+                await send_task(exam, rec, state, q)
+            else:
+                await mod.send_question(rec, state, q)
         elif kind == "e":                                 # Explain more
             last = state.get("last") or {}
             if last.get("id") == qid and last.get("teach"):   # wrong answer: text already generated, free
@@ -275,6 +309,101 @@ def stream(exam: Exam, run) -> StreamingResponse:
                              headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
 
+# ── Task exams (CKA): type the commands, Claude grades them ──────────────────
+
+GRADE = """You are the examiner for a hands-on Certified Kubernetes Administrator (CKA) task. The student is still
+learning bash and kubectl. You get the task, the reference solution, and the commands or YAML the student typed from
+memory (no cluster available). Grade the student's answer: would it accomplish the task on a real cluster? Different
+but equivalent commands or YAML are fine (imperative vs declarative, aliases, different but valid flags). Missing steps,
+wrong namespaces, wrong resource kinds, wrong flags or YAML keys lose points. Return JSON with: "score" (0-100),
+"verdict" (one short sentence), "feedback" (under 160 words, plain text, no markdown: what was right, what was
+missing or wrong, and the trap in this task), "commands" (the exact commands or YAML the student should run, as one
+plain-text block with one command per line and a short plain-words note after each important flag). Be strict but
+encouraging."""
+GRADE_SCHEMA = json.dumps({"type": "object", "required": ["score", "verdict", "feedback", "commands"], "additionalProperties": False,
+                           "properties": {"score": {"type": "integer"}, "verdict": {"type": "string"},
+                                          "feedback": {"type": "string"}, "commands": {"type": "string"}}})
+PASS_TASK = 70   # score at or above counts as "ok" for progress
+
+
+def task_html(q: dict) -> str:
+    return f"🛠 <b>{html.escape(q['id'])}</b> · {html.escape(q['domain'])}\n\n{html.escape(q['question'])}"
+
+
+def solution_html(q: dict) -> str:
+    return f"📘 <b>REFERENCE SOLUTION</b> · {html.escape(q['id'])}\n<pre>{html.escape(q['explanation'])}</pre>"
+
+
+async def send_task(exam: Exam, rec: Recorder, state: dict, q: dict | None = None) -> None:
+    q = q or exam.mod.pick_question(state)
+    await rec.send_message(task_html(q))
+    rec.emit({"op": "meta", "task": qview(q)})
+    state["pending"] = q["id"]
+    exam.mod.save_state(state)
+    exam.mod.vault_log("🛠 **task asked**", q["id"])
+
+
+async def grade_one(exam: Exam, q: dict, answer: str) -> dict:
+    prompt = (f"TASK:\n{q['question']}\n\nREFERENCE SOLUTION:\n{q['explanation']}\n\nSTUDENT ANSWER:\n{answer.strip() or '(blank)'}\n\n"
+              'Reply with ONLY a JSON object: {"score": 0-100, "verdict": "...", "feedback": "...", "commands": "..."}.')
+    data = await exam.mod.run_claude(GRADE, prompt, GRADE_SCHEMA)
+    out = data.get("structured_output")
+    if not isinstance(out, dict):
+        text = str(data.get("result") or "")
+        out = json.loads(text[text.find("{"):text.rfind("}") + 1])
+    out["score"] = max(0, min(100, int(out.get("score", 0))))
+    return out
+
+
+async def check_task(exam: Exam, qid: str, answer: str, rec: Recorder) -> None:
+    """Claude grades the typed commands, progress is recorded, the guideline and reference solution are shown."""
+    mod = exam.mod
+    q = mod.QUESTIONS.get(qid)
+    if not q:
+        raise HTTPException(404, f"unknown task {qid}")
+    note = await rec.send_message("⏳ <i>Grading your commands…</i>")
+    try:
+        out = await grade_one(exam, q, answer)
+    except Exception as exc:
+        log.warning("grading failed: %s", exc)
+        await note.edit_text(f"⚠️ Grader unavailable: <code>{html.escape(str(exc)[:200])}</code>. Reveal the solution and self-mark instead.")
+        return
+    right = out["score"] >= PASS_TASK
+    state = mod.load_state()
+    record(exam, state, qid, right, {"score": out["score"]})
+    state["pending"] = None
+    state["last"] = {"id": qid, "picked": [], "teach": out["feedback"]}
+    mod.save_state(state)
+    mod.vault_log(f"{'🟢' if right else '🔴'} **task {'passed' if right else 'missed'}**", f"{qid} score {out['score']}")
+    await note.delete()
+    rec.emit({"op": "meta", "graded_task": {"id": qid, "score": out["score"], "right": right}})
+    head = f"{'🟢' if right else '🔴'} <b>{'PASS' if right else 'NOT YET'}</b> · score <code>{out['score']}</code>/100 · {html.escape(out['verdict'])}"
+    await rec.send_message(f"{head}\n\n{html.escape(out['feedback'])}")
+    await rec.send_message(f"🧭 <b>COMMAND GUIDELINE</b> · {html.escape(qid)}\n<pre>{html.escape(out['commands'])}</pre>")
+    await rec.send_message(solution_html(q), reply_markup=mod.NEXT_KB)
+
+
+async def self_mark(exam: Exam, qid: str, result: str, rec: Recorder) -> None:
+    """Free path: reveal the reference solution, the student says whether they got it."""
+    mod = exam.mod
+    q = mod.QUESTIONS.get(qid)
+    if not q:
+        raise HTTPException(404, f"unknown task {qid}")
+    if result == "reveal":
+        await rec.send_message(solution_html(q))
+        rec.emit({"op": "meta", "revealed": qid})
+        return
+    right = result == "ok"
+    state = mod.load_state()
+    record(exam, state, qid, right, {"self": True})
+    state["pending"] = None
+    mod.save_state(state)
+    mod.vault_log(f"{'🟢' if right else '🔴'} **task self-marked {'ok' if right else 'missed'}**", qid)
+    rec.emit({"op": "meta", "graded_task": {"id": qid, "score": 100 if right else 0, "right": right}})
+    await rec.send_message(f"{'🟢' if right else '🔴'} <b>{'Marked as done' if right else 'Marked to repeat'}</b> · {html.escape(qid)}",
+                           reply_markup=mod.NEXT_KB)
+
+
 # ── Exam mode (timed, graded at the end, same state file) ────────────────────
 
 def exam_pick(exam: Exam, n: int) -> list[dict]:
@@ -286,37 +415,49 @@ def exam_pick(exam: Exam, n: int) -> list[dict]:
     return [qview(Q[i]) for i in (unseen + rest)[:n]]
 
 
-def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: float) -> dict:
-    """Grade every answered question, write ok/bad/log like grade() does (no Claude), return the result sheet."""
+async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: float) -> dict:
+    """Grade every answered question, write ok/bad/log like grade() does, return the result sheet.
+    MCQ exams need no Claude; task exams grade each typed answer with Claude (blank answers score 0 without a call)."""
     mod, Q = exam.mod, exam.mod.QUESTIONS
     state = mod.load_state()
-    now = datetime.now(SGT).isoformat(timespec="minutes")
     results, by_dom = [], {}
     weights = getattr(mod, "WEIGHTS", {})
     for qid, picked in answers.items():
         q = Q.get(qid)
         if not q:
             continue
-        letters = set(picked) & set(q["letters"])
-        right = letters == q["answer"]
-        bucket = "ok" if right else "bad"
-        state[bucket][qid] = state[bucket].get(qid, 0) + 1
-        first = state["ok"].get(qid, 0) + state["bad"].get(qid, 0) == 1
-        state.setdefault("log", []).append({"t": now, "id": qid, "ok": right, "first": first, "exam": True})
-        d = by_dom.setdefault(q["domain"], [0, 0]); d[1] += 1; d[0] += right
-        results.append({"id": qid, "domain": q["domain"], "question": q["question"], "options": options_of(q),
-                        "multi": len(q["answer"]) > 1, "picked": sorted(letters), "correct": sorted(q["answer"]),
-                        "right": right, "explanation": q["explanation"]})
-    state["log"] = state["log"][-5000:]
+        if exam.tasks:
+            text = (picked[0] if picked else "").strip()
+            if text:
+                try:
+                    g = await grade_one(exam, q, text)
+                except Exception as exc:
+                    log.warning("exam grading failed for %s: %s", qid, exc)
+                    g = {"score": 0, "verdict": "grader unavailable", "feedback": str(exc)[:200], "commands": ""}
+            else:
+                g = {"score": 0, "verdict": "blank", "feedback": "No answer given.", "commands": ""}
+            right = g["score"] >= PASS_TASK
+            record(exam, state, qid, right, {"exam": True, "score": g["score"]})
+            d = by_dom.setdefault(q["domain"], [0, 0]); d[1] += 1; d[0] += g["score"] / 100
+            results.append({"id": qid, "domain": q["domain"], "question": q["question"], "options": [], "multi": False, "task": True,
+                            "answer": text, "score": g["score"], "verdict": g["verdict"], "feedback": g["feedback"],
+                            "commands": g["commands"], "right": right, "explanation": q["explanation"], "picked": [], "correct": []})
+        else:
+            letters = set(picked) & set(q["letters"])
+            right = letters == q["answer"]
+            record(exam, state, qid, right, {"exam": True})
+            d = by_dom.setdefault(q["domain"], [0, 0]); d[1] += 1; d[0] += right
+            results.append({"id": qid, "domain": q["domain"], "question": q["question"], "options": options_of(q),
+                            "multi": len(q["answer"]) > 1, "task": False, "picked": sorted(letters), "correct": sorted(q["answer"]),
+                            "right": right, "explanation": q["explanation"]})
     mod.save_state(state)
     n_right = sum(r["right"] for r in results)
-    # Score like the weekly report: domain accuracy weighted by the blueprint (equal weights where unknown), 1000 scale.
     w = {d: weights.get(d, 1) for d in by_dom}
     score = round(sum(w[d] * (r / n) for d, (r, n) in by_dom.items()) / sum(w.values()) * 1000) if by_dom else 0
     mod.vault_log("🎯 **mock exam**", f"{n_right}/{len(results)} right, score {score}, {round(minutes_used)} min")
     return {"n": len(results), "right": n_right, "score": score, "pass": mod.PASS, "passed": score >= mod.PASS,
-            "minutes": round(minutes_used, 1),
-            "domains": sorted(({"name": d, "right": r, "n": n, "weight": weights.get(d)} for d, (r, n) in by_dom.items()),
+            "minutes": round(minutes_used, 1), "tasks": exam.tasks,
+            "domains": sorted(({"name": d, "right": round(r, 1), "n": n, "weight": weights.get(d)} for d, (r, n) in by_dom.items()),
                               key=lambda x: -(x["weight"] or 0)),
             "results": results}
 
@@ -351,6 +492,12 @@ class Answer(BaseModel):
     picked: list[str]
 
 
+class TaskAnswer(BaseModel):
+    id: str
+    answer: str = ""
+    result: str = ""        # self-mark: reveal | ok | bad
+
+
 class ExamStart(BaseModel):
     n: int | None = None
 
@@ -365,7 +512,7 @@ def api_exams():
     out = []
     for e in EXAMS.values():
         c = e.coverage(e.mod.load_state())
-        out.append({"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study,
+        out.append({"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.tasks,
                     "total": c["total"], "seen": c["seen"], "right": c["right"], "pass": e.mod.PASS,
                     "exam_n": min(e.n_exam, c["total"]), "exam_minutes": e.minutes})
     return out
@@ -379,9 +526,9 @@ def api_home(key: str):
     pending = None
     if state.get("pending") in e.mod.QUESTIONS:            # a question asked (web or Telegram) and not yet answered
         q = e.mod.QUESTIONS[state["pending"]]
-        pending = {"html": e.mod.question_text(q), "question": qview(q)}
+        pending = {"html": task_html(q) if e.tasks else e.mod.question_text(q), "question": qview(q)}
     last = state.get("last") or {}
-    return {"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study,
+    return {"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.tasks,
             "coverage": e.coverage(state), "score": m["score"], "pass": e.mod.PASS, "verdict": e.mod.verdict(m),
             "week": {"n": m["week_n"], "ok": m["week_ok"]}, "pending": pending,
             "last": {"id": last.get("id"), "has_teach": bool(last.get("teach"))} if last else None,
@@ -409,19 +556,29 @@ async def api_answer(key: str, body: Answer):
     return stream(e, functools.partial(answer, e, body.id, body.picked))
 
 
+@app.post("/api/{key}/task")
+async def api_task(key: str, body: TaskAnswer):
+    e = exam_or_404(key)
+    if not e.tasks:
+        raise HTTPException(400, "not a task exam")
+    if body.result:
+        return stream(e, functools.partial(self_mark, e, body.id, body.result))
+    return stream(e, functools.partial(check_task, e, body.id, body.answer))
+
+
 @app.post("/api/{key}/exam/start")
 def api_exam_start(key: str, body: ExamStart):
     e = exam_or_404(key)
     n = max(1, min(body.n or e.n_exam, len(e.mod.QUESTIONS)))
     minutes = e.minutes if n >= e.n_exam else max(5, round(e.minutes * n / e.n_exam))   # same pace as the real exam
-    return {"questions": exam_pick(e, n), "minutes": minutes, "n": n, "pass": e.mod.PASS}
+    return {"questions": exam_pick(e, n), "minutes": minutes, "n": n, "pass": e.mod.PASS, "tasks": e.tasks}
 
 
 @app.post("/api/{key}/exam/submit")
 async def api_exam_submit(key: str, body: ExamSubmit):
     e = exam_or_404(key)
     async with e.lock:
-        return exam_submit(e, body.answers, body.minutes_used)
+        return await exam_submit(e, body.answers, body.minutes_used)
 
 
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")

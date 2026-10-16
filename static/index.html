@@ -73,6 +73,8 @@
     </div>
     <h3>Start here</h3>
     <ul class="links start" id="study-start"></ul>
+    <h3 id="study-playbook-h" hidden>Which command?</h3>
+    <div class="domains" id="study-playbook"></div>
     <h3>By domain</h3>
     <div class="domains" id="study-domains"></div>
   </section>
@@ -155,6 +157,20 @@
     <p class="qtext"></p>
     <div class="options"></div>
     <div class="submit-row" hidden><button class="btn btn-accent" type="button">Submit</button><span class="muted small">Pick all that apply</span></div>
+  </article>
+</template>
+
+<template id="t-task">
+  <article class="card card-task">
+    <header class="card-h"><span class="mono qid"></span><span class="dom"></span></header>
+    <p class="task-text"></p>
+    <textarea class="answer" spellcheck="false" placeholder="Type the commands or YAML you would run, one per line. Aliases like k=kubectl are fine."></textarea>
+    <div class="actions">
+      <button class="btn btn-accent" type="button" data-task="check">Check with Claude</button>
+      <button class="btn" type="button" data-task="reveal">Reveal solution</button>
+      <button class="btn" type="button" data-task="ok" hidden>I got it</button>
+      <button class="btn" type="button" data-task="bad" hidden>I missed it</button>
+    </div>
   </article>
 </template>
 

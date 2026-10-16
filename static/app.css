@@ -18,6 +18,8 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 html[data-exam="sapc03"] { --accent: #4fb5a8; --accent-ink: #0b1a18; }
+html[data-exam="aipc01"] { --accent: #c9a24a; --accent-ink: #1a1507; }
+html[data-exam="cka"] { --accent: #6f8fe8; --accent-ink: #0c1024; }
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #f3f1ea; --bg-2: #ebe9e1; --surface: #ffffff; --surface-2: #f7f5ee; --line: #dcd9ce;
@@ -217,3 +219,18 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 .card-review .verdict-line.bad { color: var(--bad); }
 .card-review .expl { color: var(--muted); margin-top: .8rem; line-height: 1.5; }
 .card-review .opt { cursor: default; }
+
+/* Command playbook (CKA) */
+.cmds { list-style: none; margin: 0; padding: .2rem 1rem 1rem; display: grid; gap: .6rem; }
+.cmds li { display: grid; gap: .3rem; }
+.cmds code { font-family: var(--font-mono); font-size: .85rem; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .7rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cmds span { color: var(--muted); font-size: .9rem; padding-left: .2rem; }
+
+/* Task exams (CKA): typed answers */
+.task-text { white-space: pre-wrap; line-height: 1.55; margin: 0 0 .9rem; }
+.answer { width: 100%; min-height: 150px; resize: vertical; font-family: var(--font-mono); font-size: .88rem; line-height: 1.5; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: .7rem .8rem; }
+.answer:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.card .html pre { white-space: pre-wrap; }
+.card-task { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
+.card-guide { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+.review-answer { font-family: var(--font-mono); font-size: .85rem; white-space: pre-wrap; background: var(--surface-2); border-radius: 10px; padding: .6rem .8rem; margin: .4rem 0 .8rem; }

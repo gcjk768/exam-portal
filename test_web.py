@@ -13,10 +13,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 tmp = Path(tempfile.mkdtemp(prefix="portal-test-"))
 specs = []
-for key, src in (("ccarp", ROOT.parent / "CCAR-P"), ("sapc03", ROOT.parent / "AWS Certified Solutions Architect - Professional"), ("aipc01", ROOT.parent / "AWS Certified Generative AI Developer - Professional AIP-01")):
+for key, src in (("ccarp", ROOT.parent / "CCAR-P"), ("sapc03", ROOT.parent / "AWS Certified Solutions Architect - Professional"), ("aipc01", ROOT.parent / "AWS Certified Generative AI Developer - Professional AIP-01"), ("cka", ROOT.parent / "CKA")):
     dst = tmp / key
     (dst / "data").mkdir(parents=True)
-    for f in ("bot.py", "scrape.py"):
+    for f in ("bot.py", "scrape.py", "online_parsers.py"):
         if (src / f).exists():
             shutil.copy(src / f, dst / f)
     shutil.copytree(src / "assets", dst / "assets")
@@ -40,8 +40,8 @@ def events(resp):
 
 # exams + home
 ex = c.get("/api/exams").json()
-assert {e["key"] for e in ex} == {"ccarp", "sapc03", "aipc01"}, ex
-assert all(e["total"] > 50 for e in ex)
+assert {e["key"] for e in ex} == {"ccarp", "sapc03", "aipc01", "cka"}, ex
+assert all(e["total"] > 50 for e in ex) and next(e for e in ex if e["key"] == "cka")["tasks"] is True
 home = c.get("/api/ccarp/home").json()
 assert home["pending"] is None and home["coverage"]["seen"] == 0 and home["pass"] == 720
 assert c.get("/api/sapc03/home").json()["has_study"] is True
@@ -112,6 +112,34 @@ assert all("explanation" in r and r["correct"] for r in res["results"])
 st = web.EXAMS["sapc03"].mod.load_state()
 assert sum(st["ok"].values()) + sum(st["bad"].values()) >= 10 and st["log"][-1]["exam"] is True
 assert c.get("/api/sapc03/home").json()["exam_answers"] == 10
+
+# task exam (CKA): next task streams the task + a task meta event; Claude grading is monkeypatched; self-mark path is free
+cka = web.EXAMS["cka"]
+ev = events(c.post("/api/cka/act", json={"data": "next"}))
+assert ev[0]["html"].startswith("🛠") and ev[1]["op"] == "meta" and ev[1]["task"]["task"] is True, ev
+tid = ev[1]["task"]["id"]
+assert cka.mod.load_state()["pending"] == tid
+
+
+async def fake_grade(exam, q, answer):
+    return {"score": 85, "verdict": "Good", "feedback": "Fine.", "commands": "kubectl get pods"}
+
+
+web.grade_one = fake_grade
+ev = events(c.post("/api/cka/task", json={"id": tid, "answer": "kubectl get pods -A"}))
+kinds = [e.get("html", "")[:2] for e in ev if e["op"] == "add"]
+assert any(e["op"] == "meta" and e.get("graded_task", {}).get("right") for e in ev), ev
+assert any("COMMAND GUIDELINE" in e.get("html", "") for e in ev) and any("REFERENCE SOLUTION" in e.get("html", "") for e in ev)
+st = cka.mod.load_state(); assert st["ok"][tid] == 1 and st["pending"] is None and st["log"][-1]["score"] == 85
+ev = events(c.post("/api/cka/task", json={"id": tid, "result": "reveal"}))
+assert any(e["op"] == "meta" and e.get("revealed") == tid for e in ev)
+ev = events(c.post("/api/cka/task", json={"id": tid, "result": "bad"}))
+assert cka.mod.load_state()["bad"][tid] == 1
+ex = c.post("/api/cka/exam/start", json={"n": 3}).json()
+assert ex["tasks"] is True and ex["minutes"] == 21 and all(q["task"] for q in ex["questions"])
+res = c.post("/api/cka/exam/submit", json={"answers": {ex["questions"][0]["id"]: ["kubectl apply -f x.yaml"], ex["questions"][1]["id"]: [""]}, "minutes_used": 5}).json()
+assert res["tasks"] is True and res["n"] == 2 and res["results"][0]["score"] == 85 and res["results"][1]["verdict"] == "blank"
+assert c.post("/api/ccarp/task", json={"id": "x", "answer": "y"}).status_code == 400
 
 shutil.rmtree(tmp, ignore_errors=True)
 print("ok: all web tests passed")
