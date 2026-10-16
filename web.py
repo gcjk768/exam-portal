@@ -42,7 +42,9 @@ SGT = timezone(timedelta(hours=8))
 META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
         "sapc03": ("SAP-C03", "AWS Solutions Architect Professional", 75, 180),
         "aipc01": ("AIP-C01", "AWS Generative AI Developer Professional", 75, 180),
-        "cka": ("CKA", "Certified Kubernetes Administrator", 17, 120)}   # ~17 hands-on tasks in 120 min
+        "cka": ("CKA", "Certified Kubernetes Administrator", 17, 120),   # ~17 hands-on tasks in 120 min
+        "gitlabci": ("GitLab CI/CD", "GitLab Certified CI/CD Associate", 60, 60),
+        "tfassoc": ("Terraform", "HashiCorp Terraform Associate (003)", 57, 60)}
 
 
 # ── Exams: import each bot.py as its own module ──────────────────────────────
@@ -131,6 +133,10 @@ def load_exams() -> dict[str, Exam]:
     for spec in (os.environ.get("EXAMS") or discover()).split(","):
         key, bot_dir, *vault = spec.strip().split(":", 2) if os.name != "nt" else _split_win(spec.strip())
         exams[key] = Exam(key, bot_dir, vault[0] if vault and vault[0] else None)
+        if not exams[key].mod.QUESTIONS:            # a scaffolded exam whose bank is not built yet
+            log.warning("exam %s has no questions, skipped (%s)", key, bot_dir)
+            del exams[key]
+            continue
         log.info("exam %s: %d questions, study cards=%s, tasks=%s (%s)", key, len(exams[key].mod.QUESTIONS),
                  exams[key].has_study, exams[key].tasks, bot_dir)
     return dict(sorted(exams.items(), key=lambda kv: list(META).index(kv[0]) if kv[0] in META else 99))
