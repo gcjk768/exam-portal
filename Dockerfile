@@ -18,6 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY web.py ./
 COPY static ./static
 COPY study ./study
+# the NAS creates files 770 root-owned; the app runs as quiz, so make the copies world-readable
+RUN chmod -R a+rX /app
 USER quiz
 EXPOSE 8000
 CMD ["python", "web.py"]
