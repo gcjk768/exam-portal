@@ -1,46 +1,338 @@
 {
-  "exam": "AIP-C01",
-  "intro": "75 questions (65 scored), 180 min, pass 750/1000, USD 300. Professional level. Out of scope: model training, advanced ML, feature engineering.",
-  "start": [
-    {"title": "Official exam guide (AIP-C01)", "url": "https://docs.aws.amazon.com/aws-certification/latest/ai-professional-01/ai-professional-01.html", "note": "Five domains with task statements and the in-scope service list. Read first.", "kind": "official"},
-    {"title": "Skill Builder exam prep plan", "url": "https://skillbuilder.aws/category/exam-prep/generative-ai-developer-professional-aip-c01", "note": "Official prep course, pretest and the 20-question official practice set (free account).", "kind": "official"},
-    {"title": "Well-Architected Generative AI Lens", "url": "https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html", "note": "GenAI-specific best practices the exam leans on.", "kind": "official"},
-    {"title": "Your slide deck (study cards)", "url": "#study-cards", "note": "610 notes built from the course slides: Claude writes the card and redraws the diagram with official icons.", "kind": "free"},
-    {"title": "JeremyEngineer practice exam (GitHub, MIT)", "url": "https://github.com/JeremyEngineer/aws-aip-c01-practice-exam", "note": "462 original questions tagged to the exam-guide tasks, per-option explanations. Already in your bank.", "kind": "free"},
-    {"title": "GravesXX study vault (GitHub, MIT)", "url": "https://github.com/GravesXX/AWS-GenAI-Developer-Certification", "note": "Obsidian vault, 32 notes by domain.", "kind": "free"},
-    {"title": "vicsz study notes (GitHub)", "url": "https://github.com/vicsz/aip-c01-study-notes", "note": "One long README of condensed notes.", "kind": "free"},
-    {"title": "Pass write-up: Christian Greciano", "url": "https://christiangreciano.com/", "note": "Beta pass at 760: RAG, knowledge bases, guardrails and logging heavy; agents lighter.", "kind": "free"},
-    {"title": "Pass write-up: Isaac Xia", "url": "https://isaacxia.com/blog/posts/aws-genai-developer-certification", "note": "Passed Feb 2026: 25 to 30% RAG; Strands and MCP rising.", "kind": "free"},
-    {"title": "Tutorials Dojo practice exams", "url": "https://portal.tutorialsdojo.com/courses/free-aws-certified-generative-ai-developer-professional-practice-exams-sampler/", "note": "30-question free sampler, full sets paid.", "kind": "paid"}
-  ],
-  "domains": [
-    {"domain": "FM integration, data management and compliance", "weight": 31, "links": [
-      {"title": "What is Amazon Bedrock", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html", "note": "Model access, inference modes, cross-Region inference."},
-      {"title": "Converse API", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html", "note": "One request shape across providers, tools, streaming."},
-      {"title": "Knowledge Bases (RAG)", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html", "note": "Chunking, embeddings, vector stores, S3 Vectors, retrieval tuning."},
-      {"title": "Prompt management", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-management.html", "note": "Versioned prompts, variables, flows."},
-      {"title": "Model customization", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization.html", "note": "Fine-tuning vs continued pre-training vs distillation."},
-      {"title": "Bedrock Data Automation", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/data-automation.html", "note": "Extracting structured data from documents, images, audio, video."},
-      {"title": "SageMaker JumpStart foundation models", "url": "https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models.html", "note": "When to host a model yourself."}
-    ]},
-    {"domain": "Implementation and integration", "weight": 26, "links": [
-      {"title": "Bedrock Agents", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html", "note": "Action groups, knowledge bases, tracing, memory."},
-      {"title": "Bedrock AgentCore", "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html", "note": "Runtime, memory, gateway, identity, observability for agents."},
-      {"title": "Strands Agents", "url": "https://strandsagents.com/", "note": "Open-source agent SDK; MCP tools."}
-    ]},
-    {"domain": "AI safety, security and governance", "weight": 20, "links": [
-      {"title": "Bedrock Guardrails", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html", "note": "Denied topics, PII, contextual grounding, prompt-attack filters."},
-      {"title": "IAM best practices", "url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html", "note": "Least privilege, roles over users, temporary credentials."},
-      {"title": "VPC endpoints for Bedrock", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/vpc-interface-endpoints.html", "note": "PrivateLink, data never leaves the VPC."}
-    ]},
-    {"domain": "Operational efficiency and optimization", "weight": 12, "links": [
-      {"title": "Prompt caching", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html", "note": "Static prefix first; cost and latency."},
-      {"title": "Provisioned Throughput", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html", "note": "When to commit; model units."},
-      {"title": "Batch inference", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html", "note": "About 50% cheaper, separate quotas."},
-      {"title": "Monitoring Bedrock", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/monitoring.html", "note": "CloudWatch metrics, invocation logging, CloudTrail."}
-    ]},
-    {"domain": "Testing, validation and troubleshooting", "weight": 11, "links": [
-      {"title": "Model evaluation", "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation.html", "note": "Automatic, human and LLM-as-judge evaluations; RAG evaluation."}
-    ]}
-  ]
+ "exam": "AIP-C01",
+ "intro": "75 questions (65 scored), 180 min, pass 750/1000, USD 300. Professional level. Out of scope: model training, advanced ML, feature engineering.",
+ "start": [
+  {
+   "title": "Official exam guide (AIP-C01)",
+   "url": "https://docs.aws.amazon.com/aws-certification/latest/ai-professional-01/ai-professional-01.html",
+   "note": "Five domains with task statements and the in-scope service list. Read first.",
+   "kind": "official"
+  },
+  {
+   "title": "Skill Builder exam prep plan",
+   "url": "https://skillbuilder.aws/category/exam-prep/generative-ai-developer-professional-aip-c01",
+   "note": "Official prep course, pretest and the 20-question official practice set (free account).",
+   "kind": "official"
+  },
+  {
+   "title": "Well-Architected Generative AI Lens",
+   "url": "https://docs.aws.amazon.com/wellarchitected/latest/generative-ai-lens/generative-ai-lens.html",
+   "note": "GenAI-specific best practices the exam leans on.",
+   "kind": "official"
+  },
+  {
+   "title": "Your slide deck (study cards)",
+   "url": "#study-cards",
+   "note": "610 notes built from the course slides: Claude writes the card and redraws the diagram with official icons.",
+   "kind": "free"
+  },
+  {
+   "title": "JeremyEngineer practice exam (GitHub, MIT)",
+   "url": "https://github.com/JeremyEngineer/aws-aip-c01-practice-exam",
+   "note": "462 original questions tagged to the exam-guide tasks, per-option explanations. Already in your bank.",
+   "kind": "free"
+  },
+  {
+   "title": "GravesXX study vault (GitHub, MIT)",
+   "url": "https://github.com/GravesXX/AWS-GenAI-Developer-Certification",
+   "note": "Obsidian vault, 32 notes by domain.",
+   "kind": "free"
+  },
+  {
+   "title": "vicsz study notes (GitHub)",
+   "url": "https://github.com/vicsz/aip-c01-study-notes",
+   "note": "One long README of condensed notes.",
+   "kind": "free"
+  },
+  {
+   "title": "Pass write-up: Christian Greciano",
+   "url": "https://christiangreciano.com/",
+   "note": "Beta pass at 760: RAG, knowledge bases, guardrails and logging heavy; agents lighter.",
+   "kind": "free"
+  },
+  {
+   "title": "Pass write-up: Isaac Xia",
+   "url": "https://isaacxia.com/blog/posts/aws-genai-developer-certification",
+   "note": "Passed Feb 2026: 25 to 30% RAG; Strands and MCP rising.",
+   "kind": "free"
+  },
+  {
+   "title": "Tutorials Dojo practice exams",
+   "url": "https://portal.tutorialsdojo.com/courses/free-aws-certified-generative-ai-developer-professional-practice-exams-sampler/",
+   "note": "30-question free sampler, full sets paid.",
+   "kind": "paid"
+  }
+ ],
+ "domains": [
+  {
+   "domain": "FM integration, data management and compliance",
+   "weight": 31,
+   "links": [
+    {
+     "title": "What is Amazon Bedrock",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html",
+     "note": "Model access, inference modes, cross-Region inference."
+    },
+    {
+     "title": "Converse API",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html",
+     "note": "One request shape across providers, tools, streaming."
+    },
+    {
+     "title": "Knowledge Bases (RAG)",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html",
+     "note": "Chunking, embeddings, vector stores, S3 Vectors, retrieval tuning."
+    },
+    {
+     "title": "Prompt management",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-management.html",
+     "note": "Versioned prompts, variables, flows."
+    },
+    {
+     "title": "Model customization",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-customization.html",
+     "note": "Fine-tuning vs continued pre-training vs distillation."
+    },
+    {
+     "title": "Bedrock Data Automation",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/data-automation.html",
+     "note": "Extracting structured data from documents, images, audio, video."
+    },
+    {
+     "title": "SageMaker JumpStart foundation models",
+     "url": "https://docs.aws.amazon.com/sagemaker/latest/dg/jumpstart-foundation-models.html",
+     "note": "When to host a model yourself."
+    }
+   ],
+   "video": {
+    "id": "hnyDDfo8e9Q",
+    "title": "Build a RAG based Generative AI Chatbot in 20 mins using Amazon Bedrock Knowledge Base",
+    "channel": "Amazon Web Services",
+    "min": 10
+   },
+   "diagram": "flowchart LR\n  SRC[(S3 documents)] --> ING[Knowledge Base ingestion: chunk + embed]\n  ING --> VS[(Vector store: OpenSearch Serverless, Aurora pgvector)]\n  Q([User question]) --> RET[Retrieve top-k chunks]\n  VS --> RET\n  RET --> FM{{Foundation model in Bedrock}}\n  Q --> FM\n  FM --> A([Grounded answer + citations])\n  PII[PII redaction, KMS, VPC endpoints] -.-> SRC",
+   "keys": [
+    "knowledge base",
+    "rag",
+    "retriev",
+    "embedding",
+    "vector",
+    "opensearch",
+    "chunk",
+    "pii",
+    "ingest",
+    "foundation model",
+    "fine-tun",
+    "customiz",
+    "titan",
+    "compliance",
+    "claude",
+    "phi",
+    "hipaa",
+    "json",
+    "dataset"
+   ]
+  },
+  {
+   "domain": "Implementation and integration",
+   "weight": 26,
+   "links": [
+    {
+     "title": "Bedrock Agents",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/agents.html",
+     "note": "Action groups, knowledge bases, tracing, memory."
+    },
+    {
+     "title": "Bedrock AgentCore",
+     "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html",
+     "note": "Runtime, memory, gateway, identity, observability for agents."
+    },
+    {
+     "title": "Strands Agents",
+     "url": "https://strandsagents.com/",
+     "note": "Open-source agent SDK; MCP tools."
+    }
+   ],
+   "video": {
+    "id": "JkDzZFTXeSw",
+    "title": "Amazon Bedrock Agents | Amazon Web Services",
+    "channel": "Amazon Web Services",
+    "min": 12
+   },
+   "diagram": "flowchart LR\n  APP([App / API Gateway]) --> L[Lambda]\n  L --> AG[Bedrock Agent]\n  AG -->|reason + plan| FM{{Foundation model}}\n  AG --> AGRP[Action groups: Lambda + OpenAPI]\n  AG --> KB[(Knowledge base)]\n  AGRP --> SYS[(Business systems)]\n  AG --> MEM[Session memory]\n  AG --> OUT([Response, streamed])",
+   "keys": [
+    "agent",
+    "action group",
+    "lambda",
+    "prompt flow",
+    "integrat",
+    "step functions",
+    "sdk",
+    "converse",
+    "stream",
+    "langchain",
+    "orchestrat",
+    "assistant",
+    "chatbot",
+    "workflow",
+    "multi-step",
+    "chain",
+    "crm",
+    "email",
+    "real-time",
+    "snippet",
+    "switch",
+    "conversation",
+    "service combination",
+    "architect",
+    "pattern"
+   ]
+  },
+  {
+   "domain": "AI safety, security and governance",
+   "weight": 20,
+   "links": [
+    {
+     "title": "Bedrock Guardrails",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html",
+     "note": "Denied topics, PII, contextual grounding, prompt-attack filters."
+    },
+    {
+     "title": "IAM best practices",
+     "url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+     "note": "Least privilege, roles over users, temporary credentials."
+    },
+    {
+     "title": "VPC endpoints for Bedrock",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/vpc-interface-endpoints.html",
+     "note": "PrivateLink, data never leaves the VPC."
+    }
+   ],
+   "video": {
+    "id": "srQxO_o9KgM",
+    "title": "NEW DEMO - Amazon Bedrock Guardrails | Amazon Web Services",
+    "channel": "Amazon Web Services",
+    "min": 9
+   },
+   "diagram": "flowchart LR\n  IN([Prompt]) --> GR1[Guardrail: denied topics, content filters, PII]\n  GR1 -->|blocked| MSG[Blocked message]\n  GR1 --> FM{{Model}}\n  FM --> GR2[Guardrail: contextual grounding, PII masking]\n  GR2 --> OUT([Response])\n  FM --> LOGS[(Invocation logs: S3, CloudWatch)]\n  IAM[IAM least privilege, VPC endpoints, KMS] -.-> FM",
+   "keys": [
+    "guardrail",
+    "toxic",
+    "safety",
+    "responsible",
+    "bias",
+    "hallucinat",
+    "security",
+    "iam",
+    "encrypt",
+    "kms",
+    "prompt injection",
+    "governance",
+    "privacy",
+    "harm",
+    "health",
+    "transparen",
+    "explainab",
+    "fairness",
+    "audit",
+    "moderat",
+    "ethic",
+    "sensitive"
+   ]
+  },
+  {
+   "domain": "Operational efficiency and optimization",
+   "weight": 12,
+   "links": [
+    {
+     "title": "Prompt caching",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html",
+     "note": "Static prefix first; cost and latency."
+    },
+    {
+     "title": "Provisioned Throughput",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html",
+     "note": "When to commit; model units."
+    },
+    {
+     "title": "Batch inference",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html",
+     "note": "About 50% cheaper, separate quotas."
+    },
+    {
+     "title": "Monitoring Bedrock",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/monitoring.html",
+     "note": "CloudWatch metrics, invocation logging, CloudTrail."
+    }
+   ],
+   "video": {
+    "id": "ScQmN2e6Tpw",
+    "title": "Amazon Bedrock Pricing Explained - Cost Breakdown",
+    "channel": "Pabba Anubharath ( AI Expert )",
+    "min": 7
+   },
+   "diagram": "flowchart LR\n  REQ([Requests]) --> P{Traffic shape?}\n  P -->|bulk, not urgent| BATCH[Batch inference: about 50% cheaper]\n  P -->|steady high volume| PT[Provisioned throughput]\n  P -->|bursty| OD[On-demand + cross-region inference]\n  REQ --> CACHE[Prompt caching, response cache]\n  REQ --> SM[Smaller model or distillation]\n  OD --> CW[CloudWatch: latency, tokens, throttles]",
+   "keys": [
+    "cost",
+    "throughput",
+    "provisioned",
+    "batch",
+    "cach",
+    "token",
+    "throttl",
+    "quota",
+    "scal",
+    "cheaper",
+    "optimi",
+    "performance",
+    "degradation",
+    "fallback",
+    "retry",
+    "overhead",
+    "inference",
+    "traffic",
+    "efficien",
+    "cost-effective"
+   ]
+  },
+  {
+   "domain": "Testing, validation and troubleshooting",
+   "weight": 11,
+   "links": [
+    {
+     "title": "Model evaluation",
+     "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation.html",
+     "note": "Automatic, human and LLM-as-judge evaluations; RAG evaluation."
+    }
+   ],
+   "video": {
+    "id": "NSpH6i7j2KI",
+    "title": "Master Amazon Bedrock Model Evaluation: Automatic & Human Assessment Tutorial",
+    "channel": "KnoDAX",
+    "min": 6
+   },
+   "diagram": "flowchart LR\n  DS[(Prompt dataset)] --> EV[Bedrock model evaluation]\n  EV --> AUTO[Automatic: accuracy, robustness, toxicity]\n  EV --> JUDGE[LLM as a judge]\n  EV --> HUM[Human workers]\n  AUTO --> REP[Report: compare models]\n  JUDGE --> REP\n  HUM --> REP\n  REP --> PICK{Pick model and prompt}\n  PICK --> MON[Prod: CloudWatch + X-Ray traces]",
+   "keys": [
+    "evaluat",
+    "metric",
+    "judge",
+    "benchmark",
+    "troubleshoot",
+    "monitor",
+    "debug",
+    "cloudwatch",
+    "x-ray",
+    "validat",
+    "accuracy",
+    "rouge",
+    "bleu",
+    "quality",
+    "feedback",
+    "a/b",
+    "regression",
+    "observab",
+    "correct answer"
+   ]
+  }
+ ]
 }

@@ -95,6 +95,21 @@ assert mod.load_state() == {"ok": {}, "bad": {}}
 study = c.get("/api/ccarp/study").json()
 assert study["reading"]["domains"][0]["links"][0]["url"].startswith("http") and study["reading"]["start"]
 assert c.get("/api/sapc03/study").json()["has_cards"] is True
+
+# topic media: every study domain of every exam has a YouTube id + a Mermaid diagram; a question finds its
+# domain by name, else by keywords (the same rule as topicFor() in app.js)
+import re  # noqa: E402
+for sj in (ROOT / "study").glob("*.json"):
+    for d in json.loads(sj.read_text(encoding="utf-8"))["domains"]:
+        assert re.fullmatch(r"[\w-]{11}", d["video"]["id"]) and d["video"]["title"], (sj.name, d["domain"])
+        assert d["diagram"].startswith("flowchart"), (sj.name, d["domain"])
+for key, e in web.EXAMS.items():
+    ds = e.study["domains"]
+    found = sum(any(d["domain"] == q["domain"] for d in ds)
+                or any(k in (q["question"] + " " + q["options"]).lower() for d in ds for k in d.get("keys", ()))
+                for q in e.mod.QUESTIONS.values())
+    assert found / len(e.mod.QUESTIONS) > 0.9, (key, found, len(e.mod.QUESTIONS))
+
 vault_lines = list((tmp / "vault" / "ccarp" / "Activity").rglob("*.md"))
 assert vault_lines and "🌐 web" in vault_lines[0].read_text(encoding="utf-8")
 

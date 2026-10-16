@@ -105,8 +105,84 @@
         <span class="bar"><i style="width:${pct}%"></i></span></summary>`;
       const ul = document.createElement("ul"); ul.className = "links";
       d.links.forEach(l => ul.append(link(l)));
-      det.append(ul); box.append(det);
+      det.append(topicMedia(d), ul); box.append(det);
     });
+  }
+
+  // ── Topic media: a short video + a concept diagram per domain (study/<exam>.json) ──
+  function topicMedia(d) {
+    const box = document.createElement("div"); box.className = "topic";
+    const v = d.video;
+    if (v) {
+      const fig = document.createElement("figure"); fig.className = "topic-video";
+      fig.innerHTML = `<button type="button" class="yt" aria-label="Play ${esc(v.title)}">
+          <img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy"><span class="play">▶</span></button>
+        <figcaption><a href="https://youtu.be/${esc(v.id)}" target="_blank" rel="noopener">${esc(v.title)}</a>
+          <span class="muted small">${esc(v.channel || "")}${v.min ? ` · ${v.min} min` : ""}</span></figcaption>`;
+      $(".yt", fig).onclick = (ev) => ev.currentTarget.outerHTML =     // click-to-load: no YouTube iframe until asked
+        `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&rel=0" title="${esc(v.title)}"
+          allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+      box.append(fig);
+    }
+    if (d.diagram) {
+      const dia = document.createElement("div"); dia.className = "topic-diagram"; dia.textContent = "Drawing the diagram…";
+      box.append(dia);
+      drawDiagram(dia, d.diagram);
+    }
+    return box;
+  }
+
+  let mermaidP = null, mmdN = 0;
+  function mermaidLib() {
+    return mermaidP ||= import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs").then(m => {
+      const light = matchMedia("(prefers-color-scheme: light)").matches;
+      m.default.initialize({ startOnLoad: false, theme: light ? "default" : "dark", securityLevel: "strict",
+                             fontFamily: "Geist, system-ui, sans-serif", flowchart: { htmlLabels: false, useMaxWidth: true } });
+      return m.default;
+    });
+  }
+  async function drawDiagram(box, src) {
+    try {
+      const { svg } = await (await mermaidLib()).render(`mmd${++mmdN}`, src);
+      box.innerHTML = svg;
+      box.title = "Click to enlarge";
+      box.onclick = () => {
+        const img = $("#lightbox-img");
+        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(box.innerHTML);
+        img.classList.add("svg"); $("#lightbox").showModal();
+      };
+    } catch (e) {
+      mermaidP = null;                                   // CDN hiccup: let the next diagram retry the import
+      box.textContent = "Diagram could not be drawn (offline?).";
+    }
+  }
+
+  // The study domain a question belongs to: same domain name, else the most keyword hits (banks tagged by source).
+  // ponytail: substring keyword count, ties go to the first domain; tag the banks with real domains to drop it.
+  const studyCache = {};
+  async function topicFor(domain, text) {
+    const key = state.exam;
+    const r = await (studyCache[key] ||= api("/study").then(s => s.reading || {}).catch(() => { delete studyCache[key]; return {}; }));
+    const ds = r.domains || [];
+    const same = ds.find(d => d.domain === domain);
+    if (same) return same;
+    const t = (text || "").toLowerCase();
+    let best = null, hits = 0;
+    for (const d of ds) {
+      const n = (d.keys || []).filter(k => t.includes(k)).length;
+      if (n > hits) { best = d; hits = n; }
+    }
+    return best;
+  }
+  // Collapsed "Topic" panel under an answered question: video + diagram for its domain.
+  async function addTopic(card, text) {
+    if (!card || $(".topic-panel", card)) return;
+    const d = await topicFor($(".dom", card)?.textContent, text ?? `${$(".qtext", card)?.textContent} ${$(".options", card)?.textContent || ""}`);
+    if (!d || !(d.video || d.diagram) || $(".topic-panel", card)) return;
+    const det = document.createElement("details"); det.className = "topic-panel";
+    det.innerHTML = `<summary>🎬 Topic: ${esc(d.domain)} · video + diagram</summary>`;
+    det.addEventListener("toggle", () => { if (det.open && !$(".topic", det)) det.append(topicMedia(d)); });
+    card.append(det);
   }
   function studyCard() { go("quiz"); setTimeout(() => act("study"), 50); }
   $("#btn-card").onclick = studyCard;
@@ -229,7 +305,7 @@
     else if (ev.kind === "photo") {
       el = document.createElement("article"); el.className = "card card-photo";
       el.innerHTML = `<img src="data:image/png;base64,${ev.png}" alt="Diagram"><div class="cap html">${tg(ev.html)}</div>`;
-      $("img", el).onclick = () => { $("#lightbox-img").src = $("img", el).src; $("#lightbox").showModal(); };
+      $("img", el).onclick = () => { $("#lightbox-img").src = $("img", el).src; $("#lightbox-img").classList.remove("svg"); $("#lightbox").showModal(); };
     } else {
       el = document.createElement("article");
       const k = ev.error ? "err" : kindOf(ev.html);
@@ -313,6 +389,7 @@
       if (g.correct.includes(b.dataset.l)) b.classList.add("is-correct");
       else if (g.picked.includes(b.dataset.l)) b.classList.add("is-wrong");
     });
+    addTopic(el);
   }
 
   // Task exams: the task text was streamed as a normal card; this adds the answer box under it.
@@ -343,6 +420,7 @@
     $$("[data-task]", el).forEach(b => b.disabled = true);
     $(".answer", el).readOnly = true;
     state.pendingCard = null;
+    addTopic(el, "");
   }
 
   // Keyboard: A-H pick, Enter submits a multi-select or asks for the next question (not while typing a task answer).
@@ -504,7 +582,7 @@
         el.insertAdjacentHTML("beforeend", `<div class="review-answer">${esc(r.answer || "(blank)")}</div><div class="expl">${esc(r.feedback)}</div>` +
           (r.commands ? `<div class="html card-guide" style="margin-top:.8rem;padding:.6rem .8rem;border-radius:10px"><b>Command guideline</b><pre>${esc(r.commands)}</pre></div>` : "") +
           `<details style="margin-top:.6rem"><summary class="muted">Reference solution</summary><pre class="review-answer">${esc(r.explanation)}</pre></details>`);
-        list.append(el); continue;
+        list.append(el); addTopic(el); continue;
       }
       v.textContent = r.right ? `Correct, ${r.correct.join(",")}` : r.picked.length ? `Wrong, you picked ${r.picked.join(",")}, answer ${r.correct.join(",")}` : `Blank, answer ${r.correct.join(",")}`;
       $(".qtext", el).after(v);
@@ -521,7 +599,7 @@
         b.onclick = () => { go("quiz"); setTimeout(() => act(`e|${r.id}|${r.picked.join(",")}`), 50); };
         a.append(b); el.append(a);
       }
-      list.append(el);
+      list.append(el); addTopic(el);
     }
     window.scrollTo({ top: 0 });
   }

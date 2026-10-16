@@ -1,117 +1,471 @@
 {
-  "exam": "CKA",
-  "intro": "Hands-on terminal exam: about 17 tasks on live clusters, 120 min, pass 66%, USD 445, two attempts, includes two killer.sh simulator sessions. Here the quiz and the mock exam are the same hands-on tasks: you type the commands you would run and Claude grades them. The playbook below is what to practise in a real terminal.",
-  "start": [
-    {"title": "CKA exam page (Linux Foundation)", "url": "https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/", "note": "Domains, Kubernetes version, policies, the free simulator sessions.", "kind": "official"},
-    {"title": "CKA curriculum (CNCF)", "url": "https://github.com/cncf/curriculum", "note": "The exact bullet list the tasks are drawn from. Tick each bullet off.", "kind": "official"},
-    {"title": "kubectl quick reference", "url": "https://kubernetes.io/docs/reference/kubectl/quick-reference/", "note": "The one page you may keep open in the exam. Learn it by heart anyway.", "kind": "official"},
-    {"title": "killer.sh CKA simulator", "url": "https://killer.sh/cka", "note": "Harder than the real exam. Your two sessions come with the exam voucher; do the first one two weeks out.", "kind": "official"},
-    {"title": "Your Killercoda scenarios (study cards)", "url": "#study-cards", "note": "370 hands-on scenarios with solutions from your course folder. Each card explains every command flag by flag.", "kind": "free"},
-    {"title": "Killercoda CKA playground", "url": "https://killercoda.com/killer-shell-cka", "note": "Free browser clusters. Do every scenario twice: once reading, once from memory.", "kind": "free"},
-    {"title": "Linux Journey, command line", "url": "https://linuxjourney.com/lesson/the-shell", "note": "Start here for bash: 20 short lessons, no setup.", "kind": "free"},
-    {"title": "The Linux Command Line (free book)", "url": "https://linuxcommand.org/tlcl.php", "note": "Chapters 1 to 7 and 17 to 20 cover everything the exam assumes.", "kind": "free"},
-    {"title": "vim cheat sheet", "url": "https://vim.rtorr.com/", "note": "You will edit YAML in vim. Learn i, Esc, :wq, dd, u, /search, and set shiftwidth=2 expandtab.", "kind": "free"},
-    {"title": "KodeKloud CKA course + labs", "url": "https://kodekloud.com/courses/certified-kubernetes-administrator-cka/", "note": "The usual recommendation when you want video plus browser labs.", "kind": "paid"}
-  ],
-  "domains": [
-    {"domain": "Troubleshooting", "weight": 30, "links": [
-      {"title": "Troubleshooting applications", "url": "https://kubernetes.io/docs/tasks/debug/debug-application/", "note": "Pending, CrashLoopBackOff, ImagePullBackOff: the describe-logs-events loop."},
-      {"title": "Troubleshooting clusters", "url": "https://kubernetes.io/docs/tasks/debug/debug-cluster/", "note": "Node NotReady, kubelet, control-plane static pods."},
-      {"title": "Debug running pods", "url": "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/", "note": "kubectl exec, debug, ephemeral containers."},
-      {"title": "Logging architecture", "url": "https://kubernetes.io/docs/concepts/cluster-administration/logging/", "note": "Where container and node logs live."}
-    ]},
-    {"domain": "Cluster Architecture, Installation & Configuration", "weight": 25, "links": [
-      {"title": "kubeadm upgrade", "url": "https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/", "note": "Control plane first, then workers, one minor version at a time."},
-      {"title": "Operating etcd (backup and restore)", "url": "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/", "note": "etcdctl snapshot save and restore with the right certs."},
-      {"title": "RBAC", "url": "https://kubernetes.io/docs/reference/access-authn-authz/rbac/", "note": "Role vs ClusterRole, bindings, kubectl auth can-i."},
-      {"title": "Helm quickstart", "url": "https://helm.sh/docs/intro/quickstart/", "note": "repo add, install, upgrade, template."},
-      {"title": "Kustomize", "url": "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/", "note": "kubectl apply -k."},
-      {"title": "Custom resources and operators", "url": "https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/", "note": "CRDs, kubectl explain on them."}
-    ]},
-    {"domain": "Services & Networking", "weight": 20, "links": [
-      {"title": "Service", "url": "https://kubernetes.io/docs/concepts/services-networking/service/", "note": "ClusterIP, NodePort, LoadBalancer, selectors, endpoints."},
-      {"title": "Ingress", "url": "https://kubernetes.io/docs/concepts/services-networking/ingress/", "note": "Rules, paths, ingressClassName."},
-      {"title": "Gateway API", "url": "https://kubernetes.io/docs/concepts/services-networking/gateway/", "note": "GatewayClass, Gateway, HTTPRoute; new in the current curriculum."},
-      {"title": "Network Policies", "url": "https://kubernetes.io/docs/concepts/services-networking/network-policies/", "note": "podSelector plus namespaceSelector in one from item."},
-      {"title": "DNS for Services and Pods", "url": "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/", "note": "name.namespace.svc.cluster.local."}
-    ]},
-    {"domain": "Workloads & Scheduling", "weight": 15, "links": [
-      {"title": "Deployments", "url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/", "note": "rollout status, history, undo, strategy."},
-      {"title": "Taints and tolerations", "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/", "note": "NoSchedule vs NoExecute."},
-      {"title": "Assigning pods to nodes", "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/", "note": "nodeSelector, nodeName, affinity."},
-      {"title": "ConfigMaps and Secrets", "url": "https://kubernetes.io/docs/concepts/configuration/configmap/", "note": "env, envFrom, volume mounts."},
-      {"title": "Resource requests and limits", "url": "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/", "note": "Plus LimitRange and ResourceQuota."},
-      {"title": "Horizontal Pod Autoscaling", "url": "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/", "note": "kubectl autoscale, metrics-server."}
-    ]},
-    {"domain": "Storage", "weight": 10, "links": [
-      {"title": "Persistent Volumes", "url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/", "note": "PV, PVC, access modes, reclaim policy, binding."},
-      {"title": "Storage Classes", "url": "https://kubernetes.io/docs/concepts/storage/storage-classes/", "note": "Dynamic provisioning, volumeBindingMode."},
-      {"title": "Configure a pod to use a PVC", "url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/", "note": "The exact YAML shape the exam wants."}
-    ]}
-  ],
-  "playbook": [
-    {"problem": "A pod is not running (Pending, CrashLoopBackOff, ImagePullBackOff, Error)", "commands": [
-      {"cmd": "kubectl get pods -n <ns> -o wide", "what": "Status, restarts, which node. -o wide adds node and IP."},
-      {"cmd": "kubectl describe pod <pod> -n <ns>", "what": "Read the Events at the bottom first: scheduling, image pull, probe failures live there."},
-      {"cmd": "kubectl logs <pod> -n <ns> --previous", "what": "Logs of the container that just crashed. Add -c <container> for multi-container pods."},
-      {"cmd": "kubectl get events -n <ns> --sort-by=.metadata.creationTimestamp", "what": "Events for the whole namespace in time order."}
-    ]},
-    {"problem": "A node is NotReady", "commands": [
-      {"cmd": "kubectl get nodes; kubectl describe node <node>", "what": "Conditions (MemoryPressure, DiskPressure, Ready) and the kubelet message."},
-      {"cmd": "ssh <node>; sudo systemctl status kubelet; sudo journalctl -u kubelet -f", "what": "systemctl shows if the service runs; journalctl -u follows that unit's log."},
-      {"cmd": "sudo systemctl enable --now kubelet", "what": "Start the kubelet now and on every boot."},
-      {"cmd": "sudo ls /etc/kubernetes/manifests; sudo crictl ps", "what": "Static pod manifests and the containers the runtime actually runs."}
-    ]},
-    {"problem": "A Service does not reach its pods", "commands": [
-      {"cmd": "kubectl get svc,ep -n <ns>", "what": "If ENDPOINTS is empty, the selector does not match the pod labels."},
-      {"cmd": "kubectl get pods -n <ns> --show-labels", "what": "Compare the labels with the service selector."},
-      {"cmd": "kubectl run tmp --image=busybox:1.36 --rm -it --restart=Never -- wget -qO- <svc>.<ns>.svc:80", "what": "A throwaway pod that curls the service by DNS name. --rm deletes it when it exits."},
-      {"cmd": "kubectl get netpol -n <ns>", "what": "A NetworkPolicy may be blocking the traffic."}
-    ]},
-    {"problem": "Create or change a workload fast (imperative first, then YAML)", "commands": [
-      {"cmd": "kubectl run web --image=nginx:1.27 --port=80 --dry-run=client -o yaml > pod.yaml", "what": "--dry-run=client prints the object without creating it; -o yaml gives you a file to edit."},
-      {"cmd": "kubectl create deployment api --image=nginx --replicas=3 -n <ns>", "what": "Deployment in one line. Add --dry-run=client -o yaml to get a manifest."},
-      {"cmd": "kubectl expose deployment api --port=80 --target-port=8080 --type=NodePort", "what": "Service from a Deployment. --port is the service port, --target-port the container port."},
-      {"cmd": "kubectl set image deployment/api api=nginx:1.28; kubectl rollout status deployment/api; kubectl rollout undo deployment/api", "what": "Update the image, watch the rollout, roll back."},
-      {"cmd": "kubectl scale deployment api --replicas=5; kubectl autoscale deployment api --min=2 --max=8 --cpu-percent=70", "what": "Manual scale and an HPA."}
-    ]},
-    {"problem": "Edit a running object", "commands": [
-      {"cmd": "kubectl edit deployment api -n <ns>", "what": "Opens the live YAML in vim. :wq saves and applies; a failed apply drops a tmp file path you can fix."},
-      {"cmd": "kubectl get deployment api -o yaml > api.yaml; vim api.yaml; kubectl apply -f api.yaml", "what": "Safer for big edits. Pods cannot change most fields: delete and recreate (kubectl replace --force -f pod.yaml)."},
-      {"cmd": "kubectl explain pod.spec.containers.resources", "what": "Field documentation offline. Use it instead of guessing YAML keys."}
-    ]},
-    {"problem": "Schedule pods onto specific nodes", "commands": [
-      {"cmd": "kubectl label node <node> disktype=ssd; kubectl taint node <node> key=value:NoSchedule", "what": "Labels attract (nodeSelector/affinity), taints repel unless a pod tolerates them. Remove a taint with a trailing minus: key=value:NoSchedule-"},
-      {"cmd": "kubectl cordon <node>; kubectl drain <node> --ignore-daemonsets --delete-emptydir-data; kubectl uncordon <node>", "what": "Node maintenance: stop scheduling, evict pods, allow again."}
-    ]},
-    {"problem": "Permissions (RBAC)", "commands": [
-      {"cmd": "kubectl create role pod-reader --verb=get,list,watch --resource=pods -n <ns>", "what": "A Role is namespaced; ClusterRole is cluster-wide."},
-      {"cmd": "kubectl create rolebinding rb --role=pod-reader --serviceaccount=<ns>:<sa> -n <ns>", "what": "Bind the role to a ServiceAccount (or --user=jane)."},
-      {"cmd": "kubectl auth can-i list pods --as=system:serviceaccount:<ns>:<sa> -n <ns>", "what": "Verify as that identity. Answers yes or no."}
-    ]},
-    {"problem": "etcd backup and restore", "commands": [
-      {"cmd": "ETCDCTL_API=3 etcdctl snapshot save /opt/snap.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key", "what": "The three cert flags come from the etcd static pod manifest (kubectl describe pod etcd-<node> -n kube-system)."},
-      {"cmd": "ETCDCTL_API=3 etcdctl snapshot restore /opt/snap.db --data-dir=/var/lib/etcd-restore", "what": "Restore into a new directory, then point the etcd manifest's hostPath at it."}
-    ]},
-    {"problem": "Cluster upgrade with kubeadm", "commands": [
-      {"cmd": "kubectl drain <cp> --ignore-daemonsets; sudo apt-get install -y kubeadm=1.3x.y-*; sudo kubeadm upgrade plan; sudo kubeadm upgrade apply v1.3x.y", "what": "Control plane: drain, upgrade kubeadm, plan, apply."},
-      {"cmd": "sudo apt-get install -y kubelet=1.3x.y-* kubectl=1.3x.y-*; sudo systemctl daemon-reload; sudo systemctl restart kubelet; kubectl uncordon <cp>", "what": "Then kubelet and kubectl, restart, uncordon. Workers: kubeadm upgrade node instead of apply."}
-    ]},
-    {"problem": "Storage", "commands": [
-      {"cmd": "kubectl get pv,pvc,sc -A", "what": "Status Bound means the PVC found a PV. Pending means no PV matches size, access mode or storageClassName."},
-      {"cmd": "kubectl describe pvc <pvc> -n <ns>", "what": "Events say why it is not binding."}
-    ]},
-    {"problem": "Networking objects", "commands": [
-      {"cmd": "kubectl create ingress web --rule=\"shop.example.com/*=web:80\" --class=nginx", "what": "Ingress in one line; add --annotation for rewrites."},
-      {"cmd": "kubectl get gatewayclass,gateway,httproute -A", "what": "Gateway API objects (new curriculum)."},
-      {"cmd": "kubectl exec -it <pod> -- nslookup <svc>.<ns>.svc.cluster.local", "what": "DNS check from inside a pod."}
-    ]},
-    {"problem": "Shell survival in the exam", "commands": [
-      {"cmd": "alias k=kubectl; export do='--dry-run=client -o yaml'; export now='--force --grace-period=0'", "what": "Type k run x --image=nginx $do > x.yaml. The aliases save minutes."},
-      {"cmd": "kubectl config use-context <ctx>; kubectl config set-context --current --namespace=<ns>", "what": "Every task tells you the context. Switch first, then set the default namespace."},
-      {"cmd": "grep -n <text> file; sed -i 's/old/new/' file; tail -f /var/log/x; cat file | less", "what": "grep finds a line (-n shows the number), sed -i edits in place, tail -f follows a growing log."},
-      {"cmd": "echo \"text\" > file (overwrite); echo \"more\" >> file (append); cmd1 | cmd2 (pipe output into input)", "what": "The three redirections you will use most."},
-      {"cmd": "kubectl get pods -A -o json | jq '.items[].metadata.name'; kubectl get pods -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName", "what": "Pull specific fields when a task asks you to write names to a file."}
-    ]}
-  ]
+ "exam": "CKA",
+ "intro": "Hands-on terminal exam: about 17 tasks on live clusters, 120 min, pass 66%, USD 445, two attempts, includes two killer.sh simulator sessions. Here the quiz and the mock exam are the same hands-on tasks: you type the commands you would run and Claude grades them. The playbook below is what to practise in a real terminal.",
+ "start": [
+  {
+   "title": "CKA exam page (Linux Foundation)",
+   "url": "https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/",
+   "note": "Domains, Kubernetes version, policies, the free simulator sessions.",
+   "kind": "official"
+  },
+  {
+   "title": "CKA curriculum (CNCF)",
+   "url": "https://github.com/cncf/curriculum",
+   "note": "The exact bullet list the tasks are drawn from. Tick each bullet off.",
+   "kind": "official"
+  },
+  {
+   "title": "kubectl quick reference",
+   "url": "https://kubernetes.io/docs/reference/kubectl/quick-reference/",
+   "note": "The one page you may keep open in the exam. Learn it by heart anyway.",
+   "kind": "official"
+  },
+  {
+   "title": "killer.sh CKA simulator",
+   "url": "https://killer.sh/cka",
+   "note": "Harder than the real exam. Your two sessions come with the exam voucher; do the first one two weeks out.",
+   "kind": "official"
+  },
+  {
+   "title": "Your Killercoda scenarios (study cards)",
+   "url": "#study-cards",
+   "note": "370 hands-on scenarios with solutions from your course folder. Each card explains every command flag by flag.",
+   "kind": "free"
+  },
+  {
+   "title": "Killercoda CKA playground",
+   "url": "https://killercoda.com/killer-shell-cka",
+   "note": "Free browser clusters. Do every scenario twice: once reading, once from memory.",
+   "kind": "free"
+  },
+  {
+   "title": "Linux Journey, command line",
+   "url": "https://linuxjourney.com/lesson/the-shell",
+   "note": "Start here for bash: 20 short lessons, no setup.",
+   "kind": "free"
+  },
+  {
+   "title": "The Linux Command Line (free book)",
+   "url": "https://linuxcommand.org/tlcl.php",
+   "note": "Chapters 1 to 7 and 17 to 20 cover everything the exam assumes.",
+   "kind": "free"
+  },
+  {
+   "title": "vim cheat sheet",
+   "url": "https://vim.rtorr.com/",
+   "note": "You will edit YAML in vim. Learn i, Esc, :wq, dd, u, /search, and set shiftwidth=2 expandtab.",
+   "kind": "free"
+  },
+  {
+   "title": "KodeKloud CKA course + labs",
+   "url": "https://kodekloud.com/courses/certified-kubernetes-administrator-cka/",
+   "note": "The usual recommendation when you want video plus browser labs.",
+   "kind": "paid"
+  }
+ ],
+ "domains": [
+  {
+   "domain": "Troubleshooting",
+   "weight": 30,
+   "links": [
+    {
+     "title": "Troubleshooting applications",
+     "url": "https://kubernetes.io/docs/tasks/debug/debug-application/",
+     "note": "Pending, CrashLoopBackOff, ImagePullBackOff: the describe-logs-events loop."
+    },
+    {
+     "title": "Troubleshooting clusters",
+     "url": "https://kubernetes.io/docs/tasks/debug/debug-cluster/",
+     "note": "Node NotReady, kubelet, control-plane static pods."
+    },
+    {
+     "title": "Debug running pods",
+     "url": "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/",
+     "note": "kubectl exec, debug, ephemeral containers."
+    },
+    {
+     "title": "Logging architecture",
+     "url": "https://kubernetes.io/docs/concepts/cluster-administration/logging/",
+     "note": "Where container and node logs live."
+    }
+   ],
+   "video": {
+    "id": "h5NJLoe6tGw",
+    "title": "Kubernetes Troubleshooting: Why is my Pod stuck in PENDING? (CKA/CKAD Scenario 1)",
+    "channel": "SavageCamp",
+    "min": 10
+   },
+   "diagram": "flowchart TB\n  P([Pod not working]) --> S{kubectl get pod: status?}\n  S -->|Pending| D1[describe pod: scheduling, taints, resources, PVC]\n  S -->|CrashLoopBackOff| D2[logs --previous: app error, probes, command]\n  S -->|ImagePullBackOff| D3[image name, tag, registry secret]\n  S -->|Running, no traffic| D4[Service selector, endpoints, NetworkPolicy]\n  N([Node NotReady]) --> K[systemctl status kubelet, journalctl -u kubelet]\n  CP([API server down]) --> SP[static pods in /etc/kubernetes/manifests, crictl ps]"
+  },
+  {
+   "domain": "Cluster Architecture, Installation & Configuration",
+   "weight": 25,
+   "links": [
+    {
+     "title": "kubeadm upgrade",
+     "url": "https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/",
+     "note": "Control plane first, then workers, one minor version at a time."
+    },
+    {
+     "title": "Operating etcd (backup and restore)",
+     "url": "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/",
+     "note": "etcdctl snapshot save and restore with the right certs."
+    },
+    {
+     "title": "RBAC",
+     "url": "https://kubernetes.io/docs/reference/access-authn-authz/rbac/",
+     "note": "Role vs ClusterRole, bindings, kubectl auth can-i."
+    },
+    {
+     "title": "Helm quickstart",
+     "url": "https://helm.sh/docs/intro/quickstart/",
+     "note": "repo add, install, upgrade, template."
+    },
+    {
+     "title": "Kustomize",
+     "url": "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/",
+     "note": "kubectl apply -k."
+    },
+    {
+     "title": "Custom resources and operators",
+     "url": "https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/",
+     "note": "CRDs, kubectl explain on them."
+    }
+   ],
+   "video": {
+    "id": "TlHvYWVUZyc",
+    "title": "Kubernetes Explained in 6 Minutes | k8s Architecture",
+    "channel": "ByteByteGo",
+    "min": 6
+   },
+   "diagram": "flowchart LR\n  subgraph CPL[Control plane]\n    API[kube-apiserver] --- ETCD[(etcd)]\n    API --- SCH[scheduler]\n    API --- CM[controller-manager]\n  end\n  subgraph NODE[Worker node]\n    KL[kubelet] --> CRI[containerd]\n    KP[kube-proxy]\n    CRI --> POD[Pods]\n  end\n  KUBECTL([kubectl]) --> API\n  API --> KL\n  KUBEADM[kubeadm: init, join, upgrade] -.-> API"
+  },
+  {
+   "domain": "Services & Networking",
+   "weight": 20,
+   "links": [
+    {
+     "title": "Service",
+     "url": "https://kubernetes.io/docs/concepts/services-networking/service/",
+     "note": "ClusterIP, NodePort, LoadBalancer, selectors, endpoints."
+    },
+    {
+     "title": "Ingress",
+     "url": "https://kubernetes.io/docs/concepts/services-networking/ingress/",
+     "note": "Rules, paths, ingressClassName."
+    },
+    {
+     "title": "Gateway API",
+     "url": "https://kubernetes.io/docs/concepts/services-networking/gateway/",
+     "note": "GatewayClass, Gateway, HTTPRoute; new in the current curriculum."
+    },
+    {
+     "title": "Network Policies",
+     "url": "https://kubernetes.io/docs/concepts/services-networking/network-policies/",
+     "note": "podSelector plus namespaceSelector in one from item."
+    },
+    {
+     "title": "DNS for Services and Pods",
+     "url": "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/",
+     "note": "name.namespace.svc.cluster.local."
+    }
+   ],
+   "video": {
+    "id": "5lzUpDtmWgM",
+    "title": "Kubernetes - Services Explained in 15 Minutes!",
+    "channel": "KodeKloud",
+    "min": 14
+   },
+   "diagram": "flowchart LR\n  C([Client]) --> ING[Ingress / Gateway API]\n  ING --> SVC[Service: ClusterIP]\n  NP[NodePort / LoadBalancer] --> SVC\n  SVC -->|selector labels| EP[EndpointSlices]\n  EP --> P1[Pod A]\n  EP --> P2[Pod B]\n  DNS[CoreDNS: svc.ns.svc.cluster.local] -.-> SVC\n  NPOL[NetworkPolicy: allow, deny] -.-> P1"
+  },
+  {
+   "domain": "Workloads & Scheduling",
+   "weight": 15,
+   "links": [
+    {
+     "title": "Deployments",
+     "url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+     "note": "rollout status, history, undo, strategy."
+    },
+    {
+     "title": "Taints and tolerations",
+     "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/",
+     "note": "NoSchedule vs NoExecute."
+    },
+    {
+     "title": "Assigning pods to nodes",
+     "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/",
+     "note": "nodeSelector, nodeName, affinity."
+    },
+    {
+     "title": "ConfigMaps and Secrets",
+     "url": "https://kubernetes.io/docs/concepts/configuration/configmap/",
+     "note": "env, envFrom, volume mounts."
+    },
+    {
+     "title": "Resource requests and limits",
+     "url": "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+     "note": "Plus LimitRange and ResourceQuota."
+    },
+    {
+     "title": "Horizontal Pod Autoscaling",
+     "url": "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/",
+     "note": "kubectl autoscale, metrics-server."
+    }
+   ],
+   "video": {
+    "id": "mNK14yXIZF4",
+    "title": "How Kubernetes deployments work",
+    "channel": "Microsoft Azure",
+    "min": 6
+   },
+   "diagram": "flowchart LR\n  DEP[Deployment] --> RS[ReplicaSet]\n  RS --> P1[Pod]\n  RS --> P2[Pod]\n  DEP -->|rolling update, rollback| RS2[New ReplicaSet]\n  P1 --> SCH{Scheduler}\n  SCH -->|requests, nodeSelector, affinity, taints + tolerations| N[(Node)]\n  CMS[ConfigMap / Secret] -.-> P1\n  HPA[HPA] -.-> DEP"
+  },
+  {
+   "domain": "Storage",
+   "weight": 10,
+   "links": [
+    {
+     "title": "Persistent Volumes",
+     "url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/",
+     "note": "PV, PVC, access modes, reclaim policy, binding."
+    },
+    {
+     "title": "Storage Classes",
+     "url": "https://kubernetes.io/docs/concepts/storage/storage-classes/",
+     "note": "Dynamic provisioning, volumeBindingMode."
+    },
+    {
+     "title": "Configure a pod to use a PVC",
+     "url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/",
+     "note": "The exact YAML shape the exam wants."
+    }
+   ],
+   "video": {
+    "id": "inJ7YJ-jt8I",
+    "title": "How volumes and storage work in Kubernetes",
+    "channel": "Microsoft Azure",
+    "min": 5
+   },
+   "diagram": "flowchart LR\n  POD[Pod volumeMounts] --> PVC[PersistentVolumeClaim: size, accessMode]\n  PVC -->|bind| PV[PersistentVolume]\n  SC[StorageClass: provisioner, reclaimPolicy] -->|dynamic provisioning| PV\n  PV --> DISK[(Disk, NFS, CSI)]"
+  }
+ ],
+ "playbook": [
+  {
+   "problem": "A pod is not running (Pending, CrashLoopBackOff, ImagePullBackOff, Error)",
+   "commands": [
+    {
+     "cmd": "kubectl get pods -n <ns> -o wide",
+     "what": "Status, restarts, which node. -o wide adds node and IP."
+    },
+    {
+     "cmd": "kubectl describe pod <pod> -n <ns>",
+     "what": "Read the Events at the bottom first: scheduling, image pull, probe failures live there."
+    },
+    {
+     "cmd": "kubectl logs <pod> -n <ns> --previous",
+     "what": "Logs of the container that just crashed. Add -c <container> for multi-container pods."
+    },
+    {
+     "cmd": "kubectl get events -n <ns> --sort-by=.metadata.creationTimestamp",
+     "what": "Events for the whole namespace in time order."
+    }
+   ]
+  },
+  {
+   "problem": "A node is NotReady",
+   "commands": [
+    {
+     "cmd": "kubectl get nodes; kubectl describe node <node>",
+     "what": "Conditions (MemoryPressure, DiskPressure, Ready) and the kubelet message."
+    },
+    {
+     "cmd": "ssh <node>; sudo systemctl status kubelet; sudo journalctl -u kubelet -f",
+     "what": "systemctl shows if the service runs; journalctl -u follows that unit's log."
+    },
+    {
+     "cmd": "sudo systemctl enable --now kubelet",
+     "what": "Start the kubelet now and on every boot."
+    },
+    {
+     "cmd": "sudo ls /etc/kubernetes/manifests; sudo crictl ps",
+     "what": "Static pod manifests and the containers the runtime actually runs."
+    }
+   ]
+  },
+  {
+   "problem": "A Service does not reach its pods",
+   "commands": [
+    {
+     "cmd": "kubectl get svc,ep -n <ns>",
+     "what": "If ENDPOINTS is empty, the selector does not match the pod labels."
+    },
+    {
+     "cmd": "kubectl get pods -n <ns> --show-labels",
+     "what": "Compare the labels with the service selector."
+    },
+    {
+     "cmd": "kubectl run tmp --image=busybox:1.36 --rm -it --restart=Never -- wget -qO- <svc>.<ns>.svc:80",
+     "what": "A throwaway pod that curls the service by DNS name. --rm deletes it when it exits."
+    },
+    {
+     "cmd": "kubectl get netpol -n <ns>",
+     "what": "A NetworkPolicy may be blocking the traffic."
+    }
+   ]
+  },
+  {
+   "problem": "Create or change a workload fast (imperative first, then YAML)",
+   "commands": [
+    {
+     "cmd": "kubectl run web --image=nginx:1.27 --port=80 --dry-run=client -o yaml > pod.yaml",
+     "what": "--dry-run=client prints the object without creating it; -o yaml gives you a file to edit."
+    },
+    {
+     "cmd": "kubectl create deployment api --image=nginx --replicas=3 -n <ns>",
+     "what": "Deployment in one line. Add --dry-run=client -o yaml to get a manifest."
+    },
+    {
+     "cmd": "kubectl expose deployment api --port=80 --target-port=8080 --type=NodePort",
+     "what": "Service from a Deployment. --port is the service port, --target-port the container port."
+    },
+    {
+     "cmd": "kubectl set image deployment/api api=nginx:1.28; kubectl rollout status deployment/api; kubectl rollout undo deployment/api",
+     "what": "Update the image, watch the rollout, roll back."
+    },
+    {
+     "cmd": "kubectl scale deployment api --replicas=5; kubectl autoscale deployment api --min=2 --max=8 --cpu-percent=70",
+     "what": "Manual scale and an HPA."
+    }
+   ]
+  },
+  {
+   "problem": "Edit a running object",
+   "commands": [
+    {
+     "cmd": "kubectl edit deployment api -n <ns>",
+     "what": "Opens the live YAML in vim. :wq saves and applies; a failed apply drops a tmp file path you can fix."
+    },
+    {
+     "cmd": "kubectl get deployment api -o yaml > api.yaml; vim api.yaml; kubectl apply -f api.yaml",
+     "what": "Safer for big edits. Pods cannot change most fields: delete and recreate (kubectl replace --force -f pod.yaml)."
+    },
+    {
+     "cmd": "kubectl explain pod.spec.containers.resources",
+     "what": "Field documentation offline. Use it instead of guessing YAML keys."
+    }
+   ]
+  },
+  {
+   "problem": "Schedule pods onto specific nodes",
+   "commands": [
+    {
+     "cmd": "kubectl label node <node> disktype=ssd; kubectl taint node <node> key=value:NoSchedule",
+     "what": "Labels attract (nodeSelector/affinity), taints repel unless a pod tolerates them. Remove a taint with a trailing minus: key=value:NoSchedule-"
+    },
+    {
+     "cmd": "kubectl cordon <node>; kubectl drain <node> --ignore-daemonsets --delete-emptydir-data; kubectl uncordon <node>",
+     "what": "Node maintenance: stop scheduling, evict pods, allow again."
+    }
+   ]
+  },
+  {
+   "problem": "Permissions (RBAC)",
+   "commands": [
+    {
+     "cmd": "kubectl create role pod-reader --verb=get,list,watch --resource=pods -n <ns>",
+     "what": "A Role is namespaced; ClusterRole is cluster-wide."
+    },
+    {
+     "cmd": "kubectl create rolebinding rb --role=pod-reader --serviceaccount=<ns>:<sa> -n <ns>",
+     "what": "Bind the role to a ServiceAccount (or --user=jane)."
+    },
+    {
+     "cmd": "kubectl auth can-i list pods --as=system:serviceaccount:<ns>:<sa> -n <ns>",
+     "what": "Verify as that identity. Answers yes or no."
+    }
+   ]
+  },
+  {
+   "problem": "etcd backup and restore",
+   "commands": [
+    {
+     "cmd": "ETCDCTL_API=3 etcdctl snapshot save /opt/snap.db --endpoints=https://127.0.0.1:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key",
+     "what": "The three cert flags come from the etcd static pod manifest (kubectl describe pod etcd-<node> -n kube-system)."
+    },
+    {
+     "cmd": "ETCDCTL_API=3 etcdctl snapshot restore /opt/snap.db --data-dir=/var/lib/etcd-restore",
+     "what": "Restore into a new directory, then point the etcd manifest's hostPath at it."
+    }
+   ]
+  },
+  {
+   "problem": "Cluster upgrade with kubeadm",
+   "commands": [
+    {
+     "cmd": "kubectl drain <cp> --ignore-daemonsets; sudo apt-get install -y kubeadm=1.3x.y-*; sudo kubeadm upgrade plan; sudo kubeadm upgrade apply v1.3x.y",
+     "what": "Control plane: drain, upgrade kubeadm, plan, apply."
+    },
+    {
+     "cmd": "sudo apt-get install -y kubelet=1.3x.y-* kubectl=1.3x.y-*; sudo systemctl daemon-reload; sudo systemctl restart kubelet; kubectl uncordon <cp>",
+     "what": "Then kubelet and kubectl, restart, uncordon. Workers: kubeadm upgrade node instead of apply."
+    }
+   ]
+  },
+  {
+   "problem": "Storage",
+   "commands": [
+    {
+     "cmd": "kubectl get pv,pvc,sc -A",
+     "what": "Status Bound means the PVC found a PV. Pending means no PV matches size, access mode or storageClassName."
+    },
+    {
+     "cmd": "kubectl describe pvc <pvc> -n <ns>",
+     "what": "Events say why it is not binding."
+    }
+   ]
+  },
+  {
+   "problem": "Networking objects",
+   "commands": [
+    {
+     "cmd": "kubectl create ingress web --rule=\"shop.example.com/*=web:80\" --class=nginx",
+     "what": "Ingress in one line; add --annotation for rewrites."
+    },
+    {
+     "cmd": "kubectl get gatewayclass,gateway,httproute -A",
+     "what": "Gateway API objects (new curriculum)."
+    },
+    {
+     "cmd": "kubectl exec -it <pod> -- nslookup <svc>.<ns>.svc.cluster.local",
+     "what": "DNS check from inside a pod."
+    }
+   ]
+  },
+  {
+   "problem": "Shell survival in the exam",
+   "commands": [
+    {
+     "cmd": "alias k=kubectl; export do='--dry-run=client -o yaml'; export now='--force --grace-period=0'",
+     "what": "Type k run x --image=nginx $do > x.yaml. The aliases save minutes."
+    },
+    {
+     "cmd": "kubectl config use-context <ctx>; kubectl config set-context --current --namespace=<ns>",
+     "what": "Every task tells you the context. Switch first, then set the default namespace."
+    },
+    {
+     "cmd": "grep -n <text> file; sed -i 's/old/new/' file; tail -f /var/log/x; cat file | less",
+     "what": "grep finds a line (-n shows the number), sed -i edits in place, tail -f follows a growing log."
+    },
+    {
+     "cmd": "echo \"text\" > file (overwrite); echo \"more\" >> file (append); cmd1 | cmd2 (pipe output into input)",
+     "what": "The three redirections you will use most."
+    },
+    {
+     "cmd": "kubectl get pods -A -o json | jq '.items[].metadata.name'; kubectl get pods -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName",
+     "what": "Pull specific fields when a task asks you to write names to a file."
+    }
+   ]
+  }
+ ]
 }

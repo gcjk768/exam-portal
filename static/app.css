@@ -125,6 +125,23 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 .domain .links { padding: .2rem 1rem 1rem; }
 .domain .links li a { background: var(--surface-2); }
 
+/* Topic media: video + concept diagram per domain (Study and under answered questions) */
+.topic { display: grid; gap: .8rem; padding: .2rem 1rem .8rem; }
+.topic-video { margin: 0; display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: .5rem 1rem; align-items: center; }
+@media (max-width: 700px) { .topic-video { grid-template-columns: 1fr; } }
+.topic-video .yt, .topic-video iframe { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px; overflow: hidden; background: #000; padding: 0; cursor: pointer; }
+.topic-video .yt img { width: 100%; height: 100%; object-fit: cover; opacity: .85; transition: opacity .2s; }
+.topic-video .yt:hover img, .topic-video .yt:focus-visible img { opacity: 1; }
+.topic-video .play { position: absolute; inset: 0; margin: auto; width: 3.2rem; height: 3.2rem; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font-size: 1.1rem; }
+.topic-video figcaption { display: grid; gap: .1rem; font-size: .9rem; }
+.topic-video figcaption a { font-weight: 600; text-decoration: none; }
+.topic-diagram { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: .6rem; min-height: 6rem; display: grid; place-items: center; color: var(--muted); font-size: .9rem; cursor: zoom-in; overflow: auto; }
+.topic-diagram svg { max-width: 100%; max-height: 420px; height: auto; }
+.topic-panel { margin-top: .8rem; border-top: 1px solid var(--line); padding-top: .6rem; }
+.topic-panel summary { cursor: pointer; color: var(--muted); font-size: .92rem; }
+.topic-panel summary:hover { color: var(--text); }
+.topic-panel .topic { padding: .7rem 0 0; }
+
 /* Feed */
 .feed { display: grid; gap: .8rem; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem 1.1rem; animation: rise .45s var(--ease) both; overflow-wrap: anywhere; }
@@ -187,6 +204,7 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 .lightbox { border: 0; padding: 0; background: transparent; max-width: min(96vw, 1400px); max-height: 94vh; }
 .lightbox::backdrop { background: rgba(0,0,0,.8); }
 .lightbox img { max-width: 96vw; max-height: 88vh; border-radius: 10px; background: #fff; }
+.lightbox img.svg { background: var(--surface-2); width: min(96vw, 1400px); padding: 1rem; }
 .lightbox form { text-align: right; margin-bottom: .4rem; }
 .lightbox .close { font: inherit; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: .4rem .9rem; cursor: pointer; }
 

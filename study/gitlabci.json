@@ -1,64 +1,319 @@
 {
-  "exam": "GitLab CI/CD",
-  "intro": "50 multiple-choice and multiple-response questions, 75 min, pass 75%, USD 150, online and unproctored, two attempts within 14 days. No hands-on lab any more. Domains: YAML Configuration 22%, Pipeline Development 18%, CI/CD Fundamentals 18%, Troubleshooting & Optimization 14%, Container & Package Management 12%, Security Integration 8%, Runner Configuration 8%.",
-  "start": [
-    {"title": "Certification page (GitLab University)", "url": "https://university.gitlab.com/courses/gitlab-certified-cicd-associate", "note": "Format, domains, purchase. Read the FAQ and the candidate handbook linked from it.", "kind": "official"},
-    {"title": "Candidate handbook", "url": "https://university.gitlab.com/learn/article/gitlab-certification-candidate-handbook", "note": "Rules, attempts, retakes, what unanswered questions cost.", "kind": "official"},
-    {"title": "Free CI/CD learning content", "url": "https://university.gitlab.com/pages/ci-cd-content", "note": "GitLab's own free courses; do Introduction to CI/CD and Introduction to Security Scanning first.", "kind": "official"},
-    {"title": "CI/CD hands-on labs (GitLab handbook)", "url": "https://handbook.gitlab.com/handbook/customer-experience/professional-services-engineering/education-services/ilt-labs/gitlabcicdhandson/", "note": "The six instructor-led lab guides, free to follow in a gitlab.com project: build, rules, tests, components, broken pipelines, deploy.", "kind": "official"},
-    {"title": "CI/CD YAML keyword reference", "url": "https://docs.gitlab.com/ci/yaml/", "note": "The single most-tested page. Read every keyword once.", "kind": "official"},
-    {"title": "rebash-academy CI/CD quiz (MIT)", "url": "https://github.com/rebash-rebash/rebash-academy/blob/main/docs/quizzes/cicd-fundamentals.md", "note": "40 questions with explanations; in your bank.", "kind": "free"},
-    {"title": "smshack/MYNOTE practice exams", "url": "https://github.com/smshack/MYNOTE/tree/main/02-KNOWLEDGE/gitlab-cicd/docs/practice-exams", "note": "Eight 50-question sets weighted like the real exam, with rationales; in your bank (personal study, no licence).", "kind": "free"},
-    {"title": "TechWorld with Nana: GitLab CI/CD tutorial", "url": "https://www.youtube.com/watch?v=qP8kir2GUgo", "note": "69-minute video walkthrough of a complete pipeline.", "kind": "free"},
-    {"title": "freeCodeCamp: DevOps with GitLab CI", "url": "https://www.youtube.com/watch?v=PGyhBwLyK2U", "note": "Five hours, project based.", "kind": "free"},
-    {"title": "GitLab CI/CD instructor-led training", "url": "https://university.gitlab.com/pages/ci-cd-training", "note": "Four-hour paid class; the labs above are the free version.", "kind": "paid"}
-  ],
-  "domains": [
-    {"domain": "YAML Configuration", "weight": 22, "links": [
-      {"title": "CI/CD YAML syntax reference", "url": "https://docs.gitlab.com/ci/yaml/", "note": "Every keyword, global and job level."},
-      {"title": "include", "url": "https://docs.gitlab.com/ci/yaml/includes/", "note": "local, project, remote, template, component; merge order."},
-      {"title": "needs and the DAG", "url": "https://docs.gitlab.com/ci/yaml/needs/", "note": "Run out of stage order, artifacts from needs."},
-      {"title": "workflow", "url": "https://docs.gitlab.com/ci/yaml/workflow/", "note": "When a pipeline runs at all."},
-      {"title": "CI/CD components", "url": "https://docs.gitlab.com/ci/components/", "note": "Reusable pipeline pieces from the catalog."},
-      {"title": "Pipeline editor and lint", "url": "https://docs.gitlab.com/ci/yaml/lint/", "note": "Validate before you push."}
-    ]},
-    {"domain": "Pipeline Development", "weight": 18, "links": [
-      {"title": "Pipelines", "url": "https://docs.gitlab.com/ci/pipelines/", "note": "Types of pipelines, stages, how they are triggered."},
-      {"title": "Jobs", "url": "https://docs.gitlab.com/ci/jobs/", "note": "Job lifecycle, manual, delayed, allow_failure."},
-      {"title": "Job rules", "url": "https://docs.gitlab.com/ci/jobs/job_rules/", "note": "rules:if, changes, exists, when, allow_failure."},
-      {"title": "Downstream pipelines", "url": "https://docs.gitlab.com/ci/pipelines/downstream_pipelines/", "note": "Parent-child and multi-project pipelines."},
-      {"title": "Merge request pipelines", "url": "https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/", "note": "MR, merged results, merge trains."},
-      {"title": "Environments and deployments", "url": "https://docs.gitlab.com/ci/environments/", "note": "environment:, stop jobs, protected environments."}
-    ]},
-    {"domain": "CI/CD Fundamentals", "weight": 18, "links": [
-      {"title": "Get started with CI/CD", "url": "https://docs.gitlab.com/ci/", "note": "Concepts and vocabulary."},
-      {"title": "CI/CD variables", "url": "https://docs.gitlab.com/ci/variables/", "note": "Precedence, protected, masked, file variables."},
-      {"title": "Predefined variables", "url": "https://docs.gitlab.com/ci/variables/predefined_variables/", "note": "CI_COMMIT_*, CI_PIPELINE_SOURCE, CI_JOB_*."},
-      {"title": "Job artifacts", "url": "https://docs.gitlab.com/ci/jobs/job_artifacts/", "note": "paths, expire_in, dependencies, reports."},
-      {"title": "Caching", "url": "https://docs.gitlab.com/ci/caching/", "note": "cache vs artifacts, keys, policies."},
-      {"title": "Services", "url": "https://docs.gitlab.com/ci/services/", "note": "Service containers such as databases for tests."}
-    ]},
-    {"domain": "Troubleshooting & Optimization", "weight": 14, "links": [
-      {"title": "Debugging CI/CD pipelines", "url": "https://docs.gitlab.com/ci/debugging/", "note": "Common errors, CI_DEBUG_TRACE, job logs."},
-      {"title": "Pipeline efficiency", "url": "https://docs.gitlab.com/ci/pipelines/pipeline_efficiency/", "note": "Parallel jobs, needs, caching, image size."}
-    ]},
-    {"domain": "Container & Package Management", "weight": 12, "links": [
-      {"title": "Use Docker to build images", "url": "https://docs.gitlab.com/ci/docker/using_docker_build/", "note": "Docker-in-Docker, socket binding, kaniko."},
-      {"title": "Container registry", "url": "https://docs.gitlab.com/user/packages/container_registry/", "note": "Login with CI_REGISTRY_* variables, cleanup policies."},
-      {"title": "Package registry", "url": "https://docs.gitlab.com/user/packages/package_registry/", "note": "npm, Maven, PyPI and generic packages."},
-      {"title": "Dependency proxy", "url": "https://docs.gitlab.com/user/packages/dependency_proxy/", "note": "Cache upstream images to avoid rate limits."}
-    ]},
-    {"domain": "Security Integration", "weight": 8, "links": [
-      {"title": "SAST", "url": "https://docs.gitlab.com/user/application_security/sast/", "note": "Include the template, analyzers, reports."},
-      {"title": "Container scanning", "url": "https://docs.gitlab.com/user/application_security/container_scanning/", "note": "Scan images from the registry."},
-      {"title": "Security policies", "url": "https://docs.gitlab.com/user/application_security/policies/", "note": "Scan execution and merge request approval policies."},
-      {"title": "Code quality", "url": "https://docs.gitlab.com/ci/testing/code_quality/", "note": "Reports in merge requests."}
-    ]},
-    {"domain": "Runner Configuration", "weight": 8, "links": [
-      {"title": "GitLab Runner", "url": "https://docs.gitlab.com/runner/", "note": "Install, register, config.toml."},
-      {"title": "Executors", "url": "https://docs.gitlab.com/runner/executors/", "note": "Shell vs Docker vs Kubernetes, when each fits."},
-      {"title": "Registering runners", "url": "https://docs.gitlab.com/runner/register/", "note": "Runner authentication tokens, tags, protected runners."},
-      {"title": "Runners in CI/CD", "url": "https://docs.gitlab.com/ci/runners/", "note": "Instance, group and project runners; tags and concurrency."}
-    ]}
-  ]
+ "exam": "GitLab CI/CD",
+ "intro": "50 multiple-choice and multiple-response questions, 75 min, pass 75%, USD 150, online and unproctored, two attempts within 14 days. No hands-on lab any more. Domains: YAML Configuration 22%, Pipeline Development 18%, CI/CD Fundamentals 18%, Troubleshooting & Optimization 14%, Container & Package Management 12%, Security Integration 8%, Runner Configuration 8%.",
+ "start": [
+  {
+   "title": "Certification page (GitLab University)",
+   "url": "https://university.gitlab.com/courses/gitlab-certified-cicd-associate",
+   "note": "Format, domains, purchase. Read the FAQ and the candidate handbook linked from it.",
+   "kind": "official"
+  },
+  {
+   "title": "Candidate handbook",
+   "url": "https://university.gitlab.com/learn/article/gitlab-certification-candidate-handbook",
+   "note": "Rules, attempts, retakes, what unanswered questions cost.",
+   "kind": "official"
+  },
+  {
+   "title": "Free CI/CD learning content",
+   "url": "https://university.gitlab.com/pages/ci-cd-content",
+   "note": "GitLab's own free courses; do Introduction to CI/CD and Introduction to Security Scanning first.",
+   "kind": "official"
+  },
+  {
+   "title": "CI/CD hands-on labs (GitLab handbook)",
+   "url": "https://handbook.gitlab.com/handbook/customer-experience/professional-services-engineering/education-services/ilt-labs/gitlabcicdhandson/",
+   "note": "The six instructor-led lab guides, free to follow in a gitlab.com project: build, rules, tests, components, broken pipelines, deploy.",
+   "kind": "official"
+  },
+  {
+   "title": "CI/CD YAML keyword reference",
+   "url": "https://docs.gitlab.com/ci/yaml/",
+   "note": "The single most-tested page. Read every keyword once.",
+   "kind": "official"
+  },
+  {
+   "title": "rebash-academy CI/CD quiz (MIT)",
+   "url": "https://github.com/rebash-rebash/rebash-academy/blob/main/docs/quizzes/cicd-fundamentals.md",
+   "note": "40 questions with explanations; in your bank.",
+   "kind": "free"
+  },
+  {
+   "title": "smshack/MYNOTE practice exams",
+   "url": "https://github.com/smshack/MYNOTE/tree/main/02-KNOWLEDGE/gitlab-cicd/docs/practice-exams",
+   "note": "Eight 50-question sets weighted like the real exam, with rationales; in your bank (personal study, no licence).",
+   "kind": "free"
+  },
+  {
+   "title": "TechWorld with Nana: GitLab CI/CD tutorial",
+   "url": "https://www.youtube.com/watch?v=qP8kir2GUgo",
+   "note": "69-minute video walkthrough of a complete pipeline.",
+   "kind": "free"
+  },
+  {
+   "title": "freeCodeCamp: DevOps with GitLab CI",
+   "url": "https://www.youtube.com/watch?v=PGyhBwLyK2U",
+   "note": "Five hours, project based.",
+   "kind": "free"
+  },
+  {
+   "title": "GitLab CI/CD instructor-led training",
+   "url": "https://university.gitlab.com/pages/ci-cd-training",
+   "note": "Four-hour paid class; the labs above are the free version.",
+   "kind": "paid"
+  }
+ ],
+ "domains": [
+  {
+   "domain": "YAML Configuration",
+   "weight": 22,
+   "links": [
+    {
+     "title": "CI/CD YAML syntax reference",
+     "url": "https://docs.gitlab.com/ci/yaml/",
+     "note": "Every keyword, global and job level."
+    },
+    {
+     "title": "include",
+     "url": "https://docs.gitlab.com/ci/yaml/includes/",
+     "note": "local, project, remote, template, component; merge order."
+    },
+    {
+     "title": "needs and the DAG",
+     "url": "https://docs.gitlab.com/ci/yaml/needs/",
+     "note": "Run out of stage order, artifacts from needs."
+    },
+    {
+     "title": "workflow",
+     "url": "https://docs.gitlab.com/ci/yaml/workflow/",
+     "note": "When a pipeline runs at all."
+    },
+    {
+     "title": "CI/CD components",
+     "url": "https://docs.gitlab.com/ci/components/",
+     "note": "Reusable pipeline pieces from the catalog."
+    },
+    {
+     "title": "Pipeline editor and lint",
+     "url": "https://docs.gitlab.com/ci/yaml/lint/",
+     "note": "Validate before you push."
+    }
+   ],
+   "video": {
+    "id": "IV5MQUEUx44",
+    "title": "GitLab for Everyone: Your First CI/CD Pipeline Explained",
+    "channel": "GitLab",
+    "min": 10
+   },
+   "diagram": "flowchart LR\n  Y[.gitlab-ci.yml] --> ST[stages: build, test, deploy]\n  ST --> J1[job: build]\n  ST --> J2[job: test]\n  ST --> J3[job: deploy]\n  INC[include, extends, anchors] -.-> Y\n  VAR[variables, image, services] -.-> J1\n  J1 -->|needs| J3"
+  },
+  {
+   "domain": "Pipeline Development",
+   "weight": 18,
+   "links": [
+    {
+     "title": "Pipelines",
+     "url": "https://docs.gitlab.com/ci/pipelines/",
+     "note": "Types of pipelines, stages, how they are triggered."
+    },
+    {
+     "title": "Jobs",
+     "url": "https://docs.gitlab.com/ci/jobs/",
+     "note": "Job lifecycle, manual, delayed, allow_failure."
+    },
+    {
+     "title": "Job rules",
+     "url": "https://docs.gitlab.com/ci/jobs/job_rules/",
+     "note": "rules:if, changes, exists, when, allow_failure."
+    },
+    {
+     "title": "Downstream pipelines",
+     "url": "https://docs.gitlab.com/ci/pipelines/downstream_pipelines/",
+     "note": "Parent-child and multi-project pipelines."
+    },
+    {
+     "title": "Merge request pipelines",
+     "url": "https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/",
+     "note": "MR, merged results, merge trains."
+    },
+    {
+     "title": "Environments and deployments",
+     "url": "https://docs.gitlab.com/ci/environments/",
+     "note": "environment:, stop jobs, protected environments."
+    }
+   ],
+   "video": {
+    "id": "QjQc-zeL16Q",
+    "title": "GitLab CI/CD Rules",
+    "channel": "GitLab Unfiltered",
+    "min": 8
+   },
+   "diagram": "flowchart LR\n  EV([push, MR, tag, schedule]) --> RULES{rules, workflow:rules}\n  RULES -->|match| PIPE[Pipeline]\n  RULES -->|no match| SKIP([job skipped])\n  PIPE --> DAG[needs: DAG]\n  PIPE --> PAR[parallel: matrix]\n  PIPE --> CHILD[parent-child, multi-project trigger]\n  PIPE --> ENV[environments + when: manual]"
+  },
+  {
+   "domain": "CI/CD Fundamentals",
+   "weight": 18,
+   "links": [
+    {
+     "title": "Get started with CI/CD",
+     "url": "https://docs.gitlab.com/ci/",
+     "note": "Concepts and vocabulary."
+    },
+    {
+     "title": "CI/CD variables",
+     "url": "https://docs.gitlab.com/ci/variables/",
+     "note": "Precedence, protected, masked, file variables."
+    },
+    {
+     "title": "Predefined variables",
+     "url": "https://docs.gitlab.com/ci/variables/predefined_variables/",
+     "note": "CI_COMMIT_*, CI_PIPELINE_SOURCE, CI_JOB_*."
+    },
+    {
+     "title": "Job artifacts",
+     "url": "https://docs.gitlab.com/ci/jobs/job_artifacts/",
+     "note": "paths, expire_in, dependencies, reports."
+    },
+    {
+     "title": "Caching",
+     "url": "https://docs.gitlab.com/ci/caching/",
+     "note": "cache vs artifacts, keys, policies."
+    },
+    {
+     "title": "Services",
+     "url": "https://docs.gitlab.com/ci/services/",
+     "note": "Service containers such as databases for tests."
+    }
+   ],
+   "video": {
+    "id": "ddDJxFnv-qs",
+    "title": "CI/CD Explained in 5 Minutes",
+    "channel": "TechWorld with Nana",
+    "min": 4
+   },
+   "diagram": "flowchart LR\n  C[Commit] --> CI[CI: build + unit tests]\n  CI --> QA[Integration + security tests]\n  QA --> CD1[Continuous delivery: release ready, manual deploy]\n  QA --> CD2[Continuous deployment: auto to prod]\n  CD1 --> PROD([Production])\n  CD2 --> PROD\n  PROD -->|feedback| C"
+  },
+  {
+   "domain": "Troubleshooting & Optimization",
+   "weight": 14,
+   "links": [
+    {
+     "title": "Debugging CI/CD pipelines",
+     "url": "https://docs.gitlab.com/ci/debugging/",
+     "note": "Common errors, CI_DEBUG_TRACE, job logs."
+    },
+    {
+     "title": "Pipeline efficiency",
+     "url": "https://docs.gitlab.com/ci/pipelines/pipeline_efficiency/",
+     "note": "Parallel jobs, needs, caching, image size."
+    }
+   ],
+   "video": {
+    "id": "-NUe_n2hkaY",
+    "title": "Gitlab CI: Using Caching for Continuous Integration Pipelines 🏇",
+    "channel": "Egee",
+    "min": 7
+   },
+   "diagram": "flowchart LR\n  J1[job A] -->|cache: dependencies, reused across pipelines| J2[job A, next run]\n  J1 -->|artifacts: build output for later stages| J3[job B]\n  FAIL([Job failed]) --> LOG[Job log, CI_DEBUG_TRACE]\n  LOG --> LINT[CI Lint, pipeline editor]\n  SLOW([Slow pipeline]) --> OPT[needs DAG, cache key, interruptible, rules:changes]"
+  },
+  {
+   "domain": "Container & Package Management",
+   "weight": 12,
+   "links": [
+    {
+     "title": "Use Docker to build images",
+     "url": "https://docs.gitlab.com/ci/docker/using_docker_build/",
+     "note": "Docker-in-Docker, socket binding, kaniko."
+    },
+    {
+     "title": "Container registry",
+     "url": "https://docs.gitlab.com/user/packages/container_registry/",
+     "note": "Login with CI_REGISTRY_* variables, cleanup policies."
+    },
+    {
+     "title": "Package registry",
+     "url": "https://docs.gitlab.com/user/packages/package_registry/",
+     "note": "npm, Maven, PyPI and generic packages."
+    },
+    {
+     "title": "Dependency proxy",
+     "url": "https://docs.gitlab.com/user/packages/dependency_proxy/",
+     "note": "Cache upstream images to avoid rate limits."
+    }
+   ],
+   "video": {
+    "id": "mhRmdI0I4Bc",
+    "title": "Build Docker images with GitLab CI and push to GitLab Container Registry",
+    "channel": "Valentin Despa",
+    "min": 4
+   },
+   "diagram": "flowchart LR\n  JOB[CI job: docker build] -->|docker login CI_REGISTRY| REG[(Container Registry)]\n  JOB -->|CI_JOB_TOKEN| PKG[(Package Registry: npm, Maven, PyPI)]\n  REG --> DEP[Deploy job pulls the image]\n  DIND[docker:dind service or Kaniko] -.-> JOB"
+  },
+  {
+   "domain": "Security Integration",
+   "weight": 8,
+   "links": [
+    {
+     "title": "SAST",
+     "url": "https://docs.gitlab.com/user/application_security/sast/",
+     "note": "Include the template, analyzers, reports."
+    },
+    {
+     "title": "Container scanning",
+     "url": "https://docs.gitlab.com/user/application_security/container_scanning/",
+     "note": "Scan images from the registry."
+    },
+    {
+     "title": "Security policies",
+     "url": "https://docs.gitlab.com/user/application_security/policies/",
+     "note": "Scan execution and merge request approval policies."
+    },
+    {
+     "title": "Code quality",
+     "url": "https://docs.gitlab.com/ci/testing/code_quality/",
+     "note": "Reports in merge requests."
+    }
+   ],
+   "video": {
+    "id": "owwIMUamdDc",
+    "title": "GitLab: DevSecOps: Part 5/12: Protect your Apps with Static Application Security Testing (SAST)",
+    "channel": "Romano Roth",
+    "min": 9
+   },
+   "diagram": "flowchart LR\n  MR([Merge request]) --> SAST[SAST]\n  MR --> SEC[Secret detection]\n  MR --> DS[Dependency scanning]\n  MR --> CS[Container scanning]\n  MR --> DAST[DAST on review app]\n  SAST --> VR[Vulnerability report, MR widget]\n  SEC --> VR\n  DS --> VR\n  CS --> VR\n  DAST --> VR\n  VR --> APP{Approval rules, security policies}"
+  },
+  {
+   "domain": "Runner Configuration",
+   "weight": 8,
+   "links": [
+    {
+     "title": "GitLab Runner",
+     "url": "https://docs.gitlab.com/runner/",
+     "note": "Install, register, config.toml."
+    },
+    {
+     "title": "Executors",
+     "url": "https://docs.gitlab.com/runner/executors/",
+     "note": "Shell vs Docker vs Kubernetes, when each fits."
+    },
+    {
+     "title": "Registering runners",
+     "url": "https://docs.gitlab.com/runner/register/",
+     "note": "Runner authentication tokens, tags, protected runners."
+    },
+    {
+     "title": "Runners in CI/CD",
+     "url": "https://docs.gitlab.com/ci/runners/",
+     "note": "Instance, group and project runners; tags and concurrency."
+    }
+   ],
+   "video": {
+    "id": "EitbcDoNS9Q",
+    "title": "Mastering GitLab Runners: Self-Hosted vs Shared, Executors, and Autoscaling Explained",
+    "channel": "Merge Ready",
+    "min": 5
+   },
+   "diagram": "flowchart LR\n  GL[(GitLab instance)] -->|job queue| R1[Instance runner]\n  GL --> R2[Group runner]\n  GL --> R3[Project runner]\n  TAG[tags on the job] -.->|match| R3\n  R1 --> EX{Executor}\n  EX --> DOCK[docker]\n  EX --> SH[shell]\n  EX --> K8S[kubernetes]\n  CFG[config.toml: concurrent, autoscale] -.-> R1"
+  }
+ ]
 }

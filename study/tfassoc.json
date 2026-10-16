@@ -1,57 +1,278 @@
 {
-  "exam": "Terraform",
-  "intro": "Terraform Associate (004), live since 8 Jan 2026 and tested on Terraform 1.12: about 57 true/false, single and multi-answer questions, 60 min, online proctored, USD 70.50, valid 2 years, pass mark unpublished (plan for 70%+). Eight objectives: IaC with Terraform, fundamentals, core workflow, configuration, modules, state, maintain, HCP Terraform.",
-  "start": [
-    {"title": "Certification page", "url": "https://developer.hashicorp.com/certifications/terraform-associate", "note": "Format, price, objectives, scheduling via Certiverse.", "kind": "official"},
-    {"title": "Study guide (004)", "url": "https://developer.hashicorp.com/terraform/tutorials/certification-004/associate-study-004", "note": "Objective by objective, with the tutorials to do. Pinned to Terraform 1.12 docs.", "kind": "official"},
-    {"title": "Review guide (004)", "url": "https://developer.hashicorp.com/terraform/tutorials/certification-004/associate-review-004", "note": "Every objective mapped to the exact docs page. Use it as a checklist in the last week.", "kind": "official"},
-    {"title": "Official sample questions", "url": "https://developer.hashicorp.com/terraform/tutorials/certification-004/associate-questions-004", "note": "Six questions showing the three formats. In your bank.", "kind": "official"},
-    {"title": "Get started with Terraform on AWS", "url": "https://developer.hashicorp.com/terraform/tutorials/aws-get-started", "note": "Do this once end to end before any reading.", "kind": "official"},
-    {"title": "bradmccoydev flashcards (MIT)", "url": "https://github.com/bradmccoydev/terraform-associate-flashcards", "note": "228 question-and-answer cards by objective; they are your study cards.", "kind": "free"},
-    {"title": "PatrickWiloak scenario questions (CC BY 4.0)", "url": "https://github.com/PatrickWiloak/cloud-data-ai-security-zero-to-hero", "note": "25 scenario questions with explanations; in your bank.", "kind": "free"},
-    {"title": "freeCodeCamp Terraform Associate course", "url": "https://www.youtube.com/watch?v=SPcwo0Gq9T8", "note": "Seven hours, 003 era; the concepts still hold, check 004 topics (Stacks, run tasks, drift) against the docs.", "kind": "free"},
-    {"title": "Bryan Krausen 004 practice exams", "url": "https://krausen.io/course/hashicorp-certified-terraform-associate-004-practice-exams/", "note": "He co-wrote the 004 question pool; the closest thing to the real exam.", "kind": "paid"}
-  ],
-  "domains": [
-    {"domain": "1. IaC with Terraform", "links": [
-      {"title": "Core workflow", "url": "https://developer.hashicorp.com/terraform/intro/core-workflow", "note": "Write, plan, apply; why IaC."},
-      {"title": "What is Terraform", "url": "https://developer.hashicorp.com/terraform/intro", "note": "Multi-cloud, service agnostic, declarative."}
-    ]},
-    {"domain": "2. Fundamentals", "links": [
-      {"title": "Purpose of state", "url": "https://developer.hashicorp.com/terraform/language/state/purpose", "note": "Why state exists, what it maps."},
-      {"title": "Dependency lock file", "url": "https://developer.hashicorp.com/terraform/language/files/dependency-lock", "note": ".terraform.lock.hcl and provider versions."},
-      {"title": "Provider requirements and versions", "url": "https://developer.hashicorp.com/terraform/language/providers/requirements", "note": "required_providers, version constraints, aliases."}
-    ]},
-    {"domain": "3. Core workflow", "links": [
-      {"title": "CLI tutorials", "url": "https://developer.hashicorp.com/terraform/tutorials/cli", "note": "init, validate, plan, apply, destroy, fmt."},
-      {"title": "terraform plan", "url": "https://developer.hashicorp.com/terraform/cli/commands/plan", "note": "-out, -refresh-only, -replace, -target."}
-    ]},
-    {"domain": "4. Configuration", "links": [
-      {"title": "Functions", "url": "https://developer.hashicorp.com/terraform/language/functions", "note": "Built-ins; there are no user-defined functions."},
-      {"title": "Type constraints", "url": "https://developer.hashicorp.com/terraform/language/expressions/type-constraints", "note": "list, map, set, object, tuple, any."},
-      {"title": "Custom conditions", "url": "https://developer.hashicorp.com/terraform/language/validate", "note": "validation, precondition, postcondition, check."},
-      {"title": "Manage sensitive data", "url": "https://developer.hashicorp.com/terraform/language/manage-sensitive-data", "note": "sensitive variables, state exposure, Vault."},
-      {"title": "Provisioners", "url": "https://developer.hashicorp.com/terraform/language/resources/provisioners/syntax", "note": "Last resort; local-exec, remote-exec, failure behaviour."}
-    ]},
-    {"domain": "5. Modules", "links": [
-      {"title": "Modules", "url": "https://developer.hashicorp.com/terraform/language/modules", "note": "Sources, versions, inputs and outputs, scope."},
-      {"title": "Use registry modules", "url": "https://developer.hashicorp.com/terraform/registry/modules/use", "note": "Registry source syntax and version constraints."}
-    ]},
-    {"domain": "6. State", "links": [
-      {"title": "State", "url": "https://developer.hashicorp.com/terraform/language/state", "note": "Local backend, locking, sensitive data in state."},
-      {"title": "Backends", "url": "https://developer.hashicorp.com/terraform/language/backend", "note": "backend block, partial configuration, migration."},
-      {"title": "Workspaces", "url": "https://developer.hashicorp.com/terraform/language/state/workspaces", "note": "CLI workspaces vs HCP workspaces."}
-    ]},
-    {"domain": "7. Maintain", "links": [
-      {"title": "Import", "url": "https://developer.hashicorp.com/terraform/language/import", "note": "import block and terraform import."},
-      {"title": "State commands", "url": "https://developer.hashicorp.com/terraform/cli/commands/state", "note": "list, show, mv, rm, pull, push."},
-      {"title": "Debugging", "url": "https://developer.hashicorp.com/terraform/internals/debugging", "note": "TF_LOG, TF_LOG_PATH."}
-    ]},
-    {"domain": "8. HCP Terraform", "links": [
-      {"title": "HCP Terraform docs", "url": "https://developer.hashicorp.com/terraform/cloud-docs", "note": "Workspaces, projects, runs, VCS integration."},
-      {"title": "Policy enforcement", "url": "https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement", "note": "Sentinel and OPA, enforcement levels."},
-      {"title": "CLI-driven workflow", "url": "https://developer.hashicorp.com/terraform/cli/cloud", "note": "cloud block, remote operations."},
-      {"title": "Dynamic provider credentials", "url": "https://developer.hashicorp.com/terraform/cloud-docs/workspaces/dynamic-provider-credentials", "note": "Short-lived cloud credentials for runs."}
-    ]}
-  ]
+ "exam": "Terraform",
+ "intro": "Terraform Associate (004), live since 8 Jan 2026 and tested on Terraform 1.12: about 57 true/false, single and multi-answer questions, 60 min, online proctored, USD 70.50, valid 2 years, pass mark unpublished (plan for 70%+). Eight objectives: IaC with Terraform, fundamentals, core workflow, configuration, modules, state, maintain, HCP Terraform.",
+ "start": [
+  {
+   "title": "Certification page",
+   "url": "https://developer.hashicorp.com/certifications/terraform-associate",
+   "note": "Format, price, objectives, scheduling via Certiverse.",
+   "kind": "official"
+  },
+  {
+   "title": "Study guide (004)",
+   "url": "https://developer.hashicorp.com/terraform/tutorials/certification-004/associate-study-004",
+   "note": "Objective by objective, with the tutorials to do. Pinned to Terraform 1.12 docs.",
+   "kind": "official"
+  },
+  {
+   "title": "Review guide (004)",
+   "url": "https://developer.hashicorp.com/terraform/tutorials/certification-004/associate-review-004",
+   "note": "Every objective mapped to the exact docs page. Use it as a checklist in the last week.",
+   "kind": "official"
+  },
+  {
+   "title": "Official sample questions",
+   "url": "https://developer.hashicorp.com/terraform/tutorials/certification-004/associate-questions-004",
+   "note": "Six questions showing the three formats. In your bank.",
+   "kind": "official"
+  },
+  {
+   "title": "Get started with Terraform on AWS",
+   "url": "https://developer.hashicorp.com/terraform/tutorials/aws-get-started",
+   "note": "Do this once end to end before any reading.",
+   "kind": "official"
+  },
+  {
+   "title": "bradmccoydev flashcards (MIT)",
+   "url": "https://github.com/bradmccoydev/terraform-associate-flashcards",
+   "note": "228 question-and-answer cards by objective; they are your study cards.",
+   "kind": "free"
+  },
+  {
+   "title": "PatrickWiloak scenario questions (CC BY 4.0)",
+   "url": "https://github.com/PatrickWiloak/cloud-data-ai-security-zero-to-hero",
+   "note": "25 scenario questions with explanations; in your bank.",
+   "kind": "free"
+  },
+  {
+   "title": "freeCodeCamp Terraform Associate course",
+   "url": "https://www.youtube.com/watch?v=SPcwo0Gq9T8",
+   "note": "Seven hours, 003 era; the concepts still hold, check 004 topics (Stacks, run tasks, drift) against the docs.",
+   "kind": "free"
+  },
+  {
+   "title": "Bryan Krausen 004 practice exams",
+   "url": "https://krausen.io/course/hashicorp-certified-terraform-associate-004-practice-exams/",
+   "note": "He co-wrote the 004 question pool; the closest thing to the real exam.",
+   "kind": "paid"
+  }
+ ],
+ "domains": [
+  {
+   "domain": "1. IaC with Terraform",
+   "links": [
+    {
+     "title": "Core workflow",
+     "url": "https://developer.hashicorp.com/terraform/intro/core-workflow",
+     "note": "Write, plan, apply; why IaC."
+    },
+    {
+     "title": "What is Terraform",
+     "url": "https://developer.hashicorp.com/terraform/intro",
+     "note": "Multi-cloud, service agnostic, declarative."
+    }
+   ],
+   "video": {
+    "id": "zWw2wuiKd5o",
+    "title": "What is Infrastructure as Code?",
+    "channel": "IBM Technology",
+    "min": 8
+   },
+   "diagram": "flowchart LR\n  CODE[Declarative .tf code in Git] --> PR[Review]\n  PR --> TF[Terraform]\n  TF --> CLOUD[(AWS, Azure, GCP)]\n  CLOUD --> SAME([Same infra every time: versioned, repeatable])\n  MAN[Manual console clicks] -.->|drift, no history| CLOUD"
+  },
+  {
+   "domain": "2. Fundamentals",
+   "links": [
+    {
+     "title": "Purpose of state",
+     "url": "https://developer.hashicorp.com/terraform/language/state/purpose",
+     "note": "Why state exists, what it maps."
+    },
+    {
+     "title": "Dependency lock file",
+     "url": "https://developer.hashicorp.com/terraform/language/files/dependency-lock",
+     "note": ".terraform.lock.hcl and provider versions."
+    },
+    {
+     "title": "Provider requirements and versions",
+     "url": "https://developer.hashicorp.com/terraform/language/providers/requirements",
+     "note": "required_providers, version constraints, aliases."
+    }
+   ],
+   "video": {
+    "id": "P4xmask-N2M",
+    "title": "Terraform Basics: Provider Plugins",
+    "channel": "Ned in the Cloud",
+    "min": 6
+   },
+   "diagram": "flowchart LR\n  CFG[.tf config] --> CORE[Terraform core]\n  CORE --> P1[Provider plugin: aws]\n  CORE --> P2[Provider plugin: azurerm]\n  P1 --> API1[(AWS API)]\n  P2 --> API2[(Azure API)]\n  REG[Terraform Registry] -.->|terraform init downloads| P1\n  LOCK[.terraform.lock.hcl pins versions] -.-> P1"
+  },
+  {
+   "domain": "3. Core workflow",
+   "links": [
+    {
+     "title": "CLI tutorials",
+     "url": "https://developer.hashicorp.com/terraform/tutorials/cli",
+     "note": "init, validate, plan, apply, destroy, fmt."
+    },
+    {
+     "title": "terraform plan",
+     "url": "https://developer.hashicorp.com/terraform/cli/commands/plan",
+     "note": "-out, -refresh-only, -replace, -target."
+    }
+   ],
+   "video": {
+    "id": "HmxkYNv1ksg",
+    "title": "Terraform Explained",
+    "channel": "IBM Technology",
+    "min": 8
+   },
+   "diagram": "flowchart LR\n  W[Write .tf] --> I[terraform init: providers, backend, modules]\n  I --> V[fmt, validate]\n  V --> P[terraform plan: diff vs state]\n  P --> A[terraform apply]\n  A --> S[(State updated)]\n  S --> D[terraform destroy when done]"
+  },
+  {
+   "domain": "4. Configuration",
+   "links": [
+    {
+     "title": "Functions",
+     "url": "https://developer.hashicorp.com/terraform/language/functions",
+     "note": "Built-ins; there are no user-defined functions."
+    },
+    {
+     "title": "Type constraints",
+     "url": "https://developer.hashicorp.com/terraform/language/expressions/type-constraints",
+     "note": "list, map, set, object, tuple, any."
+    },
+    {
+     "title": "Custom conditions",
+     "url": "https://developer.hashicorp.com/terraform/language/validate",
+     "note": "validation, precondition, postcondition, check."
+    },
+    {
+     "title": "Manage sensitive data",
+     "url": "https://developer.hashicorp.com/terraform/language/manage-sensitive-data",
+     "note": "sensitive variables, state exposure, Vault."
+    },
+    {
+     "title": "Provisioners",
+     "url": "https://developer.hashicorp.com/terraform/language/resources/provisioners/syntax",
+     "note": "Last resort; local-exec, remote-exec, failure behaviour."
+    }
+   ],
+   "video": {
+    "id": "weLkaZgyaOI",
+    "title": "Day 5/28 - Terraform Variables - Input vs Output vs Local Variables",
+    "channel": "Tech Tutorials with Piyush",
+    "min": 20
+   },
+   "diagram": "flowchart LR\n  VARS[variables: tfvars, -var, TF_VAR_] --> RES[resource blocks]\n  LOC[locals] --> RES\n  DATA[data sources: read existing] --> RES\n  RES --> OUT[outputs]\n  META[count, for_each, dynamic, depends_on, lifecycle] -.-> RES"
+  },
+  {
+   "domain": "5. Modules",
+   "links": [
+    {
+     "title": "Modules",
+     "url": "https://developer.hashicorp.com/terraform/language/modules",
+     "note": "Sources, versions, inputs and outputs, scope."
+    },
+    {
+     "title": "Use registry modules",
+     "url": "https://developer.hashicorp.com/terraform/registry/modules/use",
+     "note": "Registry source syntax and version constraints."
+    }
+   ],
+   "video": {
+    "id": "GSXx8AZjKK4",
+    "title": "Terraform Basics: Modules",
+    "channel": "Ned in the Cloud",
+    "min": 15
+   },
+   "diagram": "flowchart LR\n  ROOT[Root module] -->|inputs| M1[module network]\n  M1 -->|outputs: vpc_id| ROOT\n  ROOT -->|inputs: vpc_id| M2[module app]\n  REG[Registry or Git source + version] -.-> M1"
+  },
+  {
+   "domain": "6. State",
+   "links": [
+    {
+     "title": "State",
+     "url": "https://developer.hashicorp.com/terraform/language/state",
+     "note": "Local backend, locking, sensitive data in state."
+    },
+    {
+     "title": "Backends",
+     "url": "https://developer.hashicorp.com/terraform/language/backend",
+     "note": "backend block, partial configuration, migration."
+    },
+    {
+     "title": "Workspaces",
+     "url": "https://developer.hashicorp.com/terraform/language/state/workspaces",
+     "note": "CLI workspaces vs HCP workspaces."
+    }
+   ],
+   "video": {
+    "id": "yhLrH0Q-kq4",
+    "title": "Learn Terraform State in 10 Minutes",
+    "channel": "Uglarvisk",
+    "min": 10
+   },
+   "diagram": "flowchart LR\n  CFG[Config] --> PLAN{plan}\n  STATE[(terraform.tfstate)] --> PLAN\n  REAL[(Real infrastructure)] -->|refresh| PLAN\n  PLAN --> APPLY[apply]\n  APPLY --> STATE\n  BACK[Remote backend: S3 + locking, HCP] -.-> STATE\n  CMD[state list, mv, rm, import] -.-> STATE"
+  },
+  {
+   "domain": "7. Maintain",
+   "links": [
+    {
+     "title": "Import",
+     "url": "https://developer.hashicorp.com/terraform/language/import",
+     "note": "import block and terraform import."
+    },
+    {
+     "title": "State commands",
+     "url": "https://developer.hashicorp.com/terraform/cli/commands/state",
+     "note": "list, show, mv, rm, pull, push."
+    },
+    {
+     "title": "Debugging",
+     "url": "https://developer.hashicorp.com/terraform/internals/debugging",
+     "note": "TF_LOG, TF_LOG_PATH."
+    }
+   ],
+   "video": {
+    "id": "qkWUuB8uMN4",
+    "title": "How to Use Terraform Import: CLI and Import Block Explained",
+    "channel": "Spacelift",
+    "min": 7
+   },
+   "diagram": "flowchart LR\n  EXIST[(Resource made outside Terraform)] -->|import block, terraform import| STATE[(State)]\n  STATE --> MV[moved, removed blocks: refactor]\n  BUG([Error]) --> LOG[TF_LOG=DEBUG, TF_LOG_PATH]\n  BUG --> VAL[terraform validate]\n  DRIFT([Drift]) --> PLANR[plan -refresh-only]"
+  },
+  {
+   "domain": "8. HCP Terraform",
+   "links": [
+    {
+     "title": "HCP Terraform docs",
+     "url": "https://developer.hashicorp.com/terraform/cloud-docs",
+     "note": "Workspaces, projects, runs, VCS integration."
+    },
+    {
+     "title": "Policy enforcement",
+     "url": "https://developer.hashicorp.com/terraform/cloud-docs/policy-enforcement",
+     "note": "Sentinel and OPA, enforcement levels."
+    },
+    {
+     "title": "CLI-driven workflow",
+     "url": "https://developer.hashicorp.com/terraform/cli/cloud",
+     "note": "cloud block, remote operations."
+    },
+    {
+     "title": "Dynamic provider credentials",
+     "url": "https://developer.hashicorp.com/terraform/cloud-docs/workspaces/dynamic-provider-credentials",
+     "note": "Short-lived cloud credentials for runs."
+    }
+   ],
+   "video": {
+    "id": "wGthv5gkuXk",
+    "title": "Getting Started with Terraform Cloud and Workspaces",
+    "channel": "Automation Creations",
+    "min": 9
+   },
+   "diagram": "flowchart LR\n  VCS[(Git repo)] -->|push| WS[HCP Terraform workspace]\n  WS --> RUN[Remote plan + apply]\n  RUN --> STATE[(Managed remote state)]\n  VAR[Workspace variables, variable sets] -.-> WS\n  POL[Sentinel, OPA policies] -.-> RUN\n  PRJ[Projects + team access] -.-> WS\n  PRIV[Private registry] -.-> RUN"
+  }
+ ]
 }
