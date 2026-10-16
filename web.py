@@ -95,10 +95,48 @@ class Exam:
         return bool(getattr(self.mod, "NOTES", None))
 
     @property
+    def has_tasks(self) -> bool:
+        """A hands-on exam (CKA): some bank rows are tasks without options."""
+        return any(not q["letters"] for q in self.mod.QUESTIONS.values())
+
+    @property
     def tasks(self) -> bool:
-        """A hands-on exam: every bank row is a task without options (CKA)."""
+        """Kept for the API: True when the exam has task rows at all."""
+        return self.has_tasks
+
+    def mode(self, state: dict) -> str:
+        """Study mode for hands-on exams: mcq first, tasks once every MCQ has been seen; state["mode"] overrides."""
+        if not self.has_tasks:
+            return "mcq"
+        forced = state.get("mode")
+        if forced in ("mcq", "tasks"):
+            return forced
+        seen = set(state["ok"]) | set(state["bad"])
+        mcq_left = [i for i, q in self.mod.QUESTIONS.items() if q["letters"] and i not in seen]
+        return "mcq" if mcq_left else "tasks"
+
+    def pool(self, state: dict) -> dict:
+        """Questions of the current mode (hands-on exams); everything otherwise."""
+        if not self.has_tasks:
+            return self.mod.QUESTIONS
+        want_tasks = self.mode(state) == "tasks"
+        return {i: q for i, q in self.mod.QUESTIONS.items() if (not q["letters"]) == want_tasks}
+
+    def pick(self, state: dict) -> dict:
+        """bot.pick_question restricted to the current pool (same tiers: unseen, then missed, then any)."""
+        Q = self.pool(state) or self.mod.QUESTIONS
+        seen = set(state["ok"]) | set(state["bad"])
+        ids = [i for i in Q if i not in seen] or [i for i in Q if state["bad"].get(i, 0) > state["ok"].get(i, 0)] or list(Q)
+        return Q[random.choice(ids)]
+
+    def progress(self, state: dict) -> dict:
         Q = self.mod.QUESTIONS
-        return bool(Q) and all(not q["letters"] for q in Q.values())
+        seen = set(state["ok"]) | set(state["bad"])
+        mcq = [i for i, q in Q.items() if q["letters"]]
+        tasks = [i for i, q in Q.items() if not q["letters"]]
+        return {"mode": self.mode(state), "forced": state.get("mode") or "auto",
+                "mcq": {"total": len(mcq), "seen": sum(i in seen for i in mcq)},
+                "tasks": {"total": len(tasks), "seen": sum(i in seen for i in tasks)}}
 
     def coverage(self, state: dict) -> dict:
         """Per-domain seen / right-first-time / total, like stats_text but as data."""
@@ -235,8 +273,11 @@ async def act(exam: Exam, data: str, rec: Recorder) -> None:
     mod = exam.mod
     state = mod.load_state()
     if data == "next":
-        if exam.tasks:
-            await send_task(exam, rec, state)
+        q = exam.pick(state) if exam.has_tasks else None
+        if q is not None and not q["letters"]:
+            await send_task(exam, rec, state, q)
+        elif q is not None:
+            await mod.send_question(rec, state, q)
         else:
             await mod.send_question(rec, state)
     elif data == "stats":
@@ -262,7 +303,7 @@ async def act(exam: Exam, data: str, rec: Recorder) -> None:
         if not q:
             raise HTTPException(404, f"unknown question {qid}")
         if kind == "q":                                   # "Quiz me on this" under a study card
-            if exam.tasks:
+            if not q["letters"]:
                 await send_task(exam, rec, state, q)
             else:
                 await mod.send_question(rec, state, q)
@@ -341,7 +382,7 @@ def solution_html(q: dict) -> str:
 
 
 async def send_task(exam: Exam, rec: Recorder, state: dict, q: dict | None = None) -> None:
-    q = q or exam.mod.pick_question(state)
+    q = q or exam.pick(state)
     await rec.send_message(task_html(q))
     rec.emit({"op": "meta", "task": qview(q)})
     state["pending"] = q["id"]
@@ -365,7 +406,7 @@ async def check_task(exam: Exam, qid: str, answer: str, rec: Recorder) -> None:
     """Claude grades the typed commands, progress is recorded, the guideline and reference solution are shown."""
     mod = exam.mod
     q = mod.QUESTIONS.get(qid)
-    if not q:
+    if not q or q["letters"]:
         raise HTTPException(404, f"unknown task {qid}")
     note = await rec.send_message("⏳ <i>Grading your commands…</i>")
     try:
@@ -393,7 +434,7 @@ async def self_mark(exam: Exam, qid: str, result: str, rec: Recorder) -> None:
     """Free path: reveal the reference solution, the student says whether they got it."""
     mod = exam.mod
     q = mod.QUESTIONS.get(qid)
-    if not q:
+    if not q or q["letters"]:
         raise HTTPException(404, f"unknown task {qid}")
     if result == "reveal":
         await rec.send_message(solution_html(q))
@@ -414,7 +455,8 @@ async def self_mark(exam: Exam, qid: str, result: str, rec: Recorder) -> None:
 
 def exam_pick(exam: Exam, n: int) -> list[dict]:
     """Unseen questions first (shuffled), then the rest, so a mock exam is mostly new material."""
-    Q, state = exam.mod.QUESTIONS, exam.mod.load_state()
+    state = exam.mod.load_state()
+    Q = exam.pool(state) or exam.mod.QUESTIONS
     seen = set(state["ok"]) | set(state["bad"])
     unseen, rest = [i for i in Q if i not in seen], [i for i in Q if i in seen]
     random.shuffle(unseen); random.shuffle(rest)
@@ -432,7 +474,7 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
         q = Q.get(qid)
         if not q:
             continue
-        if exam.tasks:
+        if not q["letters"]:
             text = (picked[0] if picked else "").strip()
             if text:
                 try:
@@ -462,7 +504,7 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
     score = round(sum(w[d] * (r / n) for d, (r, n) in by_dom.items()) / sum(w.values()) * 1000) if by_dom else 0
     mod.vault_log("🎯 **mock exam**", f"{n_right}/{len(results)} right, score {score}, {round(minutes_used)} min")
     return {"n": len(results), "right": n_right, "score": score, "pass": mod.PASS, "passed": score >= mod.PASS,
-            "minutes": round(minutes_used, 1), "tasks": exam.tasks,
+            "minutes": round(minutes_used, 1), "tasks": any(r["task"] for r in results),
             "domains": sorted(({"name": d, "right": round(r, 1), "n": n, "weight": weights.get(d)} for d, (r, n) in by_dom.items()),
                               key=lambda x: -(x["weight"] or 0)),
             "results": results}
@@ -504,6 +546,10 @@ class TaskAnswer(BaseModel):
     result: str = ""        # self-mark: reveal | ok | bad
 
 
+class Mode(BaseModel):
+    mode: str        # auto | mcq | tasks
+
+
 class ExamStart(BaseModel):
     n: int | None = None
 
@@ -518,9 +564,11 @@ def api_exams():
     out = []
     for e in EXAMS.values():
         c = e.coverage(e.mod.load_state())
-        out.append({"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.tasks,
+        st = e.mod.load_state()
+        out.append({"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,
+                    "mode": e.mode(st), "progress": e.progress(st) if e.has_tasks else None,
                     "total": c["total"], "seen": c["seen"], "right": c["right"], "pass": e.mod.PASS,
-                    "exam_n": min(e.n_exam, c["total"]), "exam_minutes": e.minutes})
+                    "exam_n": min(e.n_exam, len(e.pool(st)) if e.has_tasks else c["total"]), "exam_minutes": e.minutes})
     return out
 
 
@@ -534,14 +582,31 @@ def api_home(key: str):
         q = e.mod.QUESTIONS[state["pending"]]
         pending = {"html": task_html(q) if e.tasks else e.mod.question_text(q), "question": qview(q)}
     last = state.get("last") or {}
-    return {"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.tasks,
+    return {"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,
+            "mode": e.mode(state), "progress": e.progress(state) if e.has_tasks else None,
             "coverage": e.coverage(state), "score": m["score"], "pass": e.mod.PASS, "verdict": e.mod.verdict(m),
             "week": {"n": m["week_n"], "ok": m["week_ok"]}, "pending": pending,
             "last": {"id": last.get("id"), "has_teach": bool(last.get("teach"))} if last else None,
             "study_cards": len(getattr(e.mod, "NOTES", {}) or {}),
             "studied": len(set(state.get("studied", []))),
-            "exam_n": min(e.n_exam, len(e.mod.QUESTIONS)), "exam_minutes": e.minutes,
+            "exam_n": min(e.n_exam, len(e.pool(state)) if e.has_tasks else len(e.mod.QUESTIONS)), "exam_minutes": e.minutes,
             "exam_answers": sum(1 for x in state.get("log", []) if x.get("exam"))}
+
+
+@app.post("/api/{key}/mode")
+def api_mode(key: str, body: Mode):
+    """Hands-on exams: force MCQ or task mode, or go back to auto (MCQ until every MCQ is seen)."""
+    e = exam_or_404(key)
+    if body.mode not in ("auto", "mcq", "tasks"):
+        raise HTTPException(400, "mode must be auto, mcq or tasks")
+    state = e.mod.load_state()
+    if body.mode == "auto":
+        state.pop("mode", None)
+    else:
+        state["mode"] = body.mode
+    e.mod.save_state(state)
+    e.mod.vault_log("🔀 **mode**", body.mode)
+    return e.progress(state)
 
 
 @app.get("/api/{key}/study")
@@ -565,7 +630,7 @@ async def api_answer(key: str, body: Answer):
 @app.post("/api/{key}/task")
 async def api_task(key: str, body: TaskAnswer):
     e = exam_or_404(key)
-    if not e.tasks:
+    if not e.has_tasks:
         raise HTTPException(400, "not a task exam")
     if body.result:
         return stream(e, functools.partial(self_mark, e, body.id, body.result))
@@ -575,9 +640,13 @@ async def api_task(key: str, body: TaskAnswer):
 @app.post("/api/{key}/exam/start")
 def api_exam_start(key: str, body: ExamStart):
     e = exam_or_404(key)
-    n = max(1, min(body.n or e.n_exam, len(e.mod.QUESTIONS)))
-    minutes = e.minutes if n >= e.n_exam else max(5, round(e.minutes * n / e.n_exam))   # same pace as the real exam
-    return {"questions": exam_pick(e, n), "minutes": minutes, "n": n, "pass": e.mod.PASS, "tasks": e.tasks}
+    st = e.mod.load_state()
+    pool = e.pool(st) if e.has_tasks else e.mod.QUESTIONS
+    mode_tasks = e.has_tasks and e.mode(st) == "tasks"
+    n_exam = e.n_exam if (mode_tasks or not e.has_tasks) else 60          # MCQ phase of a hands-on exam: 60 questions in the real 120 min
+    n = max(1, min(body.n or n_exam, len(pool)))
+    minutes = e.minutes if n >= n_exam else max(5, round(e.minutes * n / n_exam))   # same pace as the real exam
+    return {"questions": exam_pick(e, n), "minutes": minutes, "n": n, "pass": e.mod.PASS, "tasks": mode_tasks}
 
 
 @app.post("/api/{key}/exam/submit")

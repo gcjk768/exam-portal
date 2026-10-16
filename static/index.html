@@ -81,6 +81,14 @@
 
   <!-- Quiz feed -->
   <section id="view-quiz" class="view" hidden>
+    <div class="mode" id="mode-bar" hidden>
+      <span id="mode-text"></span>
+      <div class="seg" role="group" aria-label="Study mode">
+        <button type="button" data-mode="auto">Auto</button>
+        <button type="button" data-mode="mcq">Multiple choice</button>
+        <button type="button" data-mode="tasks">Scenario tasks</button>
+      </div>
+    </div>
     <div class="feed" id="feed" aria-live="polite"></div>
     <div class="working" id="working" hidden>
       <span class="working-bar"></span>

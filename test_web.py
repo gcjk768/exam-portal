@@ -115,6 +115,12 @@ assert c.get("/api/sapc03/home").json()["exam_answers"] == 10
 
 # task exam (CKA): next task streams the task + a task meta event; Claude grading is monkeypatched; self-mark path is free
 cka = web.EXAMS["cka"]
+home = c.get("/api/cka/home").json()
+assert home["tasks"] is True and home["mode"] == "mcq" and home["progress"]["mcq"]["total"] >= 50   # MCQ phase first
+ev = events(c.post("/api/cka/act", json={"data": "next"}))
+assert ev[0]["op"] == "add" and ev[0]["question"]["options"] and not ev[0]["question"]["task"], ev[0]   # an MCQ while in MCQ mode
+assert c.post("/api/cka/exam/start", json={"n": 5}).json()["tasks"] is False
+assert c.post("/api/cka/mode", json={"mode": "tasks"}).json()["mode"] == "tasks"                      # manual switch
 ev = events(c.post("/api/cka/act", json={"data": "next"}))
 assert ev[0]["html"].startswith("🛠") and ev[1]["op"] == "meta" and ev[1]["task"]["task"] is True, ev
 tid = ev[1]["task"]["id"]

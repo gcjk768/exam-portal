@@ -65,6 +65,8 @@
       ? `Reading list by domain and ${h.study_cards} study cards (${h.studied} done)`
       : "Reading list by domain, official guide and free courses";
     $("#door-quiz-d").textContent = h.pending ? `Resume ${h.pending.question.id}, still unanswered`
+      : h.progress ? (h.mode === "tasks" ? `Scenario tasks: ${h.progress.tasks.total - h.progress.tasks.seen} left to do`
+                                         : `Multiple choice first: ${h.progress.mcq.total - h.progress.mcq.seen} left, then ${h.progress.tasks.total} scenario tasks`)
       : `${h.coverage.total - h.coverage.seen} ${unit} you have not seen yet`;
     $("#door-exam-d").textContent = `${h.exam_n} ${unit} in ${h.exam_minutes} min, scored at the end`;
   }
@@ -133,15 +135,33 @@
   // ── Feed ──────────────────────────────────────────────────────────────────
   const feed = $("#feed");
   function clearFeed() { feed.innerHTML = ""; state.cards.clear(); state.pendingCard = null; state.feedLoaded = ""; }
+  function renderMode(p) {
+    const bar = $("#mode-bar"); bar.hidden = !p;
+    if (!p) return;
+    const inTasks = p.mode === "tasks";
+    $("#mode-text").textContent = inTasks
+      ? `Scenario tasks: ${p.tasks.seen} of ${p.tasks.total} done. Multiple choice: ${p.mcq.seen} of ${p.mcq.total}.`
+      : `Multiple choice first: ${p.mcq.seen} of ${p.mcq.total} seen. Scenario tasks (${p.tasks.total}) unlock automatically when the MCQ bank is done.`;
+    $$("#mode-bar [data-mode]").forEach(b => b.setAttribute("aria-current", String(b.dataset.mode === p.forced)));
+    $("[data-act=next]").textContent = inTasks ? "Next task" : "Next question";
+  }
+  $$("#mode-bar [data-mode]").forEach(b => b.onclick = async () => {
+    const p = await (await post("/mode", { mode: b.dataset.mode })).json();
+    if (state.home) { state.home.progress = p; state.home.mode = p.mode; }
+    renderMode(p);
+  });
   async function openQuiz() {
     $("#btn-study-feed").hidden = !(cur() && cur().has_study);
-    $("[data-act=next]").textContent = isTask() ? "Next task" : "Next question";
+    $("[data-act=next]").textContent = "Next question";
+    const h0 = state.home && state.home.key === state.exam ? state.home : await api("/home");
+    state.home = h0;
+    renderMode(h0.progress);
     if (state.feedLoaded === state.exam) return;
     state.feedLoaded = state.exam;
-    const h = state.home && state.home.key === state.exam ? state.home : await api("/home");
+    const h = h0;
     if (h.pending && h.pending.question.task) { addCard({ op: "add", id: "pending", kind: "text", html: h.pending.html, buttons: [] }); addTaskCard(h.pending.question); }
     else if (h.pending) addCard({ op: "add", id: "pending", kind: "text", html: h.pending.html, question: h.pending.question, buttons: [] });
-    else if (!feed.children.length) feed.innerHTML = `<p class="empty">${isTask() ? "No task yet. Press Next task, read it, then type the commands you would run." : "No question yet. Press Next question, or A to H once one is on screen."}</p>`;
+    else if (!feed.children.length) feed.innerHTML = `<p class="empty">${h.mode === "tasks" ? "No task yet. Press Next task, read it, then type the commands you would run." : "No question yet. Press Next question, or A to H once one is on screen."}</p>`;
   }
   $$("[data-act]").forEach(b => b.onclick = () => act(b.dataset.act));
 
@@ -353,13 +373,14 @@
     EX.run = null;
     $("#exam-setup").hidden = false; $("#exam-run").hidden = true; $("#exam-result").hidden = true;
     const e = cur();
-    const unit = e.tasks ? "tasks" : "questions";
-    $("#exam-blurb").textContent = e.tasks
+    const modeTasks = !!(e.tasks && e.mode === "tasks");
+    const unit = modeTasks ? "tasks" : "questions";
+    $("#exam-blurb").textContent = modeTasks
       ? "Like the real sitting: hands-on tasks, a countdown at the real pace, no feedback until you submit. Type the commands or YAML you would run; Claude grades each task against the reference solution."
       : "Like the real sitting: no feedback until you submit, a countdown at the real pace, scored on the 1000 scale.";
     const box = $("#exam-sizes"); box.innerHTML = "";
     const pace = (n) => Math.max(5, Math.round(e.exam_minutes * n / e.exam_n));
-    const sizes = e.tasks ? [[e.exam_n, e.exam_minutes, "Full exam", true], [8, pace(8), "Half exam", false], [3, pace(3), "Warm-up", false]]
+    const sizes = modeTasks ? [[e.exam_n, e.exam_minutes, "Full exam", true], [8, pace(8), "Half exam", false], [3, pace(3), "Warm-up", false]]
                           : [[e.exam_n, e.exam_minutes, "Full exam", true], [25, pace(25), "Sprint", false], [10, pace(10), "Quick check", false]];
     for (const [n, min, label, primary] of sizes) {
       if (n > e.total) continue;
