@@ -43,7 +43,7 @@ META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
         "sapc03": ("SAP-C03", "AWS Solutions Architect Professional", 75, 180),
         "aipc01": ("AIP-C01", "AWS Generative AI Developer Professional", 75, 180),
         "cka": ("CKA", "Certified Kubernetes Administrator", 17, 120),   # ~17 hands-on tasks in 120 min
-        "gitlabci": ("GitLab CI/CD", "GitLab Certified CI/CD Associate", 60, 60),
+        "gitlabci": ("GitLab CI/CD", "GitLab Certified CI/CD Associate", 50, 75),
         "tfassoc": ("Terraform", "HashiCorp Terraform Associate (003)", 57, 60)}
 
 

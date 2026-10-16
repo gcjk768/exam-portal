@@ -15,7 +15,7 @@ services:
       - "3003:8000"               # home LAN only, no login
     env_file: web.env
     environment:
-      EXAMS: "ccarp:/exams/ccarp:/vault/ccarp,sapc03:/exams/sapc03:/vault/sapc03,aipc01:/exams/aipc01:/vault/aipc01,cka:/exams/cka:/vault/cka"
+      EXAMS: "ccarp:/exams/ccarp:/vault/ccarp,sapc03:/exams/sapc03:/vault/sapc03,aipc01:/exams/aipc01:/vault/aipc01,cka:/exams/cka:/vault/cka,gitlabci:/exams/gitlabci:/vault/gitlabci,tfassoc:/exams/tfassoc:/vault/tfassoc"
     volumes:
       # each quiz bot's stack: code read-only, its data/ (questions + the shared state.json) read-write
       - "${CCARP_DIR:-/volume1/docker/ccarp-quiz}:/exams/ccarp:ro"
@@ -26,11 +26,17 @@ services:
       - "${AIPC01_DIR:-/volume1/docker/aipc01-quiz}/data:/exams/aipc01/data"
       - "${CKA_DIR:-/volume1/docker/cka-quiz}:/exams/cka:ro"
       - "${CKA_DIR:-/volume1/docker/cka-quiz}/data:/exams/cka/data"
+      - "${GITLABCI_DIR:-/volume1/docker/gitlabci-quiz}:/exams/gitlabci:ro"
+      - "${GITLABCI_DIR:-/volume1/docker/gitlabci-quiz}/data:/exams/gitlabci/data"
+      - "${TFASSOC_DIR:-/volume1/docker/tfassoc-quiz}:/exams/tfassoc:ro"
+      - "${TFASSOC_DIR:-/volume1/docker/tfassoc-quiz}/data:/exams/tfassoc/data"
       # the bots' Obsidian vaults (movement log); set the host paths in .env
       - "${CCARP_VAULT:-./vault/ccarp}:/vault/ccarp"
       - "${SAPC03_VAULT:-./vault/sapc03}:/vault/sapc03"
       - "${AIPC01_VAULT:-./vault/aipc01}:/vault/aipc01"
       - "${CKA_VAULT:-./vault/cka}:/vault/cka"
+      - "${GITLABCI_VAULT:-./vault/gitlabci}:/vault/gitlabci"
+      - "${TFASSOC_VAULT:-./vault/tfassoc}:/vault/tfassoc"
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
