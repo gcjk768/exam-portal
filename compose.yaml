@@ -15,7 +15,7 @@ services:
       - "3003:8000"               # home LAN only, no login
     env_file: web.env
     environment:
-      EXAMS: "ccarp:/exams/ccarp:/vault/ccarp,sapc03:/exams/sapc03:/vault/sapc03,aipc01:/exams/aipc01:/vault/aipc01"
+      EXAMS: "ccarp:/exams/ccarp:/vault/ccarp,sapc03:/exams/sapc03:/vault/sapc03,aipc01:/exams/aipc01:/vault/aipc01,cka:/exams/cka:/vault/cka"
     volumes:
       # each quiz bot's stack: code read-only, its data/ (questions + the shared state.json) read-write
       - "${CCARP_DIR:-/volume1/docker/ccarp-quiz}:/exams/ccarp:ro"
@@ -24,10 +24,13 @@ services:
       - "${SAPC03_DIR:-/volume1/docker/sapc03-quiz}/data:/exams/sapc03/data"
       - "${AIPC01_DIR:-/volume1/docker/aipc01-quiz}:/exams/aipc01:ro"
       - "${AIPC01_DIR:-/volume1/docker/aipc01-quiz}/data:/exams/aipc01/data"
+      - "${CKA_DIR:-/volume1/docker/cka-quiz}:/exams/cka:ro"
+      - "${CKA_DIR:-/volume1/docker/cka-quiz}/data:/exams/cka/data"
       # the bots' Obsidian vaults (movement log); set the host paths in .env
       - "${CCARP_VAULT:-./vault/ccarp}:/vault/ccarp"
       - "${SAPC03_VAULT:-./vault/sapc03}:/vault/sapc03"
       - "${AIPC01_VAULT:-./vault/aipc01}:/vault/aipc01"
+      - "${CKA_VAULT:-./vault/cka}:/vault/cka"
     logging:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
