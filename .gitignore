@@ -5,3 +5,4 @@ docs/vault/
 __pycache__/
 *.pyc
 temp/
+static/vendor/

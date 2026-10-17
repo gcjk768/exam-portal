@@ -224,7 +224,7 @@
       "Core and providers are separate binaries that talk over RPC.",
       "Providers authenticate, define resources and data sources, and can add functions.",
       "A `provider` block sets options like region; omit it and an empty default is used.",
-      "Registry tiers: Official (HashiCorp-maintained), Partner, Community, plus Archived.",
+      "Registry tiers: Official, Partner Premier, Partner, Community; Archived means no longer maintained.",
       "Add or change a provider and you must run `terraform init` again."
      ],
      "tip": "Providers are plugins, not part of the `terraform` binary, so `init` must install them first. If none is installed locally, init fetches the newest version allowed.",
@@ -290,7 +290,7 @@
      "Declare providers in `required_providers` with a `source` and a `version` constraint.",
      "`~>` lets only the rightmost version part rise; `>=` sets a minimum.",
      "`terraform init` downloads providers; `.terraform.lock.hcl` pins versions and checksums. Commit it.",
-     "`terraform init -upgrade` is the only way to move past a locked version.",
+     "Run `terraform init -upgrade` to move past a locked version.",
      "Use `alias` for a second configuration of one provider; select it with `provider = aws.west`.",
      "State maps each resource address to one real object and stores dependency metadata."
     ],
@@ -385,11 +385,11 @@
      "title": "Read the plan before applying",
      "gist": "`plan` refreshes state, compares it with your config, and lists what it would create, change or destroy, without changing anything.",
      "points": [
-      "Plan symbols: `+` create, `~` update in place, `-` destroy, `-/+` replace.",
+      "Symbols: `+` create, `~` update in place, `-` destroy, `<=` read a data source.",
       "`-out=tfplan` saves the plan; `terraform apply tfplan` runs exactly that plan.",
       "Without `-out` you get a speculative plan, for review only.",
       "`-refresh-only` shows drift, `-replace=ADDR` forces replacement, `-target` narrows scope.",
-      "Terraform walks the dependency graph, 10 operations in parallel by default."
+      "`-/+` destroys then recreates; `+/-` creates the replacement first (`create_before_destroy`)."
      ],
      "tip": "A plan never changes infrastructure. `-target` is for exceptional recovery, not routine use. `plan -destroy` previews exactly what `terraform destroy` would do.",
      "diagram": "flowchart LR\n  C[Config] --> P[terraform plan]\n  S[(State)] --> P\n  R[(Real resources)] -->|refresh| P\n  P --> O[Diff: add, change, destroy]\n  P -->|saved with out flag| F[Saved plan file]\n  F --> A[terraform apply tfplan]",
@@ -633,7 +633,7 @@
       "Dependencies also set destroy order, which runs in reverse.",
       "`terraform graph` prints the dependency graph for visualising."
      ],
-     "tip": "Prefer references over `depends_on`; explicit dependencies slow runs and hide intent. `depends_on` lists whole resources or modules, not attribute values.",
+     "tip": "Prefer references over `depends_on`; `depends_on` makes plans more conservative and hides intent. `depends_on` lists whole resources or modules, not attribute values.",
      "diagram": "flowchart LR\n  V[aws vpc] -->|implicit: vpc id| S[aws subnet]\n  S -->|implicit: subnet id| I[aws instance]\n  B[aws s3 bucket] -.->|explicit depends on| I",
      "video": {
       "id": "v0Qt-ltvmXU",
@@ -958,7 +958,7 @@
       "Prefer it over legacy `terraform refresh`, which overwrites state with no review.",
       "`-replace=ADDR` rebuilds a degraded resource; `-refresh=false` skips refresh and can miss drift."
      ],
-     "tip": "Decide the direction. Keep the manual change: update config, then `apply -refresh-only`. Reject it: plain `apply`. HCP Terraform drift detection needs Standard edition.",
+     "tip": "Decide the direction. Keep the manual change: update config, then `apply -refresh-only`. Reject it: plain `apply`. HCP Terraform drift detection needs Standard or Premium.",
      "diagram": "flowchart TB\n  M[Manual change in console] --> D[Drift]\n  D --> P[plan -refresh-only]\n  P --> Q{Keep the change?}\n  Q -->|yes| K[Update config + apply -refresh-only]\n  Q -->|no| N[terraform apply reverts it]",
      "video": {
       "id": "acTvUZI0Nfg",
@@ -976,11 +976,11 @@
      "title": "Refactor safely with moved and removed",
      "gist": "Rename or move resources with `moved` blocks and stop managing them with `removed` blocks, without destroying real infrastructure.",
      "points": [
-      "`moved { from = aws_instance.a, to = aws_instance.b }` renames without destroy and recreate.",
+      "`moved { from = aws_instance.a, to = aws_instance.b }` (1.1+) renames without recreating.",
       "`moved` also covers moves into modules or to `for_each` keys.",
-      "`removed` with `lifecycle { destroy = false }` drops it from state but keeps it running.",
+      "`removed` (1.7+) with `lifecycle { destroy = false }` drops it from state, keeps it running.",
       "Both show up in plan for review, unlike legacy `terraform state mv` and `state rm`.",
-      "Move between configurations: `removed` in the source, `import` in the destination (1.7+)."
+      "Move between configurations: `removed` in the source, an `import` block in the destination."
      ],
      "tip": "Renaming a resource label without `moved` plans a destroy and create. Config blocks are preferred over `state mv` and `state rm` because they are reviewed and recorded.",
      "diagram": "flowchart LR\n  A[Rename resource label] --> Q{Added moved block?}\n  Q -->|no| X[Plan: destroy + create]\n  Q -->|yes| Y[Plan: moved, no change]\n  R[removed, destroy = false] --> F[Forgotten, still running]",
@@ -1047,7 +1047,7 @@
      "gist": "Import adopts a resource built outside Terraform into state, so Terraform manages it from then on without recreating it.",
      "points": [
       "`import { to = aws_instance.web, id = \"i-abcd1234\" }`, then plan and apply.",
-      "`terraform plan -generate-config-out=generated.tf` writes HCL for the imported resources.",
+      "`terraform plan -generate-config-out=generated.tf` writes HCL for imported resources; flagged experimental.",
       "Import blocks are planned and reviewable; CLI `terraform import ADDR ID` writes state immediately.",
       "You still need a matching `resource` block, or the next apply plans to destroy it.",
       "Import each real object to only one resource address."
@@ -1118,7 +1118,7 @@
     "tests": "Bringing existing resources under Terraform, inspecting and editing state from the CLI, and turning on verbose logs to debug problems.",
     "must_know": [
      "`import` block with `to` and `id`, then plan and apply, adopts a resource.",
-     "`plan -generate-config-out=FILE` writes HCL for imported resources.",
+     "`plan -generate-config-out=FILE` writes HCL for imported resources (still experimental).",
      "Every imported resource still needs a matching `resource` block.",
      "`state list`, `state show` and `terraform show` read state safely.",
      "`state mv` and `state rm` edit state and always write a backup.",
@@ -1198,7 +1198,7 @@
       "Health assessments: drift detection plus continuous validation of checks and conditions.",
       "Health assessments and change requests need Standard or Premium edition."
      ],
-     "tip": "Soft-mandatory failures can be overridden by permitted users; hard-mandatory ones cannot. A policy set holds one framework only, Sentinel or OPA, never both.",
+     "tip": "Soft-mandatory and OPA mandatory failures can be overridden by permitted users; hard-mandatory cannot, unless its policy set allows overrides. One framework per policy set.",
      "diagram": "flowchart LR\n  P[Plan] --> S{Policy check}\n  S -->|pass| A[Apply]\n  S -->|soft fail| O[Override by permitted user]\n  S -->|hard fail| X[Run stopped]\n  A --> H[Health assessment: drift, checks]",
      "video": null,
      "source": {
@@ -1302,7 +1302,7 @@
     "traps": [
      "Mixing up HCP workspaces with CLI workspaces; HCP ones have their own variables, permissions and runs.",
      "Putting both a `cloud` block and a `backend` block in one configuration.",
-     "Thinking hard-mandatory policy failures can be overridden; only soft-mandatory ones can."
+     "Mixing up levels: OPA `mandatory` is overridable like soft-mandatory; hard-mandatory blocks unless the set allows overrides."
     ]
    }
   }

@@ -20,7 +20,7 @@ for key, src in (("ccarp", ROOT.parent / "CCAR-P"), ("sapc03", ROOT.parent / "AW
         if (src / f).exists():
             shutil.copy(src / f, dst / f)
     shutil.copytree(src / "assets", dst / "assets")
-    for f in ("questions.csv", "study_notes.csv"):
+    for f in ("questions.csv", "study_notes.csv", "domains.json"):
         if (src / "data" / f).exists():
             shutil.copy(src / "data" / f, dst / "data" / f)
     specs.append(f"{key}:{dst}:{tmp / 'vault' / key}")
@@ -95,6 +95,20 @@ assert mod.load_state() == {"ok": {}, "bad": {}}
 study = c.get("/api/ccarp/study").json()
 assert study["reading"]["domains"][0]["links"][0]["url"].startswith("http") and study["reading"]["start"]
 assert c.get("/api/sapc03/study").json()["has_cards"] is True
+
+# "Quiz me on this topic": a question from that domain only; an unknown domain is a clean error
+ev = events(c.post("/api/ccarp/act", json={"data": "d|Integration"}))
+assert ev[0].get("question", {}).get("domain") == "Integration", ev[:2]
+assert events(c.post("/api/ccarp/act", json={"data": "d|No such domain"}))[0]["op"] == "error"
+assert web.EXAMS["ccarp"].mod.PREFER_MERMAID is True          # the portal asks the tutor for Mermaid (icons added in the browser)
+
+# weekly video check: a video YouTube reports gone is hidden from the Study JSON
+vid = web.EXAMS["ccarp"].study["domains"][0]["video"]["id"]
+assert vid in web.video_ids(web.EXAMS["ccarp"].study)
+web.DEAD_VIDEOS.add(vid)
+assert c.get("/api/ccarp/study").json()["reading"]["domains"][0]["video"] is None
+assert web.EXAMS["ccarp"].study["domains"][0]["video"]["id"] == vid       # the source JSON is untouched
+web.DEAD_VIDEOS.clear()
 
 # tutor Mermaid goes to the browser as source (drawn in the portal's style + icons); `diagrams` scripts stay PNG
 assert web.EXAMS["sapc03"].mod.render("mermaid", "flowchart LR\nA-->B").startswith(web.MERMAID_SRC)

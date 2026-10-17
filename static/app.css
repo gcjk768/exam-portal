@@ -306,3 +306,14 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 .seg { display: flex; gap: 3px; padding: 3px; background: var(--surface); border-radius: 999px; }
 .seg button { font: inherit; font-size: .85rem; font-weight: 600; border: 0; background: transparent; color: var(--muted); padding: .35rem .7rem; border-radius: 999px; cursor: pointer; }
 .seg button[aria-current="true"] { background: var(--accent); color: var(--accent-ink); }
+
+/* Study actions: quiz this topic, notes read (per browser), report "study next" */
+.domain-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: 0 1rem .9rem; }
+.note-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; }
+.read-btn { font: inherit; font-size: .8rem; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: .2rem .75rem; cursor: pointer; }
+.read-btn:hover { color: var(--text); border-color: var(--accent); }
+.read-btn[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.note.is-read { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); }
+.note-toc a.read { color: var(--text); border-color: color-mix(in oklab, var(--accent) 55%, var(--line)); }
+.note-toc a.read::before { content: "✓ "; color: var(--accent); }
+.study-next { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .4rem 0 .8rem; }

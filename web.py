@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import copy
 import functools
 import html
 import importlib.util
@@ -26,6 +27,8 @@ import os
 import random
 import re
 import sys
+import urllib.error
+import urllib.request
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -78,6 +81,7 @@ class Exam:
         if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks
             sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
         self.mod.vault_log = vault_writer(vault)
+        self.mod.PREFER_MERMAID = True                         # tutor draws Mermaid here (icons are added in the browser)
         png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
         self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
         self.lock = asyncio.Lock()
@@ -124,9 +128,15 @@ class Exam:
         want_tasks = self.mode(state) == "tasks"
         return {i: q for i, q in self.mod.QUESTIONS.items() if (not q["letters"]) == want_tasks}
 
-    def pick(self, state: dict) -> dict:
-        """bot.pick_question restricted to the current pool (same tiers: unseen, then missed, then any)."""
+    def pick(self, state: dict, domain: str | None = None) -> dict:
+        """bot.pick_question restricted to the current pool (same tiers: unseen, then missed, then any).
+        With `domain` (Study → "Quiz me on this topic"): only that domain, any mode if the current one has none."""
         Q = self.pool(state) or self.mod.QUESTIONS
+        if domain is not None:
+            Q = ({i: q for i, q in Q.items() if q["domain"] == domain}
+                 or {i: q for i, q in self.mod.QUESTIONS.items() if q["domain"] == domain})
+            if not Q:
+                raise HTTPException(404, f"no questions in domain {domain}")
         seen = set(state["ok"]) | set(state["bad"])
         ids = [i for i in Q if i not in seen] or [i for i in Q if state["bad"].get(i, 0) > state["ok"].get(i, 0)] or list(Q)
         return Q[random.choice(ids)]
@@ -306,6 +316,12 @@ async def act(exam: Exam, data: str, rec: Recorder) -> None:
         mod.save_state({"ok": {}, "bad": {}})
         mod.vault_log("🔄 **reset**", "progress cleared")
         await rec.send_message("🔄 Progress cleared.", reply_markup=mod.NEXT_KB)
+    elif data.startswith("d|"):                           # Study → "Quiz me on this topic"
+        q = exam.pick(state, data[2:])
+        if not q["letters"]:
+            await send_task(exam, rec, state, q)
+        else:
+            await mod.send_question(rec, state, q)
     elif "|" in data:
         kind, qid, *rest = data.split("|")
         q = mod.QUESTIONS.get(qid)
@@ -524,11 +540,58 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
 EXAMS: dict[str, Exam] = {}
 
 
+# ── Study videos: weekly check, hide the ones YouTube removed or stopped allowing to embed ──
+DEAD_VIDEOS: set[str] = set()
+
+
+def video_ids(study: dict) -> set[str]:
+    return {v["id"] for d in study.get("domains", []) for v in [d.get("video")] + [n.get("video") for n in d.get("notes", [])] if v}
+
+
+def video_dead(vid: str) -> bool:
+    """Only YouTube's own answer counts (401/403/404); network trouble is not a verdict."""
+    try:
+        urllib.request.urlopen(f"https://www.youtube.com/oembed?format=json&url=https://youtu.be/{vid}", timeout=20)
+        return False
+    except urllib.error.HTTPError as exc:
+        return exc.code in (401, 403, 404)
+    except Exception:
+        return False
+
+
+def without_dead(study: dict) -> dict:
+    if not DEAD_VIDEOS:
+        return study
+    s = copy.deepcopy(study)
+    for d in s.get("domains", []):
+        for x in [d] + d.get("notes", []):
+            if (x.get("video") or {}).get("id") in DEAD_VIDEOS:
+                x["video"] = None
+    return s
+
+
+async def check_videos(first_delay: int = 60) -> None:
+    await asyncio.sleep(first_delay)
+    while True:
+        for e in list(EXAMS.values()):
+            for vid in sorted(video_ids(e.study)):
+                dead = await asyncio.to_thread(video_dead, vid)
+                if dead and vid not in DEAD_VIDEOS:
+                    log.warning("study video gone: %s (%s)", vid, e.key)
+                    e.mod.vault_log("🎬 **video gone**", f"youtu.be/{vid} hidden from Study")
+                (DEAD_VIDEOS.add if dead else DEAD_VIDEOS.discard)(vid)
+                await asyncio.sleep(1)                     # low volume: one request a second
+        log.info("video check done: %d hidden", len(DEAD_VIDEOS))
+        await asyncio.sleep(7 * 86400)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     EXAMS.update(load_exams())
+    task = asyncio.create_task(check_videos())
     yield
+    task.cancel()
 
 
 app = FastAPI(title="Exam Portal", docs_url=None, redoc_url=None, lifespan=lifespan)
@@ -621,7 +684,7 @@ def api_mode(key: str, body: Mode):
 @app.get("/api/{key}/study")
 def api_study(key: str):
     e = exam_or_404(key)
-    return {"reading": e.study, "coverage": e.coverage(e.mod.load_state()), "has_cards": e.has_study}
+    return {"reading": without_dead(e.study), "coverage": e.coverage(e.mod.load_state()), "has_cards": e.has_study}
 
 
 @app.post("/api/{key}/act")

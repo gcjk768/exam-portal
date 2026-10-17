@@ -104,8 +104,13 @@
         <span class="cov">${c ? `<b>${c.right}</b> right first time, ${c.seen} of ${c.total} seen` : "coverage by source bank"}</span>
         <span class="bar"><i style="width:${pct}%"></i></span></summary>`;
       if (d.summary) det.append(summaryBox(d.summary));
+      const bar = document.createElement("div"); bar.className = "domain-actions";
+      bar.innerHTML = `<button type="button" class="btn btn-accent">🎯 Quiz me on this topic</button>
+        ${d.notes?.length ? `<span class="read-count muted small"></span>` : ""}`;
+      $("button", bar).onclick = () => { go("quiz"); setTimeout(() => act(`d|${d.domain}`), 50); };
+      det.append(bar);
       det.append(topicMedia(d));
-      if (d.notes?.length) det.append(notesBlock(d));           // own notes instead of links out to the vendor docs
+      if (d.notes?.length) { det.append(notesBlock(d)); readCount(det, d); }   // own notes instead of links out to the vendor docs
       else {
         const ul = document.createElement("ul"); ul.className = "links";
         d.links.forEach(l => ul.append(link(l)));
@@ -130,18 +135,28 @@
       ${(s.traps || []).length ? `<p class="traps-h">⚠️ Common traps</p><ul class="traps">${s.traps.map(x => `<li>${rich(x)}</li>`).join("")}</ul>` : ""}`;
     return el;
   }
+  // Read marks live in this browser (localStorage), one set of "domain#title" keys per exam.
+  const readKey = () => `read:${state.exam}`;
+  const readSet = () => new Set(JSON.parse(localStorage.getItem(readKey()) || "[]"));
+  const noteKey = (d, n) => `${d.domain}#${n.title}`;
+  function readCount(det, d) {
+    const done = readSet(), n = d.notes.filter(x => done.has(noteKey(d, x))).length;
+    const el = $(".read-count", det); if (el) el.textContent = `📖 ${n} of ${d.notes.length} notes read`;
+  }
   function notesBlock(d) {
     const wrap = document.createElement("div"); wrap.className = "notes";
     const toc = document.createElement("nav"); toc.className = "note-toc"; toc.setAttribute("aria-label", `${d.domain} notes`);
+    const done = readSet();
     d.notes.forEach((n, i) => {
       const a = document.createElement("a"); a.href = "#"; a.textContent = `${i + 1}. ${n.title}`;
+      a.classList.toggle("read", done.has(noteKey(d, n)));
       a.onclick = (ev) => { ev.preventDefault(); wrap.children[i + 1].scrollIntoView({ behavior: "smooth", block: "start" }); };
       toc.append(a);
     });
-    wrap.append(toc, ...d.notes.map(noteCard));
+    wrap.append(toc, ...d.notes.map((n, i) => noteCard(n, i, d, toc.children[i])));
     return wrap;
   }
-  function noteCard(n, i) {
+  function noteCard(n, i, d, chip) {
     const el = document.createElement("article"); el.className = "note";
     const text = document.createElement("div"); text.className = "note-text";
     text.innerHTML = `<h4><span class="nn">${i + 1}</span>${esc(n.title)}</h4>
@@ -149,7 +164,19 @@
       <p class="gist">${rich(n.gist)}</p>
       <ul>${(n.points || []).map(p => `<li>${rich(p)}</li>`).join("")}</ul>
       ${n.tip ? `<p class="tip"><b>🎯 Exam tip</b> ${rich(n.tip)}</p>` : ""}
-      ${n.source?.url ? `<p class="src">Source: <a href="${esc(n.source.url)}" target="_blank" rel="noopener">${esc(n.source.title || "page")}</a></p>` : ""}`;
+      <div class="note-foot">${n.source?.url ? `<p class="src">Source: <a href="${esc(n.source.url)}" target="_blank" rel="noopener">${esc(n.source.title || "page")}</a></p>` : ""}</div>`;
+    if (d) {                                                   // "Mark as read" toggle, kept per browser
+      const b = document.createElement("button"); b.type = "button"; b.className = "read-btn";
+      const paint = (on) => { b.textContent = on ? "✓ Read" : "Mark as read"; b.setAttribute("aria-pressed", String(on)); el.classList.toggle("is-read", on); chip?.classList.toggle("read", on); };
+      paint(readSet().has(noteKey(d, n)));
+      b.onclick = () => {
+        const s = readSet(), k = noteKey(d, n);
+        s.has(k) ? s.delete(k) : s.add(k);
+        localStorage.setItem(readKey(), JSON.stringify([...s]));
+        paint(s.has(k)); readCount(el.closest(".domain"), d);
+      };
+      $(".note-foot", text).append(b);
+    }
     const media = document.createElement("div"); media.className = "note-media";
     if (n.diagram) media.append(lazyDiagram(n.diagram));
     if (n.video) media.append(videoFig(n.video));
@@ -266,14 +293,31 @@
 
   let mermaidP = null, mmdN = 0;
   function mermaidLib() {
-    return mermaidP ||= import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs").then(m => {
-      m.default.initialize({ startOnLoad: false, theme: "base", securityLevel: "loose",   // loose: HTML labels carry the icons (own content, labels escaped)
-        themeVariables: { fontFamily: "Geist, system-ui, sans-serif", fontSize: "15px", primaryTextColor: PAL.text,
-                          lineColor: PAL.line, edgeLabelBackground: PAL.bg, background: "transparent" },
-        flowchart: { htmlLabels: true, useMaxWidth: true, curve: "basis", nodeSpacing: 36, rankSpacing: 46, padding: 14 } });
-      return m.default;
+    // Served by the portal (the Dockerfile bakes static/vendor/mermaid.min.js into the image); the pinned CDN copy is the fallback.
+    return mermaidP ||= loadScript("/static/vendor/mermaid.min.js")
+      .catch(() => loadScript(`https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_VERSION}/dist/mermaid.min.js`))
+      .then(() => {
+        const m = window.mermaid;
+        m.initialize({ startOnLoad: false, theme: "base", securityLevel: "loose",   // loose: HTML labels carry the icons (own content, labels escaped)
+          themeVariables: { fontFamily: "Geist, system-ui, sans-serif", fontSize: "15px", primaryTextColor: PAL.text,
+                            lineColor: PAL.line, edgeLabelBackground: PAL.bg, background: "transparent" },
+          flowchart: { htmlLabels: true, useMaxWidth: true, curve: "basis", nodeSpacing: 36, rankSpacing: 46, padding: 14 } });
+        return m;
+      });
+  }
+  const MERMAID_VERSION = "11.17.2";                       // keep in step with the Dockerfile ARG
+  function loadScript(src) {
+    if (window.mermaid) return Promise.resolve();
+    return new Promise((ok, bad) => {
+      const s = document.createElement("script"); s.src = src;
+      s.onload = () => (window.mermaid ? ok() : bad(new Error("no mermaid"))); s.onerror = () => { s.remove(); bad(new Error(src)); };
+      document.head.append(s);
     });
   }
+  // Tutor Mermaid is model-written from scraped question text, and the renderer runs "loose" so our icon <img> tags work:
+  // drop click/call lines, init directives, raw HTML tags and entity codes before drawing. Our own icons are added after this.
+  const safeMermaid = (src) => String(src).split("\n").filter(l => !/^\s*(click|call|href|%%\s*\{)/i.test(l)).join("\n")
+    .replace(/<\/?[a-z!][^>]*>/gi, " ").replace(/javascript\s*:/gi, "").replace(/#\w{1,10};/g, " ");
   async function drawDiagram(box, src) {
     let lib;
     try { lib = await mermaidLib(); } catch (e) {
@@ -453,7 +497,7 @@
     if (ev.question && !ev.question.task) el = questionCard(ev);
     else if (ev.kind === "mermaid") {                        // tutor diagram drawn here, same style + icons as Study
       el = document.createElement("article"); el.className = "card card-photo card-mmd";
-      el.append(lazyDiagram(ev.src));
+      el.append(lazyDiagram(safeMermaid(ev.src)));
       el.insertAdjacentHTML("beforeend", `<div class="cap html">${tg(ev.html)}</div>`);
       drawPending(el);
     } else if (ev.kind === "photo") {
@@ -467,6 +511,21 @@
       if (k === "stats" && state.metrics && /WEEKLY REPORT/.test(ev.html)) {
         const m = state.metrics; state.metrics = null;
         el.innerHTML = `<div class="score-strip"><strong>${m.score}</strong><span>predicted of 1000, pass ${m.pass}<br>${esc(m.verdict)}</span></div>`;
+        // Study next: the two weakest domains (first-try accuracy, at least 3 answered), else ones not touched yet
+        const doms = Object.entries(m.by_dom || {}).map(([d, [r, n]]) => ({ d, n, acc: n ? r / n : 0 }));
+        const tried = doms.filter(x => x.n >= 3).sort((a, b) => a.acc - b.acc);   // weak (< 80%), then untouched, then the rest
+        const weak = [...tried.filter(x => x.acc < .8), ...doms.filter(x => !x.n), ...tried.filter(x => x.acc >= .8)].slice(0, 2);
+        if (weak.length) {
+          const nav = document.createElement("div"); nav.className = "study-next";
+          nav.innerHTML = `<span class="muted small">Study next</span>`;
+          for (const w of weak) {
+            const b = document.createElement("button"); b.type = "button"; b.className = "btn";
+            b.textContent = `📖 ${w.d}${w.n ? ` · ${Math.round(100 * w.acc)}%` : " · not started"}`;
+            b.onclick = () => { state.studyFocus = w.d; go("study"); };
+            nav.append(b);
+          }
+          el.append(nav);
+        }
       }
       el.insertAdjacentHTML("beforeend", `<div class="html">${tg(ev.html)}</div>`);
     }

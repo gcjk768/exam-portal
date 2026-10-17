@@ -17,6 +17,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY web.py ./
 COPY static ./static
+# Mermaid served by the portal itself (no CDN at run time); keep the version in step with MERMAID_VERSION in static/app.js
+ARG MERMAID_VERSION=11.17.2
+RUN mkdir -p static/vendor && curl -fsSL -o static/vendor/mermaid.min.js       "https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_VERSION}/dist/mermaid.min.js"
 COPY study ./study
 # the NAS creates files 770 root-owned; the app runs as quiz, so make the copies world-readable
 RUN chmod -R a+rX /app
