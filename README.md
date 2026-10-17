@@ -40,7 +40,8 @@ and open `http://<host>:3003`. The image is the bots' image (Python, Claude Code
 |---|---|
 | `web.py` | FastAPI app: exam loading, recorder, actions, exam mode, NDJSON streaming. |
 | `static/index.html`, `app.css`, `app.js` | The site. No build step. |
-| `study/<exam>.json` | Reading lists: `start` links and `domains` with links. |
+| `study/<exam>.json` | Per exam: `start` links; `domains` with a summary (what you need to know), study notes (gist, points, exam tip, Mermaid diagram, video, source) and the reading list. |
+| `static/icons/` | Official product icons used in the diagrams; rebuilt by `python tools/build_icons.py`. |
 | `test_web.py` | `python test_web.py`: streaming, grading, explain, reset, study, report, exam mode, all three exams. |
 | `Dockerfile`, `compose.yaml`, `web.env.example` | The container. |
 | `docs/superpowers/specs/` | The design spec. |
@@ -51,4 +52,6 @@ Home LAN only, no login. Diagrams live in the page until you move on (the pendin
 
 ## License
 
-MIT.
+MIT for the code and notes.
+
+Icons in `static/icons/` belong to their owners and keep their own terms: AWS Architecture Icons (Amazon Web Services; `aws-*`), Kubernetes icons (The Kubernetes Authors, github.com/kubernetes/community, Apache-2.0 or CC-BY-4.0; `k8s-*`), and product logos from the Iconify `logos` set (CC0; trademarks of their owners). They are used only to label diagrams.
