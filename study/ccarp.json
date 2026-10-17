@@ -95,7 +95,208 @@
     "channel": "IBM Technology",
     "min": 3
    },
-   "diagram": "flowchart LR\n  U([User]) --> APP[Your app]\n  APP -->|messages + tool schemas| C{{Claude}}\n  C -->|tool_use| APP\n  APP -->|run tool| T[(API / DB)]\n  T -->|tool_result| APP\n  C -.->|MCP client| M[MCP server]\n  M --> R[(Resources, tools, prompts)]\n  C -->|final answer| U"
+   "diagram": "flowchart LR\n  U([User]) --> APP[Your app]\n  APP -->|messages + tool schemas| C{{Claude}}\n  C -->|tool_use| APP\n  APP -->|run tool| T[(API / DB)]\n  T -->|tool_result| APP\n  C -.->|MCP client| M[MCP server]\n  M --> R[(Resources, tools, prompts)]\n  C -->|final answer| U",
+   "notes": [
+    {
+     "objective": "Evaluate tool/agent configuration for capability bloat",
+     "title": "Trim tool bloat: remove, defer, or clarify",
+     "gist": "Every tool costs context and adds risk, so keep only tools real work needs and load the rest on demand.",
+     "points": [
+      "Keep a tool only for named, real use; 'might be handy someday' is not a reason.",
+      "Least privilege: drop tools the job never needs, such as refunds for a read-only agent.",
+      "Large catalogue eating context? Defer definitions with tool search; capability stays, upfront tokens drop.",
+      "Wrong tool picked? Merge or delete overlaps and namespace them, like `asana_search` vs `jira_search`.",
+      "Tool search pays off past about ten tools; below that, plain tool calling is fine."
+     ],
+     "tip": "Match fix to symptom: unneeded risky tool means remove it; context cost means defer loading; wrong choice means cut overlaps. Logging, confirmations or bigger models are traps.",
+     "diagram": "flowchart TB\n  A[Tool config problem] --> B{Which symptom?}\n  B -->|Tool never needed| C[Remove the tool]\n  B -->|Too many tokens upfront| D[Defer definitions via tool search]\n  B -->|Wrong tool chosen| E[Merge overlaps, sharpen descriptions]",
+     "video": null,
+     "source": {
+      "title": "Writing effective tools for agents — with agents",
+      "url": "https://www.anthropic.com/engineering/writing-tools-for-agents"
+     }
+    },
+    {
+     "objective": "Analyze authentication and authorization requirements to identify security gaps",
+     "title": "Enforce access below the model",
+     "gist": "A prompt is not a lock: limit what the agent's identity and tools can reach, outside the model's control.",
+     "points": [
+      "Gap: retrieval can reach all users' data and only the prompt says 'current user only'.",
+      "Check access where caller identity is known, before fetching; post-retrieval filtering is too late.",
+      "Three layers: scoped credential, minimal tool surface, human approval for writes.",
+      "MCP servers must reject tokens not issued for them; token passthrough is explicitly forbidden.",
+      "Start with minimal OAuth scopes, elevate step by step, and log every elevation."
+     ],
+     "tip": "Ask: if the model ignored every instruction, what could it return? Answers that rely on prompts, redacting output, or secrets inside prompts are the wrong ones.",
+     "diagram": "flowchart LR\n  U[User request] --> I[Verify identity and token audience]\n  I --> P{Entitled?}\n  P -->|No| R[Refuse before fetching]\n  P -->|Yes| F[Fetch only scoped data]\n  F --> M[Model sees permitted data]\n  M --> G[Human approval for writes]",
+     "video": {
+      "id": "mYKMwZcGynw",
+      "title": "Intro to OAuth for MCP Servers with Aaron Parecki, Okta",
+      "channel": "Agentic AI Foundation",
+      "min": 19
+     },
+     "source": {
+      "title": "Chapter 10: Entry Points, Routes, and the Integration Layer",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/10-entry-points-routes-integration.md"
+     }
+    },
+    {
+     "objective": "Evaluate accuracy-latency trade-offs and justify configuration decisions",
+     "title": "Trade accuracy, latency and cost deliberately",
+     "gist": "Measure what actually drives delay or cost, then pick the lever that leaves accuracy intact where possible.",
+     "points": [
+      "Streaming improves perceived speed only; total time drops with a faster model or fewer tokens.",
+      "Caching and batching cut cost without changing what the model reads; batch is 50% cheaper.",
+      "Cache reads cost 0.1x input; a 5-minute write at 1.25x pays off after one read.",
+      "Medium effort matched default accuracy at 70 to 85% of cost on knowledge work.",
+      "Reranking adds a runtime step: reranking more chunks lifts recall but adds latency and cost."
+     ],
+     "tip": "Watch for 'feels slow' versus 'takes too long': streaming fixes the first only. Distractors cut context or downgrade models when an accuracy commitment exists.",
+     "diagram": "flowchart TB\n  A[Measure dominant cost or delay] --> B{Complaint?}\n  B -->|Blank screen| C[Stream the output]\n  B -->|Total time| D[Faster model, fewer tokens, output cap]\n  B -->|Cost, accuracy fixed| E[Cache prefix and batch]\n  B -->|Cost, can test| F[Lower effort or smaller model, then eval]",
+     "video": null,
+     "source": {
+      "title": "Chapter 11: The Numbers Before You Build",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/11-the-numbers-before-you-build.md"
+     }
+    },
+    {
+     "objective": "Analyze observability challenges and select monitoring strategies at scale",
+     "title": "Observe failures that look like success",
+     "gist": "Most AI failures return HTTP 200, so log every session lightly, tag versions and request IDs, and watch stop reasons.",
+     "points": [
+      "Wrong answers, refusals and truncation all look healthy; check `stop_reason`, not just status codes.",
+      "Log a light record for every session; keep heavy prompts and payloads selectively.",
+      "Sampling or keeping only errors loses failures that looked like successes at the time.",
+      "Every record needs a version ID and a correlation ID, or traces cannot be joined.",
+      "Streaming errors can arrive inside the event stream; SDK tracing is off until enabled."
+     ],
+     "tip": "Instrumentation steps are defining targets and signals; dashboards, alert thresholds and runbooks only consume data. Cost reports are lagging, not early warning signals.",
+     "diagram": "flowchart LR\n  A[Each user prompt] --> B[Root interaction span]\n  B --> C[Child spans: API, tools, hooks]\n  C --> D[Tag version and correlation ID]\n  D --> E[Light log for every session]\n  E --> F[Alert on stop reason and quality]",
+     "video": {
+      "id": "jWDCnJKouhw",
+      "title": "Are Your AI Agents Flying Blind? The Truth About AgentOps",
+      "channel": "IBM Technology",
+      "min": 17
+     },
+     "source": {
+      "title": "Chapter 12: Observability at Scale",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/12-observability-at-scale.md"
+     }
+    },
+    {
+     "objective": "Design a RAG pipeline with appropriate chunking and indexing strategies",
+     "title": "Chunk for meaning, index for queries",
+     "gist": "Cut documents into self-contained pieces, add context to each, and index them for both keyword and meaning search.",
+     "points": [
+      "Under about 200,000 tokens, roughly 500 pages, skip RAG and put it all in the prompt.",
+      "A chunk missing its definition or exception needs better boundaries, not bigger chunks or more results.",
+      "Contextual retrieval prepends 50 to 100 tokens of document context to each chunk before indexing.",
+      "Contextual embeddings plus BM25 cut failed retrievals 49%; adding reranking cut them 67%.",
+      "Stale content enters at ingestion and is blocked at retrieval filtering; rebuild cadence alone fails."
+     ],
+     "tip": "When retrieved text lacks the governing clause, more passages, larger chunks or overlap are traps. The fix changes what a chunk contains. Anthropic offers no embedding model.",
+     "diagram": "flowchart LR\n  A[Documents] --> B[Split into self-contained chunks]\n  B --> C[Prepend chunk context]\n  C --> D[(Embedding index)]\n  C --> E[(BM25 index)]\n  D --> F[Merge top results]\n  E --> F\n  F --> G[Rerank to top 20]\n  G --> H[Claude answers]",
+     "video": {
+      "id": "tmiBae2goJM",
+      "title": "The Best RAG Technique Yet? Anthropic's Contextual Retrieval Explained!",
+      "channel": "Prompt Engineering",
+      "min": 16
+     },
+     "source": {
+      "title": "Introducing Contextual Retrieval",
+      "url": "https://www.anthropic.com/news/contextual-retrieval"
+     }
+    },
+    {
+     "objective": "Apply retrieval strategies matched to data shape and query pattern",
+     "title": "Match retrieval to data and query",
+     "gist": "Exact IDs need keyword or key lookup, fuzzy questions need semantic search, and live facts need a direct tool call.",
+     "points": [
+      "IDs, part numbers, error codes: lexical match like BM25 or a keyed lookup.",
+      "Questions in users' own words: semantic search over embeddings, which bridges vocabulary gaps.",
+      "Mixed traffic: keep both strategies and route or combine them, never just one.",
+      "Fast-changing facts such as stock or balances: call the system of record, not an index.",
+      "Big table pasted into prompt: 6 of 25 right; code execution on file: 25 of 25."
+     ],
+     "tip": "Scenarios mixing order numbers and how-to questions test routing. Picking one strategy is the trap; for live state, rebuilding the index more often is the trap.",
+     "diagram": "flowchart TB\n  Q[Incoming query] --> R{Query shape?}\n  R -->|Exact ID or code| L[BM25 or key lookup]\n  R -->|Concept in own words| S[Semantic embedding search]\n  R -->|Live fact| T[Tool call to system of record]\n  R -->|Aggregate over table| C[Code execution on file]\n  L --> A[Grounded answer]\n  S --> A\n  T --> A\n  C --> A",
+     "video": {
+      "id": "r0Dciuq0knU",
+      "title": "Top 3 RAG Retrieval Strategies: Sparse, Dense, & Hybrid Explained",
+      "channel": "IBM Technology",
+      "min": 8
+     },
+     "source": {
+      "title": "Chapter 6: Reference Architectures and Retrieval Against Live State",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/06-reference-architectures-and-live-state.md"
+     }
+    },
+    {
+     "objective": "Evaluate connection protocols and select the appropriate integration mechanism (MCP, API/CLI, agent-to-agent)",
+     "title": "Choose MCP, API/CLI, Skill or agent-to-agent",
+     "gist": "Use a direct API tool for one app, MCP when many clients share a live system, Skills for know-how, agent-to-agent across organisations.",
+     "points": [
+      "MCP: host creates one client per server; servers expose tools, resources and prompts over JSON-RPC.",
+      "stdio for a local server on one machine; Streamable HTTP for remote, multi-client servers.",
+      "Deciding factors: how many clients will call it, and whether state carries between calls.",
+      "Needs a live call to another system? MCP or a tool. Only know-how? A Skill.",
+      "Agent-to-agent: each side's agent alone touches its own systems; only negotiation crosses over."
+     ],
+     "tip": "Team skills, deadlines and preferences are distractors; they describe builders, not the integration. Many owners and consumers point to one owner-maintained MCP server everyone calls.",
+     "diagram": "flowchart TB\n  A[New capability] --> B{Calls another system at run time?}\n  B -->|No, just know-how| C[Skill]\n  B -->|Yes| D{Crosses an organisation boundary?}\n  D -->|Yes| E[Agent-to-agent, negotiation only]\n  D -->|No| F{Many clients or apps?}\n  F -->|Yes| G[Shared MCP server]\n  F -->|No| H[Direct API or CLI tool]",
+     "video": {
+      "id": "7j1t3UZA1TY",
+      "title": "MCP vs API: Simplifying AI Agent Integration with External Data",
+      "channel": "IBM Technology",
+      "min": 13
+     },
+     "source": {
+      "title": "Architecture overview - Model Context Protocol",
+      "url": "https://modelcontextprotocol.io/docs/learn/architecture"
+     }
+    },
+    {
+     "objective": "Evaluate progressive discovery vs. monolithic context strategy",
+     "title": "Load context just in time",
+     "gist": "Instead of stuffing everything into the prompt, give the agent pointers and let it load details only when needed.",
+     "points": [
+      "Context rot: recall drops as tokens grow, so treat context as a finite attention budget.",
+      "Just in time: keep file paths, queries or links, then fetch with tools at run time.",
+      "Skills load in stages: about 100 tokens of metadata, under 5k instructions, files only when read.",
+      "Hybrid works well: Claude Code loads CLAUDE.md upfront, then uses glob and grep on demand.",
+      "Monolithic still fits small, stable material used every request, ideally cached as a prefix."
+     ],
+     "tip": "Pick progressive discovery for large or changing material and many tools; monolithic for small, always-needed context. Trap: deleting capabilities to save tokens instead of deferring them.",
+     "diagram": "flowchart LR\n  A[Startup: names and descriptions only] --> B{Task matches?}\n  B -->|No| C[Nothing more loaded]\n  B -->|Yes| D[Load instructions]\n  D --> E{Needs detail?}\n  E -->|Yes| F[Read file or run script]\n  F --> G[Only output enters context]",
+     "video": {
+      "id": "fOxC44g8vig",
+      "title": "Claude Agent Skills Explained",
+      "channel": "Anthropic",
+      "min": 3
+     },
+     "source": {
+      "title": "Effective context engineering for AI agents",
+      "url": "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can connect Claude to tools, data and systems safely: lean tool sets, enforced access, sound retrieval, observability and the right pattern.",
+    "must_know": [
+     "Keep only tools real work needs; defer large catalogues with tool search, worthwhile past about ten.",
+     "Enforce access below the model: scoped credentials, minimal tools, human approval for writes.",
+     "Most failures return HTTP 200; log every session lightly with version and correlation IDs, read `stop_reason`.",
+     "Under about 200,000 tokens, skip RAG and put the whole corpus in the prompt.",
+     "Contextual embeddings plus BM25 cut failed retrievals 49%; adding reranking cut them 67%.",
+     "Exact IDs need keyword lookup, fuzzy questions semantic search, live facts a system-of-record call.",
+     "One app: direct API tool. Many clients, live system: MCP. Know-how only: a Skill."
+    ],
+    "traps": [
+     "Adding logging, confirmations or a bigger model instead of removing a risky tool the job never needs.",
+     "More chunks, bigger chunks or more overlap instead of better chunks that carry their governing clause.",
+     "Trusting a prompt saying current user only, or redacting output, instead of scoping the credential."
+    ]
+   }
   },
   {
    "domain": "Solution Design & Architecture",
@@ -118,7 +319,155 @@
     "channel": "AI Engineer",
     "min": 15
    },
-   "diagram": "flowchart LR\n  IN([Task]) --> Q{Steps known up front?}\n  Q -->|yes| W[Workflow: prompt chain, routing, parallel]\n  Q -->|no, open-ended| A[Agent loop: plan, act with tools, observe]\n  A --> O[Orchestrator + subagents]\n  W --> H{High-risk action?}\n  O --> H\n  H -->|yes| HITL[Human approval]\n  H -->|no| OUT([Result])\n  HITL --> OUT"
+   "diagram": "flowchart LR\n  IN([Task]) --> Q{Steps known up front?}\n  Q -->|yes| W[Workflow: prompt chain, routing, parallel]\n  Q -->|no, open-ended| A[Agent loop: plan, act with tools, observe]\n  A --> O[Orchestrator + subagents]\n  W --> H{High-risk action?}\n  O --> H\n  H -->|yes| HITL[Human approval]\n  H -->|no| OUT([Result])\n  HITL --> OUT",
+   "notes": [
+    {
+     "objective": "Translate business problems into Claude-based AI solutions",
+     "title": "Turn a business ask into delegated work",
+     "gist": "Do not ask what Claude should do; ask who owns each piece of work and what a wrong answer costs.",
+     "points": [
+      "Convert accuracy rates into error counts: 99.7% of 14,000 claims is still 41 errors a month.",
+      "Claude owns judgement over unstructured text; deterministic systems own facts, maths and lookups.",
+      "Humans own accountable decisions and exceptions, never sheer volume.",
+      "Company facts like prices or balances must be handed to the model via tools or retrieval.",
+      "Place the boundary by stakes: cost of unnoticed error, reversibility, whose name is on it."
+     ],
+     "tip": "Traps: improving prompts to 'guarantee' identical answers, or escalating on low confidence. Same-answer-every-time needs a deterministic component; route by stakes, not model confidence.",
+     "diagram": "flowchart LR\n  A[Business request] --> B{Who owns this step?}\n  B -->|Free text judgement| C[Claude]\n  B -->|Facts and maths| D[Deterministic system]\n  B -->|Accountable call| E[Human]\n  C --> F[Output checked by stakes]\n  D --> F\n  E --> F",
+     "video": {
+      "id": "C1ecR-sIE1A",
+      "title": "Select the right AI use case for your business",
+      "channel": "IBM Technology",
+      "min": 3
+     },
+     "source": {
+      "title": "Chapter 1: What You Are Actually Being Asked to Decide",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/01-what-you-are-being-asked-to-decide.md"
+     }
+    },
+    {
+     "objective": "Design end-to-end architectures (input → processing → output → feedback loops)",
+     "title": "Four stages, never drop feedback",
+     "gist": "Every design needs input, processing, output and a feedback loop that tells a named person when the system is wrong.",
+     "points": [
+      "Input: what triggers work, its shape, and whether it arrives once or unreliably.",
+      "Processing: for every fact, is the model recalling it or being handed it?",
+      "Output: mark drafts versus decisions so nothing downstream treats a draft as authoritative.",
+      "Feedback is designed up front; it decides logging, IDs carried through, and retention.",
+      "A dashboard is not a loop. A signal must reach a named person on schedule."
+     ],
+     "tip": "Look for the missing fourth stage. Options calling feedback a phase-two item, or offering dashboards and logging as if someone were watching, are the usual traps.",
+     "diagram": "flowchart LR\n  A[Input: trigger and shape] --> B[Processing: owner per step]\n  B --> C[Output: draft or decision]\n  C --> D[Feedback: signal to named person]\n  D -.->|fix and retune| B",
+     "video": null,
+     "source": {
+      "title": "Chapter 1: What You Are Actually Being Asked to Decide",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/01-what-you-are-being-asked-to-decide.md"
+     }
+    },
+    {
+     "objective": "Select appropriate architectural patterns (workflow, agentic, augmented LLM)",
+     "title": "Augmented call, workflow or agent",
+     "gist": "Pick the pattern by whether the path through the work is known before the request arrives, not by how complex it sounds.",
+     "points": [
+      "One step needing outside facts or actions: augmented LLM with tools, retrieval, memory.",
+      "Fixed, drawable sequence: workflow such as prompt chaining, routing or parallelization.",
+      "Next step depends on the last result: agent. Costs less predictable, harder to audit.",
+      "Anthropic advice: start with the simplest solution; agents trade latency and cost for performance.",
+      "Variation you can write as a branch in advance is still a workflow."
+     ],
+     "tip": "Trap: choosing an agent for flexibility in a process the stem says is fixed. Step boundaries are an asset for validation, cost tracking and stopping.",
+     "diagram": "flowchart TB\n  A{Is the path known in advance?} -->|Single step| B[Augmented call]\n  A -->|Fixed sequence| C[Workflow]\n  A -->|Emerges during work| D[Agent]\n  C --> E[Chaining, routing, parallel]\n  D --> F[Higher cost, harder audit]",
+     "video": {
+      "id": "Qd6anWv0mv0",
+      "title": "Agentic AI: Workflows vs. agents",
+      "channel": "Google Cloud Tech",
+      "min": 5
+     },
+     "source": {
+      "title": "Building effective agents",
+      "url": "https://www.anthropic.com/engineering/building-effective-agents"
+     }
+    },
+    {
+     "objective": "Design multi-agent systems and orchestration strategies",
+     "title": "When a second agent pays off",
+     "gist": "Split into multiple agents only when the work needs conflicting setups or has truly independent parallel parts; otherwise one agent is safer.",
+     "points": [
+      "Valid reasons: irreconcilable specialisation or real independence. Team boundaries and org charts are not.",
+      "Splitting loses guaranteed ordering, halt-on-failure and a single audit trail.",
+      "Use orchestrator-worker: one lead owns sequencing; workers report structured results via a tool.",
+      "Anthropic research: multi-agent beat single-agent Opus 4 by 90.2%, but used about 15x chat tokens.",
+      "Verifiers should re-derive claims from source and default to refuted when unsure."
+     ],
+     "tip": "Wrong answers cite departments or ownership as the reason to split, or add a reviewer that approves when uncertain. Ask which guarantee each extra agent removes.",
+     "diagram": "flowchart TB\n  U[User query] --> L[Lead orchestrator plans]\n  L --> S1[Subagent A]\n  L --> S2[Subagent B]\n  L --> S3[Subagent C]\n  S1 --> V[Verifier: default refuted]\n  S2 --> V\n  S3 --> V\n  V --> R[Lead synthesises answer]",
+     "video": {
+      "id": "sWH0T4Zez6I",
+      "title": "Multi Agent Systems Explained: How AI Agents & LLMs Work Together",
+      "channel": "IBM Technology",
+      "min": 7
+     },
+     "source": {
+      "title": "How we built our multi-agent research system",
+      "url": "https://www.anthropic.com/engineering/multi-agent-research-system"
+     }
+    },
+    {
+     "objective": "Apply decomposition techniques for complex problem solving",
+     "title": "Decompose to make coverage structural",
+     "gist": "When output skips parts or hides where it failed, split the task into explicit steps instead of pushing the model harder.",
+     "points": [
+      "Bigger model, longer prompt, lower temperature or more examples change effort, not the task.",
+      "A pass per category, such as clause type, makes a missing section visible.",
+      "Prompt chaining gives inspectable intermediate outputs; add programmatic gates between steps.",
+      "Do not split work that must carry context across steps; splitting loses it.",
+      "Same tool called over a list? Move the loop into code: programmatic tool calling."
+     ],
+     "tip": "Failure signature 'it missed sections' or 'we cannot see where it broke' points to restructuring. Capacity, guidance or sampling options are the distractors.",
+     "diagram": "flowchart LR\n  A[Contract review task] --> B[Pass 1: payment clauses]\n  A --> C[Pass 2: liability clauses]\n  A --> D[Pass 3: termination clauses]\n  B --> E[Gate: check each pass]\n  C --> E\n  D --> E\n  E --> F[Combined report]",
+     "video": null,
+     "source": {
+      "title": "Chapter 4: Augmented Call, Workflow, Agent",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/04-augmented-call-workflow-agent.md"
+     }
+    },
+    {
+     "objective": "Align solutions to business value pillars (efficiency, transformation, productivity, cost, performance SLAs)",
+     "title": "Name the value pillar correctly",
+     "gist": "Say exactly which kind of value a solution delivers, and treat any committed SLA as a pass-fail gate before comparing options.",
+     "points": [
+      "Efficiency: less time or money per unit of work. Productivity: more output per person.",
+      "Transformation: work that was impossible before now happens. Removing a role is efficiency.",
+      "Cost counts total spend, including new spend the AI system itself adds.",
+      "SLA: a number with a consequence when missed; filter out options that cannot meet it.",
+      "Hours saved with flat business output is unrealised productivity, not value delivered."
+     ],
+     "tip": "Check the denominator: per item is efficiency, per person is productivity. Trap: weighting a latency SLA against cost in a scorecard instead of eliminating first.",
+     "diagram": "flowchart LR\n  A[Candidate designs] --> B{Meets stated SLA?}\n  B -->|No| X[Eliminated]\n  B -->|Yes| C[Score on value and cost]\n  C --> D{Measured per what?}\n  D -->|Per item| E[Efficiency]\n  D -->|Per person| F[Productivity]\n  D -->|New capability| G[Transformation]",
+     "video": null,
+     "source": {
+      "title": "Chapter 3: Sizing, Scoping, and the Feasibility Verdict",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/03-sizing-scoping-feasibility.md"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can split a business problem between Claude, code and people, and pick the simplest pattern that reliably works.",
+    "must_know": [
+     "Claude owns judgement over unstructured text; code owns facts, maths and lookups; humans own accountable decisions.",
+     "Convert accuracy rates into error counts: 99.7% of 14,000 claims is still 41 errors a month.",
+     "Every design needs input, processing, output and a feedback loop that reaches a named person.",
+     "Known, drawable path means a workflow; use an agent only when steps depend on results.",
+     "Split into multiple agents only for conflicting setups or truly independent parallel work.",
+     "When output skips parts, decompose into explicit per-category steps with programmatic gates between them.",
+     "Per item is efficiency, per person is productivity; treat a committed SLA as a pass-fail gate."
+    ],
+    "traps": [
+     "A bigger model, longer prompt or lower temperature when the task needs decomposing into explicit steps.",
+     "Choosing an agent for flexibility, or splitting agents by team or department, when the process is fixed.",
+     "Calling feedback a phase-two item, or treating a dashboard nobody watches as a feedback loop."
+    ]
+   }
   },
   {
    "domain": "Evaluation, Testing & Optimization",
@@ -146,7 +495,160 @@
     "channel": "IBM Technology",
     "min": 6
    },
-   "diagram": "flowchart LR\n  S[Define success criteria] --> D[Test set: real + edge cases]\n  D --> RUN[Run prompt / model version]\n  RUN --> G{Grader}\n  G -->|exact match, code| SC[Scores]\n  G -->|LLM as judge + rubric| SC\n  G -->|human review sample| SC\n  SC --> CMP{Better than baseline?}\n  CMP -->|no| TUNE[Change prompt, context, model]\n  TUNE --> RUN\n  CMP -->|yes| SHIP([Ship + monitor in prod])"
+   "diagram": "flowchart LR\n  S[Define success criteria] --> D[Test set: real + edge cases]\n  D --> RUN[Run prompt / model version]\n  RUN --> G{Grader}\n  G -->|exact match, code| SC[Scores]\n  G -->|LLM as judge + rubric| SC\n  G -->|human review sample| SC\n  SC --> CMP{Better than baseline?}\n  CMP -->|no| TUNE[Change prompt, context, model]\n  TUNE --> RUN\n  CMP -->|yes| SHIP([Ship + monitor in prod])",
+   "notes": [
+    {
+     "objective": "Define evaluation metrics (accuracy, latency, cost, safety, security)",
+     "title": "Turn quality goals into measurable criteria",
+     "gist": "Before building, write success criteria with a number, a sample size and a measuring tool, across quality, speed, cost and safety.",
+     "points": [
+      "Good criteria are specific, measurable, achievable and relevant, set before results exist.",
+      "Pin three things: the threshold, the sample size, and the instrument that judges.",
+      "Example safety bar: under 0.1% of 10,000 outputs flagged by the content filter.",
+      "Most apps need several dimensions at once: accuracy, latency, price, safety, privacy.",
+      "Hard-to-judge qualities stay measurable; grade them with a rubric or a model judge."
+     ],
+     "tip": "A bare score with no pre-agreed threshold answers nothing. Pick the option that sets a task-level standard first; distrust targets beyond frontier capability or with no instrument.",
+     "diagram": "flowchart LR\n  A[Business goal] --> B[Draft criterion]\n  B --> C{Measurable?}\n  C -->|no| D[Add threshold, sample, instrument]\n  D --> C\n  C -->|yes| E[Build the eval]\n  E --> F[Compare result to agreed bar]",
+     "video": {
+      "id": "6eOcgYP5D4Q",
+      "title": "LLM evaluation methods and metrics",
+      "channel": "Evidently AI",
+      "min": 5
+     },
+     "source": {
+      "title": "Define success criteria and build evaluations",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/define-success"
+     }
+    },
+    {
+     "objective": "Design evaluation datasets and test frameworks using mixed methodologies",
+     "title": "Eval sets and the grading ladder",
+     "gist": "Build test sets from real traffic plus deliberate attacks, then grade with code first, a model judge next, humans last.",
+     "points": [
+      "Grading ladder: code checks are fastest; model judges are flexible; humans best but slow.",
+      "Check a model judge against human labels before scaling it, and give it a rubric.",
+      "Take items from real user demand and hostile cases, never from the system's own output.",
+      "Cover rare, costly and ambiguous cases; record class proportions instead of rebalancing.",
+      "Prefer many auto-graded cases over few hand-graded ones; batch runs cost 50% less."
+     ],
+     "tip": "If users do things the test set never covered, close the gap before release. Confidence intervals, caveats or per-segment reporting only change how the score reads.",
+     "diagram": "flowchart TB\n  A[Real traffic samples] --> C[Labelled eval set]\n  B[Adversarial cases] --> C\n  C --> D{Can code grade it?}\n  D -->|yes| E[Exact or string match]\n  D -->|no| F[Model judge with rubric]\n  F -.->|calibrate| G[Human labels on a sample]",
+     "video": {
+      "id": "1jReCwBgM84",
+      "title": "LLM Evaluation Basics: Datasets & Metrics",
+      "channel": "Generative AI at MIT",
+      "min": 5
+     },
+     "source": {
+      "title": "Define success criteria and build evaluations",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/develop-tests"
+     }
+    },
+    {
+     "objective": "Conduct A/B testing and iterative improvements",
+     "title": "Run clean A/B tests, then roll out",
+     "gist": "Change one thing per arm, fix the question and sample size up front, prove it offline, then expose a small slice.",
+     "points": [
+      "Lock two things before running: the exact question and the sample size.",
+      "One change per arm; a bundled arm's win cannot be attributed to anything.",
+      "Stopping when the line looks good is the 50-session winner anti-pattern.",
+      "Validate offline first, then cap and monitor live exposure to a small slice.",
+      "Keep random assignment and track cost too; a variant may win by spending more."
+     ],
+     "tip": "When a new prompt and a model upgrade ship in one arm, the right answer isolates one change. Also reject winners declared on small samples or after peeking.",
+     "diagram": "flowchart LR\n  A[Fix question and sample size] --> B[Offline eval on task set]\n  B --> C{Beats baseline?}\n  C -->|no| D[Iterate one change]\n  D --> B\n  C -->|yes| E[Capped live exposure]\n  E --> F[Monitor quality and cost]\n  F --> G[Full rollout]",
+     "video": null,
+     "source": {
+      "title": "Chapter 14: A/B, Shadow, and Not Overclaiming",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/14-ab-shadow-and-not-overclaiming.md"
+     }
+    },
+    {
+     "objective": "Diagnose system issues (prompt failure, hallucinations, model mismatch)",
+     "title": "Find the broken layer before fixing",
+     "gist": "Match the symptom to the layer: retrieval, prompt, model choice or serving infrastructure, using the content of failing requests, not counters.",
+     "points": [
+      "Confident wrong answers after a data refresh point to retrieval returning stale chunks.",
+      "Diagnose quality with prompts, retrieved chunks, responses and tool results; latency and error rates look unchanged.",
+      "Hallucination fixes: allow 'I don't know', quote sources first, cite and verify claims.",
+      "Behaviour shift on a pinned model ID usually means infrastructure changed, not the weights.",
+      "One bad report: sample recent output to get a rate before reacting."
+     ],
+     "tip": "Pick the cause the scenario's trigger explains. A document refresh points to retrieval; changed behaviour on a stable model ID points to infrastructure, not silent weight swaps.",
+     "diagram": "flowchart TB\n  A[Symptom in production] --> B{What changed?}\n  B -->|data refresh| C[Check retrieval and index]\n  B -->|prompt edit| D[Run regression evals]\n  B -->|nothing, same model ID| E[Infra update: router, classifiers]\n  B -->|new kind of request| F[Check model fit and coverage]",
+     "video": {
+      "id": "005JLRt3gXI",
+      "title": "Why do AI models hallucinate?",
+      "channel": "Claude and Anthropic",
+      "min": 5
+     },
+     "source": {
+      "title": "Reduce hallucinations",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/strengthen-guardrails/reduce-hallucinations"
+     }
+    },
+    {
+     "objective": "Optimize token usage, latency, and cost-performance trade-offs",
+     "title": "Cut cost and latency without losing quality",
+     "gist": "Measure where tokens and time go, then use levers that leave the model's input unchanged before trimming context or downsizing.",
+     "points": [
+      "Caching and batching cut cost without changing what the model reads.",
+      "Cache read costs 0.1x input; 5-minute write 1.25x; 1-hour write 2x.",
+      "Batch API: 50% off, most batches finish within an hour, 24-hour expiry.",
+      "Real latency cuts: a faster model like Haiku, fewer tokens in and out, a `max_tokens` cap.",
+      "Streaming only improves perceived speed; total completion time stays the same."
+     ],
+     "tip": "When an accuracy commitment exists, prefer caching or batching over trimming context or a smaller model. Streaming fixes a blank screen, not end-to-end time.",
+     "diagram": "flowchart LR\n  A[Measure dominant cost or delay] --> B{Static prefix repeated?}\n  B -->|yes| C[Prompt caching]\n  B -->|no| D{Needs a real-time answer?}\n  D -->|no| E[Batch API, 50% off]\n  D -->|yes| F[Faster model, fewer tokens]\n  F --> G[Stream for perceived speed]",
+     "video": null,
+     "source": {
+      "title": "Chapter 11: The Numbers Before You Build",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/11-the-numbers-before-you-build.md"
+     }
+    },
+    {
+     "objective": "Monitor system performance using logging and observability tools",
+     "title": "Monitor failures that look like success",
+     "gist": "Most LLM failures return a normal 200, so log every request lightly, keep join keys, and watch content-level signals.",
+     "points": [
+      "Wrong answers, refusals, truncation and stale retrieval all look healthy to standard monitoring.",
+      "Keep a light record for every session and full payloads selectively; never sample sessions away.",
+      "Always emit version and correlation IDs, or incidents cannot be traced or joined.",
+      "Read `stop_reason`: refusal, `max_tokens` and `tool_use` are not HTTP errors.",
+      "Usage reports group by model, workspace and key; 1-minute buckets suit real-time monitoring."
+     ],
+     "tip": "Instrumentation starts with reliability targets and signal definitions. Dashboards, alert thresholds and runbooks consume data, so they are the trap when asked what to set up first.",
+     "diagram": "flowchart LR\n  A[Request] --> B[Light log every session]\n  B -.-> G[Full payloads kept selectively]\n  B --> C[Version and correlation IDs]\n  C --> D[Traces and stop reasons]\n  D --> E[Quality and cost slices]\n  E --> F[Alerts and runbooks]",
+     "video": {
+      "id": "2E8iTvGo9Hs",
+      "title": "10 min Walkthrough of Langfuse - Open Source LLM Observability, Evaluation, and Prompt Management",
+      "channel": "Langfuse",
+      "min": 10
+     },
+     "source": {
+      "title": "Chapter 12: Observability at Scale",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/12-observability-at-scale.md"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can define measurable success, build and grade eval sets, run clean experiments, find the failing layer and cut cost safely.",
+    "must_know": [
+     "Success criteria pin a threshold, a sample size and the judging instrument, set before results exist.",
+     "Grading ladder: code checks first, a rubric model judge validated against humans next, humans last.",
+     "Build eval sets from real traffic and hostile cases, never from the system's own output.",
+     "A/B tests: one change per arm, question and sample size locked up front, offline before live.",
+     "Match symptom to layer: confident wrong answers after a data refresh point to retrieval.",
+     "Caching and batching cut cost without changing the model's input; the Batch API is 50% off.",
+     "Streaming only improves perceived speed; real latency cuts are a faster model, fewer tokens, `max_tokens`."
+    ],
+    "traps": [
+     "Declaring a winner after peeking or on a small sample, or bundling prompt and model changes together.",
+     "Trimming context or downsizing the model despite an accuracy commitment, when caching or batching would do.",
+     "Setting up dashboards or alert thresholds first, before defining reliability targets and signals."
+    ]
+   }
   },
   {
    "domain": "Governance, Safety & Risk Management",
@@ -169,7 +671,141 @@
     "channel": "IBM Technology",
     "min": 8
    },
-   "diagram": "flowchart LR\n  IN([User input]) --> G1[Input guardrail: PII, injection, policy]\n  G1 --> C{{Claude with least-privilege tools}}\n  C --> G2[Output guardrail: grounding, toxicity, format]\n  G2 --> OUT([Response])\n  C --> LOG[(Audit log + traces)]\n  G1 -->|blocked| ESC[Refuse or escalate to a human]\n  G2 -->|fails| ESC\n  POL[Policy: GDPR, HIPAA, data residency] -.-> G1\n  POL -.-> LOG"
+   "diagram": "flowchart LR\n  IN([User input]) --> G1[Input guardrail: PII, injection, policy]\n  G1 --> C{{Claude with least-privilege tools}}\n  C --> G2[Output guardrail: grounding, toxicity, format]\n  G2 --> OUT([Response])\n  C --> LOG[(Audit log + traces)]\n  G1 -->|blocked| ESC[Refuse or escalate to a human]\n  G2 -->|fails| ESC\n  POL[Policy: GDPR, HIPAA, data residency] -.-> G1\n  POL -.-> LOG",
+   "notes": [
+    {
+     "objective": "Implement guardrails and safety controls",
+     "title": "Layered guardrails outside the model",
+     "gist": "A real guardrail is enforced outside the model and still works after another layer fails; prompts alone only shift odds.",
+     "points": [
+      "Screen user input with a small model like Haiku returning a structured verdict.",
+      "Put untrusted content in `tool_result` blocks, label it as data, JSON-encode it.",
+      "Least privilege and sandboxing bound what a successful injection can reach.",
+      "A hard 'never' rule needs a gate on what is drafted or sent, like deny rules.",
+      "Throttle or ban repeat offenders; red-team with injected documents before launch."
+     ],
+     "tip": "Pick controls that survive another layer failing. Bigger models, lower temperature, audit logs or a system-prompt instruction alone are the usual wrong answers for injection.",
+     "diagram": "flowchart LR\n  A[User input] --> B{Haiku screen: safe?}\n  B -->|no| X[Block or throttle]\n  B -->|yes| C[Claude with least privilege]\n  T[Tool results as data] --> C\n  C --> D{Output gate}\n  D -->|pass| E[Send to user]\n  D -->|fail| X",
+     "video": {
+      "id": "jrHRe9lSqqA",
+      "title": "What Is a Prompt Injection Attack?",
+      "channel": "IBM Technology",
+      "min": 10
+     },
+     "source": {
+      "title": "Mitigate jailbreaks and prompt injections",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks"
+     }
+    },
+    {
+     "objective": "Identify risks, limitations, and failure modes of LLM systems",
+     "title": "Failure modes intrinsic to LLMs",
+     "gist": "An LLM-specific risk is one that disappears if you remove the model: fluent wrong answers, inconsistency, refusals, injection and leaks.",
+     "points": [
+      "Test: strip the model out; if the failure remains, it is an ordinary bug.",
+      "Intrinsic: confident hallucination, two runs answering differently, refusing legitimate work.",
+      "Exfiltration needs both attacker text in the instruction channel and an outbound path.",
+      "Prompt leaks: keep secrets out of prompts, filter outputs; over-hardening can hurt quality.",
+      "Refusals return HTTP 200; cyber and bio classifiers can trigger on benign work."
+     ],
+     "tip": "Asked for inherent LLM risks, pick fluent wrong output and inconsistent answers. Timeouts, budget growth, credential needs and misconfigurations are ordinary engineering risks, the usual distractors.",
+     "diagram": "flowchart TB\n  A[Observed failure] --> B{Still happens without the model?}\n  B -->|yes| C[Ordinary defect: timeout, config]\n  B -->|no| D[Intrinsic LLM failure]\n  D --> E[Hallucination]\n  D --> F[Inconsistent answers]\n  D --> G[Injection or prompt leak]",
+     "video": {
+      "id": "cfqtFvWOfg0",
+      "title": "Why Large Language Models Hallucinate",
+      "channel": "IBM Technology",
+      "min": 9
+     },
+     "source": {
+      "title": "Chapter 15: The Safety Stack, and Where the Guardrails Sit",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/15-the-safety-stack-and-guardrail-placement.md"
+     }
+    },
+    {
+     "objective": "Apply human-in-the-loop validation strategies",
+     "title": "Route human review by stakes",
+     "gist": "Send cases to people based on what a wrong decision costs, using rules written in advance, not volume, size or time.",
+     "points": [
+      "Route on harm: can it be undone, does it repeat, who bears the cost.",
+      "Transaction size and promised savings are not routing axes.",
+      "Write triggers before cases arrive; clock windows and every-Nth sampling fail consistency.",
+      "Give reviewers citations and structured outputs so they verify against sources fast.",
+      "Claude Code: plan mode blocks edits until approval; org ask rules survive `bypassPermissions`."
+     ],
+     "tip": "A small irreversible customer message outranks a large reversible internal transfer. Distractors route by amount, sample a fixed percentage, or substitute after-the-fact reporting for prevention.",
+     "diagram": "flowchart LR\n  A[Model decision] --> B{Reversible?}\n  B -->|no| H[Human approval]\n  B -->|yes| C{Repeats or reaches customers?}\n  C -->|yes| H\n  C -->|no| D[Auto-approve and log]\n  H --> E[Execute action]",
+     "video": {
+      "id": "9iS-YYLIXiw",
+      "title": "What is Human In The Loop with AI? How HITL Shapes AI Systems",
+      "channel": "IBM Technology",
+      "min": 10
+     },
+     "source": {
+      "title": "Chapter 16: Human Review by Stakes, Not by Volume",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/16-human-review-by-stakes.md"
+     }
+    },
+    {
+     "objective": "Ensure compliance with regulations (e.g., GDPR, HIPAA, FedRAMP)",
+     "title": "GDPR, HIPAA, FedRAMP: matching Claude controls",
+     "gist": "Each regime asks something different: GDPR lawful purpose and minimisation, HIPAA a BAA for PHI, FedRAMP an authorised government cloud.",
+     "points": [
+      "GDPR: settle lawful basis, purpose and data-subject rights first; minimise personal data sent.",
+      "Residency: `inference_geo` is `us` or `global`; US-only costs 1.1x; workspace geo is permanent.",
+      "HIPAA: sign the BAA and enable HIPAA readiness; the API returns 400 on ineligible features.",
+      "ZDR: nothing stored after the response, but ineligible features like Batch are not blocked.",
+      "FedRAMP High and DoD IL4/5: Claude via Amazon Bedrock GovCloud; Vertex AI for FedRAMP High."
+     ],
+     "tip": "PHI in scope means HIPAA readiness, not ZDR; a region setting alone never makes processing lawful. Never put PHI in JSON schemas; HIPAA enablement is permanent.",
+     "diagram": "flowchart TB\n  A{Which regime?} -->|GDPR| B[Lawful basis and minimisation]\n  B --> B2[Inference geo, ZDR, short retention]\n  A -->|HIPAA PHI| C[Sign BAA, enable HIPAA readiness]\n  C --> C2[Claude API, eligible features only]\n  A -->|FedRAMP| D[Partner cloud platform]\n  D --> D2[Bedrock GovCloud or Vertex AI]",
+     "video": null,
+     "source": {
+      "title": "API and data retention",
+      "url": "https://docs.claude.com/en/docs/manage-claude/api-and-data-retention"
+     }
+    },
+    {
+     "objective": "Address ethical AI considerations (bias, fairness, transparency)",
+     "title": "Bias, fairness and transparency in practice",
+     "gist": "Measure fairness on outcomes per group, tell users mid-conversation they face an AI with a route to a human, and assign accountability.",
+     "points": [
+      "Fairness is measured on group slices of outcomes, not argued from removed inputs.",
+      "Proxies leak protected attributes; test matched profiles across groups on a schedule.",
+      "Check error-rate parity, not just approval-rate parity; wrongful refusals are the injury.",
+      "Matching past human decisions measures fidelity, and can copy their bias accurately.",
+      "Transparency: disclose identity, limits and a human escalation path inside the conversation."
+     ],
+     "tip": "A model card or terms page is not user transparency. Compliant and fast can still fail ethics; pick answers about skewed outputs and accountability.",
+     "diagram": "flowchart LR\n  A[Observed disparity] --> B[Slice outcomes by group]\n  B --> C[Compare error rates]\n  C --> D[Fix where groups diverge]\n  D --> E[Re-measure on schedule]\n  E --> B",
+     "video": {
+      "id": "gV0_raKR2UQ",
+      "title": "Algorithmic Bias and Fairness: Crash Course AI #18",
+      "channel": "CrashCourse",
+      "min": 11
+     },
+     "source": {
+      "title": "Chapter 17: Proving It to Someone Who Was Not There",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/17-proving-it-to-someone-who-was-not-there.md"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can choose guardrails that hold outside the model, spot LLM-specific risks, route human review by stakes and match compliance regimes.",
+    "must_know": [
+     "Real guardrails sit outside the model: input screening, untrusted content in `tool_result`, least privilege, sandboxing.",
+     "A hard never rule needs a gate on what is drafted or sent, like deny rules.",
+     "LLM-specific risks vanish without the model: hallucination, inconsistent answers, refusals, injection, prompt leaks.",
+     "Route review by harm: reversibility, repetition, who bears the cost; write triggers in advance.",
+     "PHI needs a signed BAA plus HIPAA readiness, not ZDR; GDPR starts with lawful basis.",
+     "FedRAMP High: Claude via Amazon Bedrock GovCloud or Vertex AI; `inference_geo` `us` costs 1.1x.",
+     "Measure fairness on per-group outcomes and error rates; disclose the AI and a human route."
+    ],
+    "traps": [
+     "A bigger model, lower temperature, audit logs or a system-prompt instruction alone as injection defence.",
+     "Routing review by transaction size or a fixed sample percentage, or reporting after the fact instead of preventing.",
+     "Treating ZDR or a region setting as compliance, or a model card as user transparency."
+    ]
+   }
   },
   {
    "domain": "Stakeholder Communication & Lifecycle Management",
@@ -192,7 +828,146 @@
     "channel": "AI Engineer",
     "min": 20
    },
-   "diagram": "flowchart LR\n  DISC[Discovery: business goal, KPIs, constraints] --> POC[Proof of concept]\n  POC --> PIL[Pilot with real users + evals]\n  PIL --> GO{Meets KPIs and risk sign-off?}\n  GO -->|no| DISC\n  GO -->|yes| PROD[Production rollout]\n  PROD --> OPS[Monitor cost, drift, feedback]\n  OPS --> UPG[Model upgrade + re-evaluation]\n  UPG --> PIL\n  SH([Stakeholders: sponsor, legal, security, users]) -.-> DISC\n  SH -.-> GO"
+   "diagram": "flowchart LR\n  DISC[Discovery: business goal, KPIs, constraints] --> POC[Proof of concept]\n  POC --> PIL[Pilot with real users + evals]\n  PIL --> GO{Meets KPIs and risk sign-off?}\n  GO -->|no| DISC\n  GO -->|yes| PROD[Production rollout]\n  PROD --> OPS[Monitor cost, drift, feedback]\n  OPS --> UPG[Model upgrade + re-evaluation]\n  UPG --> PIL\n  SH([Stakeholders: sponsor, legal, security, users]) -.-> DISC\n  SH -.-> GO",
+   "notes": [
+    {
+     "objective": "Conduct structured discovery and requirement gathering",
+     "title": "Discovery is elicitation, not conversation",
+     "gist": "Separate the solution someone asked for from the real problem, and dig out constraints people never think to mention.",
+     "points": [
+      "Done only when agreed in writing: measured baseline, dated target, binding constraints, named owner.",
+      "Ask about exceptions and workarounds, not just the happy path, to find embarrassing constraints.",
+      "Invite owners of each constraint category: legal, security, operations, finance, frontline staff.",
+      "Probe words like just, only, simply, basically: ask what happens when they fail.",
+      "Non-functional test: if it still makes sense on another system, like latency or residency."
+     ],
+     "tip": "Prototypes, prompt drafts, model picks and screen designs are build work, not discovery. A late constraint is an elicitation defect, not a difficult client.",
+     "diagram": "flowchart LR\n  A[Stated request] --> B[Split: solution vs problem]\n  B --> C[Ask about exceptions]\n  C --> D[Constraint owners in room]\n  D --> E[Baseline, target, constraints, owner]\n  E --> F[Design may start]",
+     "video": {
+      "id": "8EBWxW5Cn1g",
+      "title": "Requirement Gathering Techniques For A Business Analyst",
+      "channel": "Stefano - The Agile Business Analyst",
+      "min": 8
+     },
+     "source": {
+      "title": "Chapter 2: Discovery Is Elicitation, Not Conversation",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/02-discovery-is-elicitation.md"
+     }
+    },
+    {
+     "objective": "Communicate architectural decisions and trade-offs",
+     "title": "Brief top-down, record the rejected options",
+     "gist": "Lead with the decision and its business impact, then the technical reasoning, so sponsors can approve and engineers can build.",
+     "points": [
+      "Omitting the rationale turns a decision into a directive nobody can defend or adapt.",
+      "Decision record substance: rationale with criteria, plus the rejected alternatives. Templates are packaging.",
+      "Justify with lasting properties: freshness, traceability, lag. Price-only arguments expire.",
+      "Evidence contradicts the sponsor? Show it to the decision owner and let them decide.",
+      "Avoid uninformed approval: a yes from someone given nothing that could prompt a no."
+     ],
+     "tip": "Wrong answers pick one audience, cut rejected options for brevity, or quietly proceed or override the sponsor. You owe the owner information, not agreement.",
+     "diagram": "flowchart TB\n  A[Decision and business impact] --> B[Trade-offs and what was given up]\n  B --> C[Technical rationale and constraints]\n  A -.-> S[Sponsor can stop here]\n  C -.-> E[Engineers read to here]",
+     "video": {
+      "id": "6H6zfCNeqek",
+      "title": "Architecture Decision Records (ADR) as a LOG that answers \"WHY?\"",
+      "channel": "CodeOpinion",
+      "min": 10
+     },
+     "source": {
+      "title": "Chapter 18: Defending the Design",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/18-defending-the-design.md"
+     }
+    },
+    {
+     "objective": "Manage stakeholder feedback loops and expectation alignment (including SLAs)",
+     "title": "Measurable SLAs and loops that reach people",
+     "gist": "Turn impossible demands into measured, agreed targets with remedies, and make sure failure signals actually reach a named person.",
+     "points": [
+      "Offer a bounded choice with the trade-off visible; never accept or drop targets for them.",
+      "Rewrite 'zero errors' as eval-set criteria plus handling sized to each mistake's cost.",
+      "Good SLA: quality number on an agreed eval set, plus what is owed if missed.",
+      "Bad SLA clauses: absolute correctness, which model is used, how autonomous it runs.",
+      "Scope change: show cost when requested, reset the plan when accepted."
+     ],
+     "tip": "Trap: tuning temperature or model tier to answer an expectation problem, or sending reports more often. Fix what the report measures and what the stakeholder expects.",
+     "diagram": "flowchart LR\n  A[Unrealistic demand] --> B[Measure system vs human baseline]\n  B --> C[Agreed target on eval set]\n  C --> D[Remedy if missed]\n  D --> E[Recurring review with owners]\n  E -.->|renegotiate on evidence| C",
+     "video": {
+      "id": "pouVbehfnqQ",
+      "title": "SLAs, SLOs, and SLIs EXPLAINED in 7 Minutes (2025)",
+      "channel": "Better Stack",
+      "min": 7
+     },
+     "source": {
+      "title": "Chapter 19: Feedback Loops and What You Owe When One Breaks",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/19-feedback-loops-and-slas.md"
+     }
+    },
+    {
+     "objective": "Document architectures and provide implementation guidance",
+     "title": "Docs that work without you",
+     "gist": "Write for the builder, the operator and the future reviewer so nobody has to ask the original team anything.",
+     "points": [
+      "Implementer needs contracts and settings; operator needs runbooks; reviewer needs reasoning.",
+      "ADR fields: context, decision, alternatives considered, consequences, date and authors. One decision each.",
+      "A contact, office hours or channel is a route to ask, not documentation.",
+      "Handoff transfers a runnable eval set and the reasons behind the design's shape.",
+      "Date any config value or threshold, or keep it auto-updated; stale facts mislead."
+     ],
+     "tip": "Pick the package with contracts, decision records, eval set, runbooks and known limitations. Slides only, source code alone, a walkthrough or ticket history are the traps.",
+     "diagram": "flowchart TB\n  D[Docs package] --> I[Implementer: contracts, config]\n  D --> O[Operator: runbooks, on-call]\n  D --> R[Reviewer: ADRs, rejected options]\n  D --> E[Eval set: did change break it?]\n  D --> K[Known limitations]",
+     "video": {
+      "id": "7o_PgOQWqdY",
+      "title": "What is the C4 model?",
+      "channel": "IcePanel",
+      "min": 4
+     },
+     "source": {
+      "title": "Chapter 20: Documentation That Survives Your Absence",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/20-documentation-that-survives.md"
+     }
+    },
+    {
+     "objective": "Support lifecycle phases (discovery, design, handoff, monitoring, iteration)",
+     "title": "Each lifecycle phase feeds the next",
+     "gist": "Discovery, design, handoff, monitoring and iteration each must produce something a later phase actually uses.",
+     "points": [
+      "Real deliverables get consumed later, like eval sets; status decks and history do not.",
+      "Handoff done when new team can run, diagnose and change it without the builders.",
+      "Monitor on a schedule against test cases refreshed from real traffic, gating changes.",
+      "Pinned models retire with at least 60 days notice; plan the migration path.",
+      "Redesign only when a new requirement cannot fit current components; else iterate."
+     ],
+     "tip": "Trap answers trigger changes on a schedule, a vendor release or a user complaint. Correct answers gate change on a refreshed evaluation set.",
+     "diagram": "flowchart LR\n  A[Discovery] -->|baseline, target, owner| B[Design]\n  B -->|ADRs, contracts| C[Handoff]\n  C -->|runbooks, eval set| D[Monitoring]\n  D -->|evidence from real traffic| E[Iteration]\n  E -.->|new requirement| B",
+     "video": {
+      "id": "cvPEiPt7HXo",
+      "title": "Large Language Model Operations (LLMOps) Explained",
+      "channel": "IBM Technology",
+      "min": 6
+     },
+     "source": {
+      "title": "Chapter 3: Sizing, Scoping, and the Feasibility Verdict",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/03-sizing-scoping-feasibility.md"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can run real discovery, brief mixed audiences, agree measurable SLAs, hand off cleanly and gate change on evidence.",
+    "must_know": [
+     "Discovery ends with a written baseline, dated target, binding constraints and a named owner.",
+     "Ask about exceptions and workarounds; probe words like just, only and simply.",
+     "Brief top-down: decision and business impact first, then reasoning, plus the rejected alternatives.",
+     "When evidence contradicts the sponsor, show the decision owner and let them decide.",
+     "Good SLA: a quality number on an agreed eval set, plus what is owed if missed.",
+     "Handoff transfers contracts, decision records, a runnable eval set, runbooks and known limitations.",
+     "Gate changes on a refreshed eval set; pinned models retire with at least 60 days notice."
+    ],
+    "traps": [
+     "Treating prototypes, prompt drafts or model picks as discovery, or blaming a late constraint on the client.",
+     "Tuning temperature or model tier to fix an expectation problem, or just sending reports more often.",
+     "Triggering changes on a schedule, a vendor release or one complaint instead of a refreshed eval."
+    ]
+   }
   },
   {
    "domain": "Claude Models, Prompting & Context Engineering",
@@ -240,7 +1015,141 @@
     "channel": "Google Cloud Tech",
     "min": 10
    },
-   "diagram": "flowchart TB\n  subgraph CW[Context window]\n    SYS[System prompt: role, rules] --> TOOLS[Tool definitions]\n    TOOLS --> DOCS[Retrieved docs, examples]\n    DOCS --> HIST[Conversation history]\n    HIST --> ASK[Current question]\n  end\n  SYS -.->|stable prefix| CACHE[(Prompt cache: cheaper, faster)]\n  TOOLS -.-> CACHE\n  ASK --> M{{Model: Haiku, Sonnet or Opus by cost vs quality}}\n  M --> OUT([Answer])\n  HIST -.->|too long| COMPACT[Summarise, trim, just-in-time retrieval]"
+   "diagram": "flowchart TB\n  subgraph CW[Context window]\n    SYS[System prompt: role, rules] --> TOOLS[Tool definitions]\n    TOOLS --> DOCS[Retrieved docs, examples]\n    DOCS --> HIST[Conversation history]\n    HIST --> ASK[Current question]\n  end\n  SYS -.->|stable prefix| CACHE[(Prompt cache: cheaper, faster)]\n  TOOLS -.-> CACHE\n  ASK --> M{{Model: Haiku, Sonnet or Opus by cost vs quality}}\n  M --> OUT([Answer])\n  HIST -.->|too long| COMPACT[Summarise, trim, just-in-time retrieval]",
+   "notes": [
+    {
+     "objective": "Select appropriate Claude models based on trade-offs",
+     "title": "Pick the model the task needs",
+     "gist": "Choose the cheapest, fastest Claude model that clears a measured quality bar, matching capability to how hard the task really is.",
+     "points": [
+      "Lineup: Fable 5.1 hardest reasoning, Opus 5.5 default, Sonnet 5.5 balance, Haiku 5.5 high-volume.",
+      "Price per MTok in/out: Fable $10/$50, Opus $4/$20, Sonnet $2/$10, Haiku from $0.10/$0.50.",
+      "All four share a 1M-token context, 128K max output, vision and tool use.",
+      "Haiku suits classification, extraction and routing; deeper reasoning there adds cost, not accuracy.",
+      "Justify a tier with evals against an agreed bar, and keep re-measuring after launch."
+     ],
+     "tip": "Wrong answers pick the biggest model because the system is important, or the smallest regardless of fit. The right answer cites measured evals and task difficulty.",
+     "diagram": "flowchart TB\n  A([Start with Opus 5.5]) --> E{Evals clear the bar?}\n  E -->|no| F[Raise effort, then try Fable 5.1]\n  E -->|yes| C{Cost or latency a concern?}\n  C -->|yes| S[Test Sonnet 5.5 or Haiku 5.5]\n  C -->|no| K([Keep it, keep measuring])\n  S --> E\n  F --> E",
+     "video": {
+      "id": "pYax2rupKEY",
+      "title": "How to Choose Large Language Models: A Developer's Guide to LLMs",
+      "channel": "IBM Technology",
+      "min": 7
+     },
+     "source": {
+      "title": "Models overview",
+      "url": "https://docs.claude.com/en/docs/about-claude/models/overview"
+     }
+    },
+    {
+     "objective": "Design system prompts, templates, and guardrails",
+     "title": "System prompts as durable components",
+     "gist": "A system prompt sets Claude's role and rules; write it clearly, structure it with tags, and keep variable inputs in separate slots.",
+     "points": [
+      "Golden rule: if a colleague with little context would be confused, Claude will be too.",
+      "Explain why a rule matters; Claude generalises from the reason, not just the rule.",
+      "Templates: fixed instructions plus tagged slots like `context` and `input`; keep the static part byte-stable.",
+      "Delete contradictory instructions; precedence notes, bold text or lower temperature leave both rules live.",
+      "Guardrails: untrusted content only in tool results, declared untrusted; last-turn prefill returns 400 on 4.6+."
+     ],
+     "tip": "When a rule is ignored, fix its placement and separation or delete the conflicting rule. Repeating it, CAPS emphasis or tweaking temperature is the usual distractor.",
+     "diagram": "flowchart TB\n  R[Role: one line sets the job] --> I[Rules, each with its reason]\n  I --> X[Tagged sections: instructions, context, examples]\n  X --> V[Variable slots filled per request]\n  V --> U[Untrusted data only in tool results]\n  U --> O[Output format spelled out]",
+     "video": null,
+     "source": {
+      "title": "Chapter 8: Prompts as Architecture",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/08-prompts-as-architecture.md"
+     }
+    },
+    {
+     "objective": "Apply prompt engineering techniques (zero-shot, few-shot, chain-of-thought)",
+     "title": "Zero-shot, few-shot and chain-of-thought",
+     "gist": "Start zero-shot, add a few varied examples to lock format, and use thinking for multi-step reasoning.",
+     "points": [
+      "Zero-shot: clear, specific instructions only; test this first with the best model.",
+      "Few-shot: a few relevant, diverse examples in `example` tags steer format, tone and structure.",
+      "Prefer a small set of canonical examples over a long laundry list of edge-case rules.",
+      "Chain-of-thought: on Opus 5.5, Sonnet 5.5 and Fable 5.1, rely on built-in thinking and `effort`.",
+      "Manual CoT in tags is a fallback when thinking is off; those models may decline it."
+     ],
+     "tip": "Questions pair a symptom with a technique: inconsistent format needs examples, weak multi-step reasoning needs thinking or higher effort. Trap: forcing written reasoning on always-thinking models.",
+     "diagram": "flowchart LR\n  A[Clear zero-shot prompt] --> B{Output right?}\n  B -->|yes| Z([Ship, keep running evals])\n  B -->|wrong format or tone| C[Add few-shot examples]\n  B -->|weak reasoning| D[Use thinking, raise effort]\n  C --> B\n  D --> B",
+     "video": {
+      "id": "1c9iyoVIwDs",
+      "title": "4 Methods of Prompt Engineering",
+      "channel": "IBM Technology",
+      "min": 13
+     },
+     "source": {
+      "title": "Prompting best practices",
+      "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+     }
+    },
+    {
+     "objective": "Optimize context windows and manage token usage",
+     "title": "Treat context as a finite budget",
+     "gist": "Everything you send uses the window and accuracy drops as it fills, so send the smallest set of high-signal tokens.",
+     "points": [
+      "Counts toward window: system prompt, messages, tool results, tool definitions, output and thinking.",
+      "Cached prefixes still occupy the window; caching changes the price, not the size.",
+      "Context rot: recall degrades as tokens grow, so cut volume rather than reorder it.",
+      "Long runs: compaction summarises, context editing clears old tool results, subagents return short summaries.",
+      "Count with the free `count_tokens` API; recount for Claude 4.7+, whose tokenizer yields about 30% more."
+     ],
+     "tip": "If cost and mid-document recall both degrade, the cause is volume: retrieve or trim per request. Reordering, emphasis or a bigger window are the trap answers.",
+     "diagram": "flowchart LR\n  A{Context near the limit?} -->|long chat| B[Server-side compaction: summarise]\n  A -->|heavy tool use| C[Context editing: clear old results]\n  A -->|big research task| D[Subagents return short summaries]\n  A -->|large reference docs| E[Load just in time by reference]\n  B --> F([Smaller, high-signal context])\n  C --> F\n  D --> F\n  E --> F",
+     "video": {
+      "id": "-QVoIxEpFkM",
+      "title": "What is a Context Window? Unlocking LLM Secrets",
+      "channel": "IBM Technology",
+      "min": 12
+     },
+     "source": {
+      "title": "Context windows",
+      "url": "https://docs.claude.com/en/docs/build-with-claude/context-windows"
+     }
+    },
+    {
+     "objective": "Implement prompt reuse strategies (caching, modular prompts, Skills)",
+     "title": "Reuse prompts: caching, modules, Skills",
+     "gist": "Put stable content first and cache it, build prompts from shared versioned pieces, and package procedures as Skills that load on demand.",
+     "points": [
+      "Cache order is tools, system, messages; a change invalidates that level and everything after.",
+      "Prices: 5-min write 1.25x, 1-hour write 2x, read 0.1x base input, 0.05x on Opus/Sonnet 5.5.",
+      "Breakpoint goes on the last identical block; a timestamp or ID before it kills every hit.",
+      "Minimum cacheable prefix: 512 tokens on the current lineup; up to 4 free breakpoints.",
+      "Skills: about 100 tokens of metadata always loaded, body when triggered; pin versions in production."
+     ],
+     "tip": "Classic item: a large repeated prefix plus a short varying message means static content first, then caching. Traps: truncating, moving it to few-shot, or caching output-heavy workloads.",
+     "diagram": "flowchart LR\n  T[Tools] --> S[System prompt + policy docs]\n  S --> BP{{Breakpoint: cache up to here}}\n  BP --> U[Varying user message]\n  BP -.->|next request| H[Cache hit: cheaper and faster]\n  U --> F([Only the new tail costs full price])",
+     "video": {
+      "id": "u57EnkQaUTY",
+      "title": "What is Prompt Caching? Optimize LLM Latency with AI Transformers",
+      "channel": "IBM Technology",
+      "min": 9
+     },
+     "source": {
+      "title": "Prompt caching",
+      "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-caching"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can pick the right model tier, write durable prompts, match a prompting technique to a symptom and manage context and caching.",
+    "must_know": [
+     "Pick the cheapest tier that clears a measured eval bar; Haiku suits classification, extraction and routing.",
+     "Structure system prompts with tags, explain why each rule matters, keep the static part byte-stable.",
+     "Inconsistent format needs a few varied examples; weak multi-step reasoning needs thinking or higher `effort`.",
+     "Everything sent counts toward the window, including tool definitions; cached prefixes still occupy it.",
+     "Recall drops as context grows: cut volume; use compaction, context editing or subagents on long runs.",
+     "Cache order is tools, system, messages; any change invalidates that level and everything after.",
+     "Breakpoint goes on the last identical block; a timestamp or ID before it kills hits."
+    ],
+    "traps": [
+     "Choosing the biggest model because the system is important, instead of citing measured evals.",
+     "Repeating a rule, CAPS emphasis or lower temperature when the fix is deleting the conflicting rule.",
+     "Reordering content or buying a bigger window when the real cause is too much volume in context."
+    ]
+   }
   },
   {
    "domain": "Developer Productivity & Operational Enablement",
@@ -258,7 +1167,93 @@
     "channel": "Sajjaad Khader",
     "min": 9
    },
-   "diagram": "flowchart LR\n  DEV([Developer]) --> CC[Claude Code CLI]\n  CC --> MD[CLAUDE.md project memory]\n  CC --> SK[Skills + slash commands]\n  CC --> HK[Hooks: lint, test, block]\n  CC --> MCP[MCP servers]\n  CC --> SUB[Subagents]\n  CC --> REPO[(Repo: edit, run, test)]\n  REPO --> CI[CI: headless claude -p]\n  SET[settings.json permissions] -.-> CC"
+   "diagram": "flowchart LR\n  DEV([Developer]) --> CC[Claude Code CLI]\n  CC --> MD[CLAUDE.md project memory]\n  CC --> SK[Skills + slash commands]\n  CC --> HK[Hooks: lint, test, block]\n  CC --> MCP[MCP servers]\n  CC --> SUB[Subagents]\n  CC --> REPO[(Repo: edit, run, test)]\n  REPO --> CI[CI: headless claude -p]\n  SET[settings.json permissions] -.-> CC",
+   "notes": [
+    {
+     "objective": "Configure Claude tools and environments for teams (e.g., Claude Code)",
+     "title": "Put each setting at the right layer",
+     "gist": "Commit team settings with the repo, keep personal tweaks local, and use managed settings for rules nobody may override.",
+     "points": [
+      "Precedence, high to low: managed, `--settings`, `.claude/settings.local.json`, `.claude/settings.json`, `~/.claude/settings.json`.",
+      "Commit `.claude/settings.json` so every clone gets the same permissions, hooks and plugins.",
+      "List keys like `permissions.allow` merge across files, so users can add but not remove managed entries.",
+      "CLAUDE.md is context, not enforcement; a `PreToolUse` hook blocks actions, even in bypass mode.",
+      "Share project Skills in `.claude/skills/`; personal ones live in `~/.claude/skills/`."
+     ],
+     "tip": "Separate reach from non-overridability: committing a file reaches everyone, but only managed settings stop people turning a rule off. A memory-file rule is never a guarantee.",
+     "diagram": "flowchart TB\n  M[Managed: org policy, cannot override] -->|beats| C[CLI --settings: this session]\n  C -->|beats| L[Local: settings.local.json, just me]\n  L -->|beats| P[Project: settings.json, committed for team]\n  P -->|beats| U[User: home settings, all my projects]",
+     "video": {
+      "id": "IkaPHiMDazM",
+      "title": "Hooks in Claude Code",
+      "channel": "Claude",
+      "min": 3
+     },
+     "source": {
+      "title": "Settings files and precedence - Claude Code Docs",
+      "url": "https://docs.claude.com/en/docs/claude-code/settings"
+     }
+    },
+    {
+     "objective": "Improve developer workflows using AI-assisted tooling",
+     "title": "Wire Claude Code into daily workflow",
+     "gist": "Give Claude shared project context, reusable Skills and automation in CI, while people keep the final say on what ships.",
+     "points": [
+      "Commit a CLAUDE.md so project context loads every session, without anyone re-explaining it.",
+      "Same engine across terminal, IDE, desktop and web; CLAUDE.md, settings and MCP servers carry over.",
+      "Automate PR review and issue triage with GitHub Actions or GitLab CI/CD.",
+      "Define a subagent only for recurring work that needs non-default prompts, tools or model.",
+      "Measure against a baseline; accepted lines of code undercount and are an input, not outcome."
+     ],
+     "tip": "Machine review should post findings as line comments while branch protection and human approval stay. Traps: granting merge rights or counting sessions as productivity.",
+     "diagram": "flowchart LR\n  D([Developer]) --> CC[Claude Code with CLAUDE.md + Skills]\n  CC --> PR[Pull request]\n  PR --> GA[GitHub Actions: Claude review]\n  GA --> LC[Findings as line comments]\n  LC --> H{Human approves?}\n  H -->|yes| MG([Merge])\n  H -->|no| CC",
+     "video": {
+      "id": "FjHtZnjNEBU",
+      "title": "Claude Code + GitHub WORKFLOW for Complex Apps",
+      "channel": "Greg Baugues",
+      "min": 19
+     },
+     "source": {
+      "title": "Overview - Claude Code Docs",
+      "url": "https://docs.claude.com/en/docs/claude-code/overview"
+     }
+    },
+    {
+     "objective": "Support debugging and operational issue resolution",
+     "title": "Observe first, then change one thing",
+     "gist": "Before touching config, check what actually loaded and gather evidence that separates the likely causes, keeping the broken state intact.",
+     "points": [
+      "`/status` names active settings sources; `/hooks` lists hooks by event; `Ctrl+O` shows hook outcomes.",
+      "Hook never fires? Matchers are case-sensitive; a misspelled tool name silently matches nothing.",
+      "Hook JSON ignored? Shell profile output before the JSON, or fields outside `hookSpecificOutput`.",
+      "Access denied: tell a policy block from a misconfigured rule before widening any permission.",
+      "Truncated answer with no HTTP error: check `stop_reason`, such as `model_context_window_exceeded`."
+     ],
+     "tip": "Pick the cheapest observation that tells hypotheses apart. Wrong answers change settings, widen access, restart or escalate first, destroying the evidence you needed.",
+     "diagram": "flowchart LR\n  S([Symptom]) --> O[Check what loaded: /status, /hooks]\n  O --> H[List hypotheses by layer]\n  H --> T[Cheapest test that separates them]\n  T --> F{Faulty layer found?}\n  F -->|no| T\n  F -->|yes| C[Change one thing]\n  C --> V([Verify and record the fix])",
+     "video": null,
+     "source": {
+      "title": "Chapter 21: Team Enablement and the Debugging Loop",
+      "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/21-team-enablement-and-debugging.md"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can roll Claude Code out to a team with the right settings layers, CI automation and an evidence-first debugging habit.",
+    "must_know": [
+     "Precedence high to low: managed, `--settings`, `settings.local.json`, project `settings.json`, user settings.",
+     "Commit `.claude/settings.json` and CLAUDE.md so every clone shares permissions, hooks and project context.",
+     "Only managed settings stop people turning a rule off; list keys like `permissions.allow` merge.",
+     "CLAUDE.md is context, not enforcement; a `PreToolUse` hook blocks actions, even in bypass mode.",
+     "Automate PR review and triage in CI as line comments; branch protection and human approval stay.",
+     "Observe first: `/status` shows settings sources, `/hooks` lists hooks, `Ctrl+O` shows hook outcomes.",
+     "Hook matchers are case-sensitive; for a truncated answer check `stop_reason`, not HTTP status."
+    ],
+    "traps": [
+     "Relying on a CLAUDE.md rule as a guarantee, or assuming a committed file cannot be overridden.",
+     "Changing settings, widening access or restarting before observing, destroying the evidence you needed.",
+     "Granting the review bot merge rights, or counting sessions and accepted lines as productivity."
+    ]
+   }
   }
  ]
 }

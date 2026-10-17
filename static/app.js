@@ -103,33 +103,85 @@
       det.innerHTML = `<summary><span><span class="dn">${esc(d.domain)}</span>${d.weight ? `<span class="dw">${d.weight}%</span>` : ""}</span>
         <span class="cov">${c ? `<b>${c.right}</b> right first time, ${c.seen} of ${c.total} seen` : "coverage by source bank"}</span>
         <span class="bar"><i style="width:${pct}%"></i></span></summary>`;
-      const ul = document.createElement("ul"); ul.className = "links";
-      d.links.forEach(l => ul.append(link(l)));
-      det.append(topicMedia(d), ul); box.append(det);
+      if (d.summary) det.append(summaryBox(d.summary));
+      det.append(topicMedia(d));
+      if (d.notes?.length) det.append(notesBlock(d));           // own notes instead of links out to the vendor docs
+      else {
+        const ul = document.createElement("ul"); ul.className = "links";
+        d.links.forEach(l => ul.append(link(l)));
+        det.append(ul);
+      }
+      det.addEventListener("toggle", () => det.open && drawPending(det));   // diagrams are drawn when a domain is opened
+      if (det.open) drawPending(det);
+      box.append(det);
     });
+    const focus = state.studyFocus; state.studyFocus = null;     // "📖 Notes" from a question's Topic panel
+    const target = focus && $$("#study-domains .domain").find(x => $(".dn", x).textContent === focus);
+    if (target) { target.open = true; drawPending(target); setTimeout(() => target.scrollIntoView({ block: "start" }), 50); }
+  }
+
+  // ── Study notes: gist, a few points, exam tip, diagram, optional video, source (study/<exam>.json domains[].notes) ──
+  const rich = (s) => esc(s || "").replace(/`([^`]+)`/g, "<code>$1</code>");
+  function summaryBox(s) {
+    const el = document.createElement("section"); el.className = "summary";
+    el.innerHTML = `<h4>📌 What you need to know</h4>
+      ${s.tests ? `<p class="tests">${rich(s.tests)}</p>` : ""}
+      <ul class="must">${(s.must_know || []).map(x => `<li>${rich(x)}</li>`).join("")}</ul>
+      ${(s.traps || []).length ? `<p class="traps-h">⚠️ Common traps</p><ul class="traps">${s.traps.map(x => `<li>${rich(x)}</li>`).join("")}</ul>` : ""}`;
+    return el;
+  }
+  function notesBlock(d) {
+    const wrap = document.createElement("div"); wrap.className = "notes";
+    const toc = document.createElement("nav"); toc.className = "note-toc"; toc.setAttribute("aria-label", `${d.domain} notes`);
+    d.notes.forEach((n, i) => {
+      const a = document.createElement("a"); a.href = "#"; a.textContent = `${i + 1}. ${n.title}`;
+      a.onclick = (ev) => { ev.preventDefault(); wrap.children[i + 1].scrollIntoView({ behavior: "smooth", block: "start" }); };
+      toc.append(a);
+    });
+    wrap.append(toc, ...d.notes.map(noteCard));
+    return wrap;
+  }
+  function noteCard(n, i) {
+    const el = document.createElement("article"); el.className = "note";
+    const text = document.createElement("div"); text.className = "note-text";
+    text.innerHTML = `<h4><span class="nn">${i + 1}</span>${esc(n.title)}</h4>
+      ${n.objective ? `<p class="obj">${esc(n.objective)}</p>` : ""}
+      <p class="gist">${rich(n.gist)}</p>
+      <ul>${(n.points || []).map(p => `<li>${rich(p)}</li>`).join("")}</ul>
+      ${n.tip ? `<p class="tip"><b>🎯 Exam tip</b> ${rich(n.tip)}</p>` : ""}
+      ${n.source?.url ? `<p class="src">Source: <a href="${esc(n.source.url)}" target="_blank" rel="noopener">${esc(n.source.title || "page")}</a></p>` : ""}`;
+    const media = document.createElement("div"); media.className = "note-media";
+    if (n.diagram) media.append(lazyDiagram(n.diagram));
+    if (n.video) media.append(videoFig(n.video));
+    el.append(text, media);
+    return el;
   }
 
   // ── Topic media: a short video + a concept diagram per domain (study/<exam>.json) ──
   function topicMedia(d) {
     const box = document.createElement("div"); box.className = "topic";
-    const v = d.video;
-    if (v) {
-      const fig = document.createElement("figure"); fig.className = "topic-video";
-      fig.innerHTML = `<button type="button" class="yt" aria-label="Play ${esc(v.title)}">
-          <img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy"><span class="play">▶</span></button>
-        <figcaption><a href="https://youtu.be/${esc(v.id)}" target="_blank" rel="noopener">${esc(v.title)}</a>
-          <span class="muted small">${esc(v.channel || "")}${v.min ? ` · ${v.min} min` : ""}</span></figcaption>`;
-      $(".yt", fig).onclick = (ev) => ev.currentTarget.outerHTML =     // click-to-load: no YouTube iframe until asked
-        `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&rel=0" title="${esc(v.title)}"
-          allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
-      box.append(fig);
-    }
-    if (d.diagram) {
-      const dia = document.createElement("div"); dia.className = "topic-diagram"; dia.textContent = "Drawing the diagram…";
-      box.append(dia);
-      drawDiagram(dia, d.diagram);
-    }
+    if (d.video) box.append(videoFig(d.video));
+    if (d.diagram) box.append(lazyDiagram(d.diagram));
     return box;
+  }
+  function videoFig(v) {
+    const fig = document.createElement("figure"); fig.className = "topic-video";
+    fig.innerHTML = `<button type="button" class="yt" aria-label="Play ${esc(v.title)}">
+        <img src="https://i.ytimg.com/vi/${esc(v.id)}/hqdefault.jpg" alt="" loading="lazy"><span class="play">▶</span></button>
+      <figcaption><a href="https://youtu.be/${esc(v.id)}" target="_blank" rel="noopener">${esc(v.title)}</a>
+        <span class="muted small">${esc(v.channel || "")}${v.min ? ` · ${v.min} min` : ""}</span></figcaption>`;
+    $(".yt", fig).onclick = (ev) => ev.currentTarget.outerHTML =     // click-to-load: no YouTube iframe until asked
+      `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&rel=0" title="${esc(v.title)}"
+        allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+    return fig;
+  }
+  function lazyDiagram(src) {
+    const dia = document.createElement("div"); dia.className = "topic-diagram"; dia.textContent = "Drawing the diagram…";
+    dia.dataset.src = src;
+    return dia;
+  }
+  function drawPending(root) {
+    $$(".topic-diagram[data-src]", root).forEach(dia => { const src = dia.dataset.src; delete dia.dataset.src; drawDiagram(dia, src); });
   }
 
   let mermaidP = null, mmdN = 0;
@@ -180,8 +232,18 @@
     const d = await topicFor($(".dom", card)?.textContent, text ?? `${$(".qtext", card)?.textContent} ${$(".options", card)?.textContent || ""}`);
     if (!d || !(d.video || d.diagram) || $(".topic-panel", card)) return;
     const det = document.createElement("details"); det.className = "topic-panel";
-    det.innerHTML = `<summary>🎬 Topic: ${esc(d.domain)} · video + diagram</summary>`;
-    det.addEventListener("toggle", () => { if (det.open && !$(".topic", det)) det.append(topicMedia(d)); });
+    det.innerHTML = `<summary>🎬 Topic: ${esc(d.domain)} · ${d.summary ? "key points + " : ""}video + diagram${d.notes?.length ? " + notes" : ""}</summary>`;
+    det.addEventListener("toggle", () => {
+      if (!det.open || $(".topic", det)) return;
+      if (d.summary) det.append(summaryBox(d.summary));
+      det.append(topicMedia(d));
+      if (d.notes?.length) {
+        const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = `📖 Read the ${d.notes.length} study notes`;
+        b.onclick = () => { state.studyFocus = d.domain; go("study"); };
+        det.append(b);
+      }
+      drawPending(det);
+    });
     card.append(det);
   }
   function studyCard() { go("quiz"); setTimeout(() => act("study"), 50); }

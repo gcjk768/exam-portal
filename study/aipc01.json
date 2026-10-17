@@ -131,7 +131,184 @@
     "hipaa",
     "json",
     "dataset"
-   ]
+   ],
+   "notes": [
+    {
+     "objective": "Task 1.2: Select and configure FMs.",
+     "title": "Choose and swap models with Converse",
+     "gist": "Pick the model on evidence, then call it through one API so you can change providers without rewriting code.",
+     "points": [
+      "Compare models on task quality, latency, price per token, context window and Region availability.",
+      "`Converse` and `ConverseStream` use one request shape for every model that supports messages.",
+      "Model-only settings go in `additionalModelRequestFields`; tools in `toolConfig`; guardrails in `guardrailConfig`.",
+      "Keep the model ID in AppConfig or a parameter, not in code, to switch without redeploying.",
+      "`Converse` needs `bedrock:InvokeModel`; `ConverseStream` needs `bedrock:InvokeModelWithResponseStream`."
+     ],
+     "tip": "Switch providers with no code change points to Converse plus external config such as AppConfig. Trap: writing per-provider InvokeModel payloads or redeploying for each model swap.",
+     "diagram": "flowchart LR\n  A([App]) --> B[API Gateway + Lambda]\n  C[(AppConfig: model ID)] -.-> B\n  B --> D[Converse API]\n  D --> E{{Claude}}\n  D --> F{{Nova}}\n  D --> G{{Llama}}",
+     "video": {
+      "id": "wNyih2j0IbE",
+      "title": "AI Conversations Made Simple: Overview of Amazon Bedrock Converse API",
+      "channel": "AWS Developers",
+      "min": 19
+     },
+     "source": {
+      "title": "Inference using Converse API - Amazon Bedrock",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html"
+     }
+    },
+    {
+     "objective": "Task 1.2: Select and configure FMs.",
+     "title": "RAG, fine-tuning or distillation?",
+     "gist": "Use RAG for fresh or private facts, fine-tuning to change behaviour, and distillation to get big-model quality cheaper.",
+     "points": [
+      "RAG needs no training; keep answers current by syncing the knowledge base.",
+      "Supervised fine-tuning needs labelled prompt-response pairs; reinforcement fine-tuning uses reward functions in Lambda.",
+      "Distillation: a large teacher answers your prompts, then a smaller student is fine-tuned on them.",
+      "Training is billed per token times epochs, plus monthly storage for each custom model.",
+      "Serve custom models with Provisioned Throughput or an on-demand custom model deployment."
+     ],
+     "tip": "Facts that change weekly mean RAG, not fine-tuning. Cheaper and faster with the same quality on a narrow task means distillation. Trap: retraining just to add new documents.",
+     "diagram": "flowchart TB\n  Q{What must change?} -->|facts, private data| R[RAG with a knowledge base]\n  Q -->|tone, format, task skill| F[Supervised fine-tuning]\n  Q -->|cost and latency| D[Distillation: teacher to student]\n  Q -->|only instructions| P[Prompt engineering first]\n  F --> S[Serve: PT or on-demand deployment]\n  D --> S",
+     "video": {
+      "id": "-W2JdSl1v48",
+      "title": "Is Fine-Tuning Still Needed? LLMs, RAG, & LoRA",
+      "channel": "IBM Technology",
+      "min": 10
+     },
+     "source": {
+      "title": "Customize your model to improve its performance for your use case",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/custom-models.html"
+     }
+    },
+    {
+     "objective": "Task 1.3: Implement data validation and processing pipelines for FM consumption.",
+     "title": "Prepare messy data before the model",
+     "gist": "Validate and convert documents, images, audio and video into clean text or JSON before they reach a model or index.",
+     "points": [
+      "Bedrock Data Automation turns documents, images, audio and video into structured output through one API.",
+      "BDA adds confidence scores and visual grounding so you can check what it extracted.",
+      "Amazon Transcribe turns speech into text; Comprehend extracts entities and detects PII.",
+      "Check quality first with AWS Glue Data Quality rules or Lambda, and alarm on failures.",
+      "Format requests to the model spec: JSON bodies, and `messages` with user and assistant roles."
+     ],
+     "tip": "Invoices, call recordings and video in one pipeline points to Bedrock Data Automation. Trap: stitching together custom OCR, several models and Lambda glue when one managed service fits.",
+     "diagram": "flowchart LR\n  S[(S3 raw files)] --> V[Validate: Glue Data Quality]\n  V --> B[Bedrock Data Automation]\n  V --> T[Transcribe for audio]\n  B --> J[Structured JSON]\n  T --> J\n  J --> K[(Knowledge base or FM call)]",
+     "video": null,
+     "source": {
+      "title": "Transform unstructured data into meaningful insights using Amazon Bedrock Data Automation",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/bda.html"
+     }
+    },
+    {
+     "objective": "Task 1.4: Design and implement vector store solutions.",
+     "title": "Knowledge Bases and vector stores",
+     "gist": "A knowledge base splits your files into chunks, turns them into vectors, stores them, and fetches the closest chunks per question.",
+     "points": [
+      "Managed knowledge base runs ingestion, storage and retrieval; customer-managed lets you pick the vector store.",
+      "Stores: OpenSearch Serverless or Managed, Aurora pgvector, Neptune Analytics, S3 Vectors, Pinecone, Redis, MongoDB Atlas.",
+      "Index dimensions must match the embedding model, e.g. Titan Text V2: 1,024, 512 or 256.",
+      "Binary vectors save storage but lose precision; only OpenSearch stores support them.",
+      "Sync is incremental: only added, changed or deleted files are re-ingested via `StartIngestionJob`."
+     ],
+     "tip": "Stale answers after a document change usually mean the data source was not re-synced. Trap: fine-tuning the model or rebuilding the whole index from scratch.",
+     "diagram": "flowchart LR\n  S[(S3 and other connectors)] --> P[Parse + chunk]\n  P --> E[Embedding model]\n  E --> V[(Vector store)]\n  Q([Question]) --> E2[Embed the query]\n  E2 --> V\n  V --> R[Top chunks + citations]\n  R --> M{{FM writes the answer}}",
+     "video": null,
+     "source": {
+      "title": "Retrieve data and generate AI responses with Amazon Bedrock Knowledge Bases",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html"
+     }
+    },
+    {
+     "objective": "Task 1.5: Design retrieval mechanisms for FM augmentation.",
+     "title": "Pick the right chunking strategy",
+     "gist": "How you cut documents decides what search can find: chunks too big bury the answer, too small lose context.",
+     "points": [
+      "Default: about 300 tokens per chunk, keeping whole sentences.",
+      "Fixed-size: you set maximum tokens and an overlap percentage between neighbouring chunks.",
+      "Hierarchical: search small child chunks, then return their larger parent for context.",
+      "Semantic: splits where meaning shifts; costs extra because it uses a foundation model.",
+      "No chunking: one chunk per file; you lose page-number citations and page filtering."
+     ],
+     "tip": "Precise matches but answers lack surrounding context points to hierarchical chunking. Trap: semantic chunking when cost is the priority, or no chunking for long files.",
+     "diagram": "flowchart TB\n  D[Document] --> C{Content shape?}\n  C -->|uniform prose| F[Fixed-size + overlap]\n  C -->|long structured manuals| H[Hierarchical parent/child]\n  C -->|topics shift often| S[Semantic chunking]\n  C -->|already split small| N[No chunking]",
+     "video": {
+      "id": "pIGRwMjhMaQ",
+      "title": "Chunking Strategies in RAG: Optimising Data for Advanced AI Responses",
+      "channel": "Mervin Praison",
+      "min": 14
+     },
+     "source": {
+      "title": "How content chunking works for knowledge bases",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/kb-chunking.html"
+     }
+    },
+    {
+     "objective": "Task 1.5: Design retrieval mechanisms for FM augmentation.",
+     "title": "Make retrieval more relevant",
+     "gist": "When RAG pulls the wrong chunks, tune the search: mix keyword and vector search, filter, rerank, and split complex questions.",
+     "points": [
+      "Hybrid search mixes semantic and keyword matching; helps with product codes and exact names.",
+      "Hybrid needs a store with a filterable text field: RDS, OpenSearch Serverless or MongoDB.",
+      "Metadata filters narrow results by attributes such as department, date or document type.",
+      "A reranker model rescores retrieved chunks and overrides the default ranking; text only.",
+      "Query decomposition breaks a multi-part question into sub-queries before retrieving."
+     ],
+     "tip": "Exact part numbers missed by vector search point to hybrid search; one team's documents only points to metadata filters. Trap: a bigger model instead of fixing retrieval.",
+     "diagram": "flowchart LR\n  Q([Complex question]) --> D[Query decomposition]\n  D --> H[Hybrid search: vector + keyword]\n  F[Metadata filter] -.-> H\n  H --> R[Reranker model]\n  R --> K[Top-k chunks]\n  K --> M{{FM answer}}",
+     "video": {
+      "id": "KsICvZxAyxM",
+      "title": "How to fix RAG",
+      "channel": "Rohini Gaonkar and AWS Developers",
+      "min": 17
+     },
+     "source": {
+      "title": "Configure and customize queries and response generation",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/kb-test-config.html"
+     }
+    },
+    {
+     "objective": "Task 1.6: Implement prompt engineering strategies and governance for FM interactions.",
+     "title": "Prompt Management and Flows",
+     "gist": "Store prompts as versioned templates with variables, then chain prompts, knowledge bases and code into a visual workflow.",
+     "points": [
+      "A managed prompt holds the message, model and inference settings, plus variables filled at runtime.",
+      "Variants let you compare wording or models side by side and keep the best one.",
+      "Flows link prompt, knowledge base, Lambda and condition nodes; versions are immutable snapshots.",
+      "Apps call `InvokeFlow` on an alias; repoint the alias to roll forward or back.",
+      "With a managed prompt in Converse you cannot also send `system`, `inferenceConfig` or `toolConfig`."
+     ],
+     "tip": "Reusable, versioned, reviewed prompts across teams means Prompt Management; chained steps with branching and little code means Flows. Trap: prompts hardcoded inside Lambda functions.",
+     "diagram": "flowchart LR\n  P[Prompt template + variables] --> V[Test variants]\n  V --> S[Save version]\n  S --> F[Flow: prompt node]\n  F --> C{Condition node}\n  C -->|needs facts| K[(Knowledge base node)]\n  C -->|else| L[Lambda node]",
+     "video": {
+      "id": "_Bmk6peAHao",
+      "title": "Demo - Amazon Bedrock Prompt Flows",
+      "channel": "Amazon Web Services",
+      "min": 14
+     },
+     "source": {
+      "title": "Construct and store reusable prompts with Prompt management in Amazon Bedrock",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-management.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can pick a model, feed it clean data, build a RAG pipeline that retrieves the right chunks, and manage prompts like code.",
+    "must_know": [
+     "Converse gives one request shape for all message models; keep the model ID in config.",
+     "RAG for changing or private facts; fine-tuning for behaviour; distillation for cheaper, faster.",
+     "Custom models are served by Provisioned Throughput or an on-demand custom model deployment.",
+     "Knowledge base sync is incremental: only added, changed or deleted files are re-ingested.",
+     "Default chunking is about 300 tokens; hierarchical returns parent chunks; semantic costs extra.",
+     "Hybrid search, metadata filters, rerankers and query decomposition fix poor retrieval.",
+     "Prompt Management stores versioned templates with variables; Flows chain nodes and deploy via aliases."
+    ],
+    "traps": [
+     "Fine-tuning to add new documents, when syncing a knowledge base is the fix.",
+     "Blaming or swapping the model when retrieval returns the wrong chunks.",
+     "Hardcoding prompts and model IDs in Lambda instead of managed, versioned config."
+    ]
+   }
   },
   {
    "domain": "Implementation and integration",
@@ -186,7 +363,184 @@
     "service combination",
     "architect",
     "pattern"
-   ]
+   ],
+   "notes": [
+    {
+     "objective": "Task 2.1: Implement agentic AI solutions and tool integrations.",
+     "title": "Bedrock Agents and action groups",
+     "gist": "An agent uses a model to plan steps, calls your APIs through action groups, and looks things up in knowledge bases.",
+     "points": [
+      "Action group: OpenAPI schema or function details, executed by Lambda or returned to your app.",
+      "Orchestration loop: rationale, pick action or knowledge base, observe the result, repeat until done.",
+      "Four editable prompt templates: pre-processing, orchestration, knowledge base response, post-processing.",
+      "Test on alias `TSTALIASID`; production calls an alias that points to a numbered version.",
+      "Agents Classic is closed to new customers; AWS points new builds to AgentCore."
+     ],
+     "tip": "Agent must create orders in our system means an action group with Lambda; answer from manuals means a knowledge base. Trap: production calling the test alias.",
+     "diagram": "flowchart LR\n  U([User]) --> A[Agent alias]\n  A -->|plan| M{{Foundation model}}\n  A --> G[Action group: OpenAPI]\n  G --> L[Lambda]\n  L --> S[(Order system)]\n  A --> K[(Knowledge base)]\n  A --> T[Trace: every step]",
+     "video": {
+      "id": "2L_XE6g3atI",
+      "title": "Agents Tools & Function Calling with Amazon Bedrock (How-to)",
+      "channel": "AWS Developers",
+      "min": 19
+     },
+     "source": {
+      "title": "How Amazon Bedrock Agents works",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/agents-how.html"
+     }
+    },
+    {
+     "objective": "Task 2.1: Implement agentic AI solutions and tool integrations.",
+     "title": "AgentCore: run agents in production",
+     "gist": "AgentCore is a set of managed building blocks for hosting, connecting, securing and watching agents built with any framework or model.",
+     "points": [
+      "Runtime: serverless hosting with true session isolation and support for long-running async agents.",
+      "Memory: short-term for multi-turn chats, long-term that persists across sessions.",
+      "Gateway: turns APIs and Lambda functions into MCP tools; Identity plugs into Cognito, Okta, Entra ID.",
+      "Policy checks every tool call against rules; Observability emits OpenTelemetry traces.",
+      "Code Interpreter and Browser give agents sandboxed code runs and managed web sessions."
+     ],
+     "tip": "Take a LangGraph or Strands agent to production with isolation and memory means AgentCore Runtime plus Memory. Trap: hand-building ECS hosting and a DynamoDB memory layer.",
+     "diagram": "flowchart LR\n  F[Any framework: Strands, LangGraph] --> R[AgentCore Runtime]\n  R --> M[(Memory)]\n  R --> G[Gateway: MCP tools]\n  G --> L[Lambda, APIs, SaaS]\n  I[Identity] -.-> G\n  P[Policy] -.-> G\n  R --> O[Observability: OTEL traces]",
+     "video": {
+      "id": "usFIb9aEd1U",
+      "title": "Amazon Bedrock AgentCore: Deploy & Operate AI Agents in Minutes",
+      "channel": "Amazon Web Services",
+      "min": 6
+     },
+     "source": {
+      "title": "Overview - Amazon Bedrock AgentCore",
+      "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html"
+     }
+    },
+    {
+     "objective": "Task 2.1: Implement agentic AI solutions and tool integrations.",
+     "title": "Strands Agents and MCP tools",
+     "gist": "Strands is the open-source agent SDK from AWS: give it a model, a prompt and tools, and the model drives the loop.",
+     "points": [
+      "Open source, Python and TypeScript; works with Bedrock and other model providers.",
+      "Tools come from your own functions or from any MCP server through an MCP client.",
+      "Multi-agent patterns let specialist agents share a larger task.",
+      "Deploys to AgentCore, Lambda, Fargate, EKS or EC2, with metrics, traces and logs.",
+      "MCP servers: Lambda for light stateless tools, ECS for heavy or long-running tools."
+     ],
+     "tip": "A standard way for agents to reach many tools means MCP. Trap: a custom integration per tool, or putting a heavy, stateful MCP server on Lambda.",
+     "diagram": "flowchart LR\n  U([Task]) --> A[Strands agent loop]\n  A -->|think| M{{Bedrock model}}\n  M -->|pick tool| T[Tool call]\n  T --> P[Python tool]\n  T --> C[MCP client]\n  C --> S1[MCP server on Lambda]\n  C --> S2[MCP server on ECS]\n  T -->|result| A",
+     "video": {
+      "id": "TD2ihEBkdkY",
+      "title": "Building Intelligent Agents with Strands: A Hands-On Guide",
+      "channel": "AWS Developers",
+      "min": 10
+     },
+     "source": {
+      "title": "Strands Agents",
+      "url": "https://strandsagents.com/"
+     }
+    },
+    {
+     "objective": "Task 2.1: Implement agentic AI solutions and tool integrations.",
+     "title": "Safe agent workflows with Step Functions",
+     "gist": "Wrap model and agent steps in a workflow that sets limits, retries, timeouts and human approval before risky actions.",
+     "points": [
+      "Step Functions calls Bedrock `InvokeModel` directly, with no Lambda glue needed.",
+      "Cap iterations or set stop conditions so a reasoning loop cannot run forever.",
+      "Human review: pause on a callback task token until a person approves.",
+      "Circuit breaker: after repeated failures, stop calling the model and serve a fallback.",
+      "IAM roles limit which tools and resources each step can reach."
+     ],
+     "tip": "Refunds over a limit need a person to approve means Step Functions with a human approval callback. Trap: trusting the system prompt alone to prevent risky actions.",
+     "diagram": "flowchart LR\n  S([Request]) --> M[Bedrock InvokeModel step]\n  M --> C{Risky action?}\n  C -->|no| A[Run action]\n  C -->|yes| H[Wait for human approval]\n  H -->|approved| A\n  H -->|rejected| R[Stop and notify]\n  M -.->|repeated errors| B[Circuit breaker: fallback]",
+     "video": {
+      "id": "SC3pHo-CycI",
+      "title": "AWS re:Invent 2025 - Implementing Human-in-the-Loop Controls for Multi-Agent AI Systems",
+      "channel": "AWS Events",
+      "min": 17
+     },
+     "source": {
+      "title": "Build generative AI apps using AWS Step Functions and Amazon Bedrock",
+      "url": "https://aws.amazon.com/blogs/aws/build-generative-ai-apps-using-aws-step-functions-and-amazon-bedrock/"
+     }
+    },
+    {
+     "objective": "Task 2.4: Implement FM API integrations.",
+     "title": "Stream responses in real time",
+     "gist": "Send tokens to the user as they are generated, so text appears at once and long answers do not time out.",
+     "points": [
+      "`ConverseStream` and `InvokeModelWithResponseStream` return tokens as generated; plain calls wait for all.",
+      "Streaming also avoids client read timeouts on long outputs.",
+      "Push chunks to browsers over API Gateway WebSockets or server-sent events.",
+      "Watch the `TimeToFirstToken` metric for how fast replies feel.",
+      "Streaming needs the `bedrock:InvokeModelWithResponseStream` permission, separate from `InvokeModel`."
+     ],
+     "tip": "Users wait too long before seeing anything means streaming. Trap: batch inference, caching or a bigger model when the real problem is time to first token.",
+     "diagram": "flowchart LR\n  U([Browser]) -->|WebSocket| G[API Gateway]\n  G --> L[Lambda]\n  L --> B[ConverseStream]\n  B -->|token chunks| L\n  L -->|push chunks| U",
+     "video": null,
+     "source": {
+      "title": "How do I improve Amazon Bedrock performance and response times?",
+      "url": "https://repost.aws/knowledge-center/bedrock-improve-performance-latency"
+     }
+    },
+    {
+     "objective": "Task 2.4: Implement FM API integrations.",
+     "title": "Resilient calls: retries, fallbacks, routing",
+     "gist": "Expect throttling and outages: retry with backoff, fail over to other Regions or models, and send easy prompts to cheap models.",
+     "points": [
+      "`ThrottlingException` is HTTP 429: retry with exponential backoff and jitter, or SDK adaptive mode.",
+      "On-demand capacity is shared, so throttles can happen even under your quota.",
+      "Cross-Region inference profiles spread load over several Regions in one geography.",
+      "Intelligent prompt routing picks between models in one family per request to balance quality and cost.",
+      "AWS X-Ray traces calls across services to show which hop is failing."
+     ],
+     "tip": "Intermittent 429s at peak means backoff plus cross-Region inference. Trap: buying Provisioned Throughput for spiky traffic, or retrying instantly in a tight loop.",
+     "diagram": "flowchart LR\n  A([Request]) --> R{Router}\n  R -->|simple| S{{Small model}}\n  R -->|complex| L{{Large model}}\n  L -->|429| B[Backoff + jitter retry]\n  B --> X[Cross-Region profile]\n  X -->|still failing| F[Fallback model or cached reply]",
+     "video": {
+      "id": "AfRVOmb65Og",
+      "title": "Intelligent Model Routing",
+      "channel": "Amazon Web Services",
+      "min": 6
+     },
+     "source": {
+      "title": "How do I troubleshoot the ThrottlingException error when I use Amazon Bedrock on-demand resources?",
+      "url": "https://repost.aws/knowledge-center/bedrock-throttling-error"
+     }
+    },
+    {
+     "objective": "Task 2.3: Design and implement enterprise integration architectures.",
+     "title": "Plug GenAI into enterprise systems",
+     "gist": "Connect models to existing apps loosely: events and queues for async work, one gateway for control, pipelines for safe releases.",
+     "points": [
+      "EventBridge and SQS decouple producers from slow model calls so work runs asynchronously.",
+      "API Gateway fronts models with auth, request validation, throttling and usage plans.",
+      "A central GenAI gateway gives every team the same logging, quotas, guardrails and model access.",
+      "CodePipeline and CodeBuild run prompt and model tests, security scans and rollbacks.",
+      "Data must stay on premises: AWS Outposts. Ultra-low latency at the edge: AWS Wavelength."
+     ],
+     "tip": "Thousands of uploads and nobody waiting means S3 event to SQS to Lambda, or batch. Trap: synchronous API calls that time out under load.",
+     "diagram": "flowchart LR\n  S[(S3 upload)] --> E[EventBridge]\n  E --> Q[SQS queue]\n  Q --> L[Lambda worker]\n  L --> B{{Bedrock}}\n  L --> D[(DynamoDB results)]\n  C[CRM app] --> GW[GenAI gateway: API Gateway]\n  GW --> B",
+     "video": null,
+     "source": {
+      "title": "Content Domain 2: Implementation and Integration - AIP-C01 exam guide",
+      "url": "https://docs.aws.amazon.com/aws-certification/latest/ai-professional-01/ai-professional-01-domain2.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can build agents and tool integrations, call models reliably at scale, and wire GenAI into existing enterprise systems safely.",
+    "must_know": [
+     "Action groups use an OpenAPI schema or function details, run by Lambda or return of control.",
+     "Bedrock Agents Classic is closed to new customers; new agent builds point to AgentCore.",
+     "AgentCore: Runtime, Memory, Gateway for MCP tools, Identity, Policy, Observability, Evaluations.",
+     "Strands is the open-source agent SDK; MCP is the standard way to plug in tools.",
+     "Step Functions adds stop conditions, retries, circuit breakers and human approval around model calls.",
+     "Stream with ConverseStream for fast first tokens and fewer read timeouts.",
+     "429 ThrottlingException: exponential backoff with jitter, then cross-Region inference."
+    ],
+    "traps": [
+     "Relying on the prompt alone to stop risky agent actions instead of workflow controls.",
+     "Synchronous calls for bulk or slow work that should go through SQS, events or batch.",
+     "Provisioned Throughput to fix spiky throttling that backoff and cross-Region inference solve."
+    ]
+   }
   },
   {
    "domain": "AI safety, security and governance",
@@ -238,7 +592,174 @@
     "moderat",
     "ethic",
     "sensitive"
-   ]
+   ],
+   "notes": [
+    {
+     "objective": "Task 3.1: Implement input and output safety controls.",
+     "title": "Guardrails: the six safeguards",
+     "gist": "A guardrail is a reusable safety policy that checks both the user's prompt and the model's answer, for any model.",
+     "points": [
+      "Content filters: hate, insults, sexual, violence, misconduct and prompt attack, each with a strength.",
+      "Denied topics block whole subjects; word filters block exact words such as competitor names.",
+      "Sensitive information filters block or mask PII, plus your own regex patterns.",
+      "Contextual grounding flags unsupported answers; Automated Reasoning checks answers against logical rules.",
+      "Attach by guardrail ID and version on the inference call, or call `ApplyGuardrail` alone."
+     ],
+     "tip": "Same safety rules for a self-hosted or non-Bedrock model means `ApplyGuardrail`; never give investment advice means a denied topic. Trap: word filters to block a whole topic.",
+     "diagram": "flowchart LR\n  P([Prompt]) --> G1[Input check: filters, topics, PII]\n  G1 -->|violation| X[Blocked message]\n  G1 --> M{{Model}}\n  M --> G2[Output check: grounding, PII mask]\n  G2 -->|violation| X\n  G2 --> R([Answer])",
+     "video": {
+      "id": "l7pKj3G1Kyw",
+      "title": "Secure Your AI Apps: Step-by-Step Guide to Amazon Bedrock Guardrails",
+      "channel": "AWS Developers",
+      "min": 10
+     },
+     "source": {
+      "title": "Detect and filter harmful content by using Amazon Bedrock Guardrails",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html"
+     }
+    },
+    {
+     "objective": "Task 3.1: Implement input and output safety controls.",
+     "title": "Stop prompt injection and jailbreaks",
+     "gist": "Treat user text as untrusted: filter attacks, keep developer instructions separate, and check output before acting on it.",
+     "points": [
+      "Prompt attack filter catches jailbreaks and prompt injection; Standard tier adds prompt leakage.",
+      "With `InvokeModel`, wrap user input in guardrail input tags, or attacks are not filtered.",
+      "Tool results and tool definitions are not checked for prompt attacks; validate them yourself.",
+      "Layer defences: Comprehend or Lambda pre-filter, guardrail, then Lambda checks on the output.",
+      "Give agents least-privilege IAM so a hijacked prompt can reach very little."
+     ],
+     "tip": "User text says ignore previous instructions means the prompt attack filter on tagged user input. Trap: relying on a stronger system prompt, or assuming tool output is screened.",
+     "diagram": "flowchart LR\n  U([User text]) --> T[Tag user input]\n  T --> P[Prompt attack filter]\n  P -->|attack| B[Block + log]\n  P --> M{{Model}}\n  M --> V[Lambda validates output]\n  V --> A[Action with least privilege]",
+     "video": null,
+     "source": {
+      "title": "Detect prompt attacks with Amazon Bedrock Guardrails",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-prompt-attack.html"
+     }
+    },
+    {
+     "objective": "Task 3.1: Implement input and output safety controls.",
+     "title": "Cut hallucinations with grounding",
+     "gist": "Make answers come from trusted sources, score how well they stick to them, and block the ones that drift.",
+     "points": [
+      "Ground answers with a knowledge base and return citations users can check.",
+      "Contextual grounding scores grounding and relevance; answers under your threshold are blocked.",
+      "Ungrounded means new facts not in the source; irrelevant means it misses the question.",
+      "Supports summarisation, paraphrasing and question answering, not conversational chatbot QA.",
+      "Structured outputs with a JSON Schema return validated, parseable JSON."
+     ],
+     "tip": "Flag RAG answers not supported by the retrieved documents means contextual grounding check. Trap: content filters or denied topics, which judge harm, not accuracy.",
+     "diagram": "flowchart LR\n  Q([Question]) --> K[(Knowledge base)]\n  K --> M{{Model}}\n  Q --> M\n  M --> G{Grounding and relevance above threshold?}\n  G -->|yes| A([Answer + citations])\n  G -->|no| B[Block or fallback reply]",
+     "video": {
+      "id": "i6qQh8Z7T7o",
+      "title": "Apply Guardrail API & Contextual Grounding Check in Amazon Bedrock | AWS OnAir NY Summit",
+      "channel": "AWS Events",
+      "min": 20
+     },
+     "source": {
+      "title": "Use contextual grounding check to filter hallucinations in responses",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-contextual-grounding-check.html"
+     }
+    },
+    {
+     "objective": "Task 3.2: Implement data security and privacy controls.",
+     "title": "Protect PII and private data",
+     "gist": "Find personal data, mask or block it in prompts and answers, and do not keep it longer than needed.",
+     "points": [
+      "Bedrock does not share prompts or outputs with model providers or use them for training.",
+      "Guardrail sensitive information filters mask or block PII in inputs and outputs.",
+      "Amazon Macie finds PII stored in S3; Comprehend detects and redacts PII in text.",
+      "S3 Lifecycle rules expire logs and datasets to meet retention policies.",
+      "Invocation logs hold full prompts: encrypt them and tightly limit who can read them."
+     ],
+     "tip": "Scan the S3 data lake for PII before indexing means Macie; mask card numbers in chatbot replies means a guardrail PII filter. Trap: mixing up those two jobs.",
+     "diagram": "flowchart LR\n  S[(S3 source data)] --> MC[Macie finds PII]\n  MC --> CP[Comprehend redacts]\n  CP --> K[(Knowledge base)]\n  U([Prompt]) --> G[Guardrail masks PII]\n  G --> M{{Model}}\n  M --> G2[Mask PII in answer]\n  L[S3 Lifecycle expiry] -.-> S",
+     "video": null,
+     "source": {
+      "title": "Does Amazon Bedrock share input and output data with model providers or use the data to train models?",
+      "url": "https://repost.aws/knowledge-center/amazon-bedrock-model-data-use"
+     }
+    },
+    {
+     "objective": "Task 3.2: Implement data security and privacy controls.",
+     "title": "Private network and least privilege",
+     "gist": "Keep Bedrock traffic inside AWS with VPC endpoints, and give every caller only the permissions it truly needs.",
+     "points": [
+      "Interface endpoints via PrivateLink: no internet gateway, NAT device or public IPs needed.",
+      "Separate endpoints: `bedrock`, `bedrock-runtime`, `bedrock-agent`, `bedrock-agent-runtime`.",
+      "Endpoint policies limit which actions and resources can be used through the endpoint.",
+      "IAM: roles with temporary credentials, scoped to specific model ARNs and actions.",
+      "SCPs can block Regions; cross-Region inference needs its destination Regions allowed."
+     ],
+     "tip": "No public internet path means an interface VPC endpoint for `bedrock-runtime`. Trap: a NAT gateway, or a gateway endpoint, which exists only for S3 and DynamoDB.",
+     "diagram": "flowchart LR\n  L[Lambda in private subnet] --> E[Interface endpoint: bedrock-runtime]\n  P[Endpoint policy] -.-> E\n  E --> B{{Bedrock}}\n  R[IAM role: least privilege] -.-> L\n  B --> K[(KMS-encrypted resources)]",
+     "video": {
+      "id": "jo3X_aay4Vs",
+      "title": "Keep Your Network Traffic in AWS with VPC Endpoints | Overview and Tutorial",
+      "channel": "Be A Better Dev",
+      "min": 16
+     },
+     "source": {
+      "title": "Use interface VPC endpoints (AWS PrivateLink) to create a private connection between your VPC and Amazon Bedrock",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/vpc-interface-endpoints.html"
+     }
+    },
+    {
+     "objective": "Task 3.2: Implement data security and privacy controls.",
+     "title": "Encrypt with your own KMS keys",
+     "gist": "Bedrock encrypts data in transit and at rest by default; bring your own KMS key when you must control and audit access.",
+     "points": [
+      "Customer managed keys can encrypt customization jobs and custom models, agents, ingestion jobs, evaluations.",
+      "Guardrails use an AWS managed key by default; you can pick your own.",
+      "Encrypt S3 training data, knowledge base sources and log buckets with SSE-KMS.",
+      "Key policies must let Bedrock use the key, for example `kms:GenerateDataKey` for log delivery.",
+      "Data in transit within AWS is protected with TLS 1.2 encryption."
+     ],
+     "tip": "We must control, rotate and revoke the key ourselves means a customer managed KMS key. Trap: AWS owned or managed keys, which you cannot fully control.",
+     "diagram": "flowchart LR\n  K[Customer managed KMS key] --> M[Custom model]\n  K --> KB[(Knowledge base ingestion)]\n  K --> AG[Agent]\n  K --> LG[(Invocation logs in S3)]\n  CT[CloudTrail] -.->|audits key use| K",
+     "video": null,
+     "source": {
+      "title": "Data encryption - Amazon Bedrock",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/data-encryption.html"
+     }
+    },
+    {
+     "objective": "Task 3.3: Implement AI governance and compliance mechanisms.",
+     "title": "Govern, audit and explain",
+     "gist": "Prove who did what and why: log calls and prompts, document model limits, trace sources, and show the reasoning.",
+     "points": [
+      "CloudTrail records Bedrock API calls; invocation logging records full prompts and responses.",
+      "SageMaker model cards document intended use, limits and evaluation results.",
+      "Glue Data Catalog and metadata tags record where retrieved data came from.",
+      "Agent traces and citations show users how an answer was reached.",
+      "Fairness: A/B test prompts and score bias with LLM-as-a-judge evaluations."
+     ],
+     "tip": "Who changed the guardrail is CloudTrail; what the model told this user is invocation logs. Trap: assuming CloudTrail stores prompt and response text.",
+     "diagram": "flowchart LR\n  A[API call] --> CT[CloudTrail: who, when, which API]\n  A --> IL[Invocation logs: prompt + response]\n  IL --> CW[CloudWatch Logs Insights]\n  IL --> S3[(S3 archive)]\n  MC[Model cards] --> AU[Audit pack]\n  CT --> AU\n  S3 --> AU",
+     "video": null,
+     "source": {
+      "title": "Monitor model invocation using CloudWatch Logs and Amazon S3",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can block harmful or false output, keep private data private, lock down network and access, and prove compliance with logs.",
+    "must_know": [
+     "Guardrails: content filters, denied topics, word filters, PII filters, contextual grounding, Automated Reasoning.",
+     "`ApplyGuardrail` applies the same policy without invoking a model, even for models outside Bedrock.",
+     "With InvokeModel, tag user input or the prompt attack filter will not check it.",
+     "Bedrock does not share prompts with model providers or use them for training.",
+     "Interface VPC endpoints keep traffic private; endpoint policies limit allowed actions.",
+     "Customer managed KMS keys can encrypt custom models, agents, ingestion jobs and evaluations.",
+     "CloudTrail logs API calls; only invocation logging captures prompt and response text."
+    ],
+    "traps": [
+     "Content filters or denied topics to catch hallucinations; contextual grounding does that.",
+     "Expecting guardrails to scan retrieved chunks or tool results; they check prompts and answers.",
+     "NAT gateways or gateway endpoints for Bedrock; it needs an interface endpoint."
+    ]
+   }
   },
   {
    "domain": "Operational efficiency and optimization",
@@ -293,7 +814,173 @@
     "traffic",
     "efficien",
     "cost-effective"
-   ]
+   ],
+   "notes": [
+    {
+     "objective": "Task 4.1: Implement cost optimization and resource efficiency strategies.",
+     "title": "Pick the right inference option",
+     "gist": "Match the pricing mode to the traffic: on-demand for normal use, batch for bulk, reserved capacity for steady critical load.",
+     "points": [
+      "Standard tier is the default pay-per-token on-demand mode.",
+      "Flex gives a discount for work that can wait; Priority gives fastest replies at a premium.",
+      "Reserved tier: set tokens per minute for 1 or 3 months, 99.5% uptime target.",
+      "Batch: asynchronous jobs from S3 at about 50% of the on-demand price.",
+      "Provisioned Throughput: hourly model units; also one way to serve custom models."
+     ],
+     "tip": "Overnight bulk with nobody waiting points to batch; customer-facing peaks to Priority; steady 24x7 critical load to reserved capacity. Trap: provisioned capacity for spiky traffic.",
+     "diagram": "flowchart TB\n  R([Workload]) --> Q{Who is waiting?}\n  Q -->|nobody, bulk| B[Batch: about 50% off]\n  Q -->|can wait a bit| F[Flex tier: discount]\n  Q -->|user, normal| S[Standard on-demand]\n  Q -->|user, critical| P[Priority tier]\n  Q -->|steady 24x7| RV[Reserved or Provisioned]",
+     "video": null,
+     "source": {
+      "title": "Service tiers for optimizing performance and cost",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html"
+     }
+    },
+    {
+     "objective": "Task 4.2: Optimize application performance.",
+     "title": "Batch inference for bulk jobs",
+     "gist": "Put many prompts in JSONL files on S3, submit one job, and collect the results later at about half price.",
+     "points": [
+      "Records use the `InvokeModel` or `Converse` format; results land in your S3 bucket.",
+      "About 50% of the on-demand price for supported models.",
+      "Not supported for provisioned models, and prompt caching does not apply.",
+      "Tool calling needs the `InvokeModel` job type; Converse records with `toolConfig` fail.",
+      "Use EventBridge job state events instead of polling for completion."
+     ],
+     "tip": "Summarise a million records by morning, cost first, means batch inference. Trap: looping on-demand calls through Lambda, or expecting real-time answers from a batch job.",
+     "diagram": "flowchart LR\n  D[Prompts as JSONL] --> S[(S3 input)]\n  S --> J[CreateModelInvocationJob]\n  J --> M{{Model, async}}\n  M --> O[(S3 output)]\n  J -.->|state change| E[EventBridge]\n  E --> L[Lambda post-process]",
+     "video": {
+      "id": "gCGAMfewNug",
+      "title": "Building an Automated Amazon Bedrock Batch Inference Pipeline",
+      "channel": "AWS Developers",
+      "min": 7
+     },
+     "source": {
+      "title": "Process multiple prompts with batch inference",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html"
+     }
+    },
+    {
+     "objective": "Task 4.1: Implement cost optimization and resource efficiency strategies.",
+     "title": "Provisioned Throughput and model units",
+     "gist": "Buy dedicated model capacity by the hour when traffic is steady and high, or when you need guaranteed throughput.",
+     "points": [
+      "Sized in model units; each unit gives set input and output tokens per minute.",
+      "Terms: no commitment, 1 month or 6 months; longer terms lower the hourly price.",
+      "Billed every hour until you delete it, whether used or not.",
+      "Works for custom models; not with inference profiles or batch inference.",
+      "Size it from CloudWatch `InputTokenCount` and `OutputTokenCount` history."
+     ],
+     "tip": "Steady high volume with predictable throughput means Provisioned Throughput. Trap: buying it for spiky or low traffic, or pairing it with a cross-Region inference profile.",
+     "diagram": "flowchart LR\n  CW[CloudWatch token history] --> S[Size model units]\n  S --> T{Commitment?}\n  T -->|none| N[Delete anytime]\n  T -->|1 or 6 months| D[Lower hourly rate]\n  N --> P[Provisioned model ARN]\n  D --> P\n  P --> A([App invokes the ARN])",
+     "video": null,
+     "source": {
+      "title": "Increase model invocation capacity with Provisioned Throughput in Amazon Bedrock",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prov-throughput.html"
+     }
+    },
+    {
+     "objective": "Task 4.2: Optimize application performance.",
+     "title": "Cross-Region inference profiles",
+     "gist": "An inference profile lets Bedrock send each request to a Region with spare capacity, raising throughput at no routing cost.",
+     "points": [
+      "Geographic profiles such as US, EU or APAC keep processing inside that geography.",
+      "Global profiles route to any commercial Region and cost about 10% less.",
+      "No extra routing charge; price follows the Region you call from.",
+      "Traffic stays on the AWS network, encrypted; CloudTrail shows `inferenceRegion`.",
+      "SCPs must allow destination Regions; profiles do not support Provisioned Throughput."
+     ],
+     "tip": "EU data must stay in the EU but we hit throttles means an EU geographic profile. Trap: a Global profile under residency rules, or hand-built multi-Region load balancing.",
+     "diagram": "flowchart LR\n  A([App in eu-west-1]) --> P[EU inference profile]\n  P --> R1[eu-west-1]\n  P --> R2[eu-central-1]\n  P --> R3[eu-north-1]\n  G[Global profile: about 10% cheaper] -.-> W[Any commercial Region]",
+     "video": null,
+     "source": {
+      "title": "Route model inference requests across AWS Regions with cross-Region inference",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html"
+     }
+    },
+    {
+     "objective": "Task 4.1: Implement cost optimization and resource efficiency strategies.",
+     "title": "Prompt caching and other caches",
+     "gist": "Reuse work for repeated prompt prefixes and repeated questions, so you pay less and answer faster.",
+     "points": [
+      "Put static content first: system prompt, documents, tools. Put the changing question last.",
+      "Cache reads bill at a lower rate; cache writes can cost more than normal input.",
+      "Checkpoints need a minimum prefix, 512 to 4,096 tokens by model; TTL often 5 minutes.",
+      "On-demand only: prompt caching does not apply to batch inference.",
+      "Semantic caching returns a stored answer when a new question is close enough in meaning."
+     ],
+     "tip": "The same long document goes with every question means prompt caching with the document at the start. Trap: dynamic text before the cached prefix, so every request misses.",
+     "diagram": "flowchart LR\n  P[Static prefix: system + document] --> C{Prefix in cache?}\n  C -->|hit| R[Cache read: cheaper, faster]\n  C -->|miss| W[Cache write, then process]\n  Q[Changing user question] --> M{{Model}}\n  R --> M\n  W --> M",
+     "video": {
+      "id": "u57EnkQaUTY",
+      "title": "What is Prompt Caching? Optimize LLM Latency with AI Transformers",
+      "channel": "IBM Technology",
+      "min": 9
+     },
+     "source": {
+      "title": "Prompt caching for faster model inference",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html"
+     }
+    },
+    {
+     "objective": "Task 4.2: Optimize application performance.",
+     "title": "Cut latency and token spend",
+     "gist": "Speed and savings come from fewer tokens, smaller models where they are good enough, latency-optimized options and streaming.",
+     "points": [
+      "Trim context: short system prompts, pruned history, fewer but better retrieved chunks.",
+      "Cap output with a max-tokens setting and ask for concise formats.",
+      "Route simple queries to smaller models; distil models for heavy repeated tasks.",
+      "Latency-optimized inference: set `performanceConfig` latency to `optimized` on supported models (preview).",
+      "Run independent calls in parallel; precompute answers to predictable queries."
+     ],
+     "tip": "Slow, costly replies where simple FAQs dominate means route FAQs to a small model or cache them. Trap: Provisioned Throughput to fix per-request latency.",
+     "diagram": "flowchart LR\n  Q([Query]) --> C{Complexity?}\n  C -->|simple| S{{Small fast model}}\n  C -->|hard| L{{Large model}}\n  S --> O[Capped output tokens]\n  L --> O\n  O --> ST[Stream to user]",
+     "video": null,
+     "source": {
+      "title": "Optimize model inference for latency",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/latency-optimized-inference.html"
+     }
+    },
+    {
+     "objective": "Task 4.3: Implement monitoring systems for GenAI applications.",
+     "title": "Monitor with CloudWatch and invocation logs",
+     "gist": "Metrics tell you how much and how fast; invocation logs tell you exactly what was asked and answered.",
+     "points": [
+      "`AWS/Bedrock` metrics: `Invocations`, `InvocationLatency`, `InvocationThrottles`, token counts, `TimeToFirstToken`.",
+      "Invocation logging is off by default; it sends prompts and responses to CloudWatch Logs or S3.",
+      "Log destinations must be in the same account and Region.",
+      "Alarm on throttles and errors; use anomaly detection for token bursts.",
+      "Query logs with CloudWatch Logs Insights; trace calls across services with X-Ray."
+     ],
+     "tip": "Need to see the actual prompt behind a bad answer means enable model invocation logging. Trap: CloudTrail or metrics alone, which never contain prompt text.",
+     "diagram": "flowchart LR\n  B{{Bedrock runtime}} --> M[CloudWatch metrics]\n  B --> L[Invocation logs]\n  L --> CL[CloudWatch Logs]\n  L --> S[(S3)]\n  M --> A[Alarms + anomaly detection]\n  CL --> I[Logs Insights queries]",
+     "video": {
+      "id": "nsSVB1yB94I",
+      "title": "Integrating Amazon Bedrock with CloudWatch Logs: Monitor and Analyze AI Workloads",
+      "channel": "KnoDAX",
+      "min": 6
+     },
+     "source": {
+      "title": "Monitor model invocation using CloudWatch Logs and Amazon S3",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can match inference options to traffic, cut tokens and latency, cache repeated work, and watch cost and health in CloudWatch.",
+    "must_know": [
+     "Batch inference is about 50% of on-demand price; async, S3 in and out.",
+     "Service tiers: Flex is discounted, Priority is fastest at a premium, Standard is default.",
+     "Provisioned Throughput bills hourly per model unit; terms are none, 1 month or 6 months.",
+     "Geographic cross-Region profiles keep data in a geography; Global is about 10% cheaper.",
+     "Prompt caching: static content first; cache reads cost less; on-demand only, not batch.",
+     "CloudWatch shows `InvocationThrottles`, latency and token counts; invocation logging is off by default."
+    ],
+    "traps": [
+     "Provisioned Throughput for spiky or low traffic; it bills every hour until deleted.",
+     "Global inference profiles when data residency rules require one geography.",
+     "Putting changing content before the cached prefix, which turns every request into a miss."
+    ]
+   }
   },
   {
    "domain": "Testing, validation and troubleshooting",
@@ -332,7 +1019,144 @@
     "regression",
     "observab",
     "correct answer"
-   ]
+   ],
+   "notes": [
+    {
+     "objective": "Task 5.1: Implement evaluation systems for GenAI.",
+     "title": "Three ways to evaluate models",
+     "gist": "Bedrock evaluations score models with fixed metrics, with a judge model, or with human reviewers, using your own prompt dataset.",
+     "points": [
+      "Programmatic jobs use built-in or custom datasets and computed metrics such as robustness.",
+      "Judge-model jobs: a second LLM scores each response and explains why.",
+      "Human jobs: your staff or subject experts rate outputs on chosen metrics.",
+      "Works on base, custom, imported and provisioned models, plus prompt routers.",
+      "Full reports land in your S3 bucket for side-by-side comparison."
+     ],
+     "tip": "Brand tone or helpfulness at scale and low cost means LLM-as-a-judge; regulated content needing expert sign-off means human evaluation. Trap: BLEU or ROUGE for open-ended quality.",
+     "diagram": "flowchart LR\n  D[(Prompt dataset in S3)] --> E{Evaluation type}\n  E --> P[Programmatic metrics]\n  E --> J[LLM as a judge]\n  E --> H[Human reviewers]\n  P --> R[(Report in S3)]\n  J --> R\n  H --> R",
+     "video": null,
+     "source": {
+      "title": "Evaluate the performance of Amazon Bedrock resources",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation.html"
+     }
+    },
+    {
+     "objective": "Task 5.1: Implement evaluation systems for GenAI.",
+     "title": "LLM-as-a-judge in practice",
+     "gist": "A strong evaluator model grades another model's answers on chosen metrics, giving a score and a written reason for each.",
+     "points": [
+      "Needs a generator model and a separate evaluator model from the supported list.",
+      "Built-in metrics include correctness, completeness, faithfulness, helpfulness, coherence and harmfulness.",
+      "Add custom metrics for business rules, such as brand voice.",
+      "Bring your own responses to judge models hosted outside Bedrock.",
+      "Judges have biases: keep the rubric fixed and spot-check with humans."
+     ],
+     "tip": "Evaluate a model running outside Bedrock means bring your own inference responses to the job. Trap: letting the same model judge itself, or skipping human spot-checks.",
+     "diagram": "flowchart LR\n  P[(Prompts)] --> G{{Generator model}}\n  G --> R[Responses]\n  R --> J{{Evaluator model}}\n  M[Metrics + rubric] --> J\n  J --> S[Scores + explanations]\n  O[Own responses from other models] -.-> R",
+     "video": {
+      "id": "trfUBIDeI1Y",
+      "title": "LLM as a Judge: Scaling AI Evaluation Strategies",
+      "channel": "IBM Technology",
+      "min": 6
+     },
+     "source": {
+      "title": "Evaluate model performance using another LLM as a judge",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation-judge.html"
+     }
+    },
+    {
+     "objective": "Task 5.1: Implement evaluation systems for GenAI.",
+     "title": "Evaluate RAG: retrieval, then answer",
+     "gist": "Test retrieval and generation separately, so you know whether a bad answer comes from the search or from the model.",
+     "points": [
+      "Retrieve-only jobs score context relevance and context coverage.",
+      "Context coverage needs ground-truth reference texts in the dataset.",
+      "Retrieve-and-generate jobs also judge the final answer, such as correctness and faithfulness.",
+      "Datasets are JSON Lines, up to 1,000 prompts per evaluation.",
+      "Works with Bedrock knowledge bases or your own RAG source."
+     ],
+     "tip": "Answers are wrong but the model is strong means run a retrieve-only evaluation first. Trap: swapping the generator model before checking context relevance.",
+     "diagram": "flowchart LR\n  D[(JSONL prompts + ground truth)] --> R[Retrieve-only job]\n  R --> M1[Context relevance, coverage]\n  D --> RG[Retrieve and generate job]\n  RG --> M2[Correctness, faithfulness]\n  M1 --> F{Fix search or prompt?}\n  M2 --> F",
+     "video": null,
+     "source": {
+      "title": "Evaluate the performance of RAG sources using Amazon Bedrock evaluations",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation-kb.html"
+     }
+    },
+    {
+     "objective": "Task 5.1: Implement evaluation systems for GenAI.",
+     "title": "Test agents and tool use",
+     "gist": "Judge an agent on whether it finishes the task, picks the right tools with the right inputs, and reasons sensibly.",
+     "points": [
+      "Measure task completion rate, tool choice accuracy, number of steps and latency.",
+      "Agent traces show each rationale, tool call and observation to inspect.",
+      "AgentCore Evaluations scores agents before and after deployment.",
+      "AgentCore Observability uses OpenTelemetry traces to find slow or failing steps.",
+      "Replay fixed test scenarios after every prompt or tool change."
+     ],
+     "tip": "Agent keeps calling the wrong API points to tool descriptions and traces. Trap: checking only the final answer text, not the tool calls behind it.",
+     "diagram": "flowchart LR\n  S[(Test scenarios)] --> A[Agent run]\n  A --> T[Trace: steps + tool calls]\n  T --> E[AgentCore Evaluations]\n  E --> M[Completion rate, tool accuracy]\n  M --> G{Pass quality gate?}\n  G -->|no| F[Fix prompts or tools]",
+     "video": null,
+     "source": {
+      "title": "Overview - Amazon Bedrock AgentCore",
+      "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html"
+     }
+    },
+    {
+     "objective": "Task 5.1: Implement evaluation systems for GenAI.",
+     "title": "Regression tests and safe rollouts",
+     "gist": "Test every prompt, model or data change against a golden dataset, then release it gradually.",
+     "points": [
+      "Golden dataset: fixed questions with known good answers, run on every change.",
+      "Automated quality gates in the pipeline block a release when scores drop.",
+      "Canary or A/B test a new model or prompt version on a small share of traffic.",
+      "Diff outputs between versions to spot semantic drift and new hallucinations.",
+      "Turn user ratings and feedback into new test cases."
+     ],
+     "tip": "A model upgrade must not break existing answers means golden-dataset regression tests plus a canary. Trap: switching all traffic at once, or testing only by hand.",
+     "diagram": "flowchart LR\n  C[Prompt or model change] --> G[Golden dataset test]\n  G --> Q{Scores ok?}\n  Q -->|no| B[Block release]\n  Q -->|yes| CN[Canary: small traffic share]\n  CN --> M[Monitor quality + feedback]\n  M --> F[Full rollout]",
+     "video": null,
+     "source": {
+      "title": "Content Domain 5: Testing, Validation, and Troubleshooting - AIP-C01 exam guide",
+      "url": "https://docs.aws.amazon.com/aws-certification/latest/ai-professional-01/ai-professional-01-domain5.html"
+     }
+    },
+    {
+     "objective": "Task 5.2: Troubleshoot GenAI applications.",
+     "title": "Troubleshoot common GenAI failures",
+     "gist": "Most failures are too much context, throttling, wrong retrieval or a vague prompt; logs and traces show which one.",
+     "points": [
+      "Truncated or rejected long inputs: check the context window; chunk, summarise or trim history.",
+      "429 `ThrottlingException`: backoff, quota increase, cross-Region inference.",
+      "Read timeouts on long answers: stream with `ConverseStream` or raise the client timeout.",
+      "Irrelevant answers: inspect retrieved chunks, chunking and embeddings before blaming the prompt.",
+      "Format errors: validate output against a schema and compare prompt versions in logs."
+     ],
+     "tip": "Map the symptom to its layer: quota, retrieval, prompt or context window. Trap: moving to a bigger model when logs show retrieval returned the wrong chunks.",
+     "diagram": "flowchart TB\n  S([Bad result]) --> Q{Symptom?}\n  Q -->|429 errors| T[Backoff, quota, cross-Region]\n  Q -->|truncated output| C[Context window, max tokens]\n  Q -->|wrong facts| R[Check retrieved chunks]\n  Q -->|bad format| F[Schema validation]\n  Q -->|timeouts| ST[Use streaming]",
+     "video": null,
+     "source": {
+      "title": "How do I troubleshoot InvokeModel API errors in Amazon Bedrock?",
+      "url": "https://repost.aws/knowledge-center/bedrock-invokemodel-api-error"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can measure answer quality, test retrieval and agents separately, release changes safely, and trace a failure to the right layer.",
+    "must_know": [
+     "Bedrock evaluations: programmatic metrics, LLM-as-a-judge, or human reviewers on your dataset.",
+     "LLM-as-a-judge needs a separate evaluator model and returns scores with explanations.",
+     "You can judge outside models by supplying your own response data.",
+     "Retrieve-only RAG jobs score context relevance and context coverage; coverage needs ground truth.",
+     "Golden datasets, quality gates and canary releases protect against regressions.",
+     "Map symptoms to layers: 429 is quota, truncation is context, wrong facts is retrieval."
+    ],
+    "traps": [
+     "BLEU or ROUGE for open-ended quality when an LLM judge or humans fit better.",
+     "Changing the model before checking whether retrieval returned the right chunks.",
+     "Judging agents only on final text, ignoring tool choices and traces."
+    ]
+   }
   }
  ]
 }

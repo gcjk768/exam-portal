@@ -104,7 +104,182 @@
     "vpn",
     "subnet",
     "cidr"
-   ]
+   ],
+   "notes": [
+    {
+     "title": "Bedrock AgentCore: run agents in production",
+     "gist": "AgentCore is the managed platform that hosts, connects and watches AI agents, so you don't build that plumbing yourself.",
+     "points": [
+      "Runtime: serverless, session-isolated hosting for agents built with any framework or model.",
+      "Gateway turns APIs and Lambda functions into MCP tools that agents can call.",
+      "Memory keeps short-term chat context and long-term knowledge across sessions.",
+      "Identity plugs into existing IdPs such as Cognito or Okta for agent auth.",
+      "Policy, Observability and Evaluations add rules, tracing and quality checks."
+     ],
+     "tip": "Agents to production with little undifferentiated work points to AgentCore services. Hand-building agent hosting, tool wrappers and session isolation on EC2 is the over-built distractor.",
+     "diagram": "flowchart LR\n  U([User]) --> RT[AgentCore Runtime]\n  RT --> MEM[Memory: short and long term]\n  RT --> GW[Gateway: MCP tools]\n  GW --> API[APIs and Lambda]\n  RT --> ID[Identity: IdP tokens]\n  RT --> OBS[Observability traces]",
+     "video": {
+      "id": "usFIb9aEd1U",
+      "title": "Amazon Bedrock AgentCore: Deploy & Operate AI Agents in Minutes",
+      "channel": "Amazon Web Services",
+      "min": 6
+     },
+     "source": {
+      "title": "Overview - Amazon Bedrock AgentCore",
+      "url": "https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/what-is-bedrock-agentcore.html"
+     }
+    },
+    {
+     "title": "RAG with Bedrock Knowledge Bases",
+     "gist": "A knowledge base finds the right chunks of your own documents and feeds them to the model, so answers use your data.",
+     "points": [
+      "Ingest: documents are split into chunks, embedded as vectors, stored in a vector index.",
+      "Query: the question is embedded, similar chunks retrieved, then added to the prompt.",
+      "Managed KB: Bedrock runs ingestion, indexing and storage; customer-managed: you run the vector store.",
+      "Customer-managed vector stores include OpenSearch Serverless, Aurora and Neptune.",
+      "Answers can carry citations; reranking models improve which chunks come back."
+     ],
+     "tip": "Fresh, private or citable answers point to RAG, not fine-tuning. Fine-tuning changes style or behaviour; it does not keep facts current.",
+     "diagram": "flowchart LR\n  D[(Documents in S3)] --> C[Chunk]\n  C --> E[Embed into vectors]\n  E --> VX[(Vector index)]\n  Q([User question]) --> R[Retrieve similar chunks]\n  VX --> R\n  R --> P[Prompt + retrieved context]\n  P --> M[Model answer with citations]",
+     "video": {
+      "id": "hnyDDfo8e9Q",
+      "title": "Build a RAG based Generative AI Chatbot in 20 mins using Amazon Bedrock Knowledge Base",
+      "channel": "Amazon Web Services",
+      "min": 10
+     },
+     "source": {
+      "title": "Retrieve data and generate AI responses with Amazon Bedrock Knowledge Bases",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base.html"
+     }
+    },
+    {
+     "title": "VPC Lattice for service-to-service networking",
+     "gist": "Lattice lets services in many VPCs and accounts call each other by name, with auth, and without peering or Transit Gateway.",
+     "points": [
+      "Service network: a logical boundary of VPCs and services, shared across accounts with RAM.",
+      "Targets: EC2, IP addresses, Lambda, ALB, ECS tasks and Kubernetes pods.",
+      "Overlapping CIDRs are supported, which peering and Transit Gateway cannot handle.",
+      "Auth policies at service network and service level give IAM-based, fine-grained access.",
+      "Resource configurations share RDS or IP endpoints; on-premises connects via a service-network endpoint."
+     ],
+     "tip": "Many accounts, overlapping CIDRs and app-layer auth between microservices: choose Lattice. Transit Gateway is layer 3 routing between whole networks.",
+     "diagram": "flowchart LR\n  A[Client VPC, account A] --> SN{{Service network}}\n  B[Client VPC, account B] --> SN\n  SN --> AP[Auth policy check]\n  AP --> S1[Orders service on ECS]\n  AP --> S2[Billing service on Lambda]\n  AP --> RC[(RDS via resource configuration)]",
+     "video": null,
+     "source": {
+      "title": "What is Amazon VPC Lattice?",
+      "url": "https://docs.aws.amazon.com/vpc-lattice/latest/ug/what-is-vpc-lattice.html"
+     }
+    },
+    {
+     "title": "ECS Service Connect: short names, built-in mesh",
+     "gist": "Service Connect lets ECS services find and call each other by short names, with a managed proxy in every task.",
+     "points": [
+      "Configured in the ECS service and task definition; no separate mesh to run.",
+      "Discovery uses an AWS Cloud Map namespace; names must be unique per namespace.",
+      "Proxy container per task: round-robin load balancing plus outlier detection.",
+      "Port name in the task definition; client alias sets the DNS name and port.",
+      "ECS only; use VPC Lattice when calls span EC2, Lambda, EKS or accounts."
+     ],
+     "tip": "ECS-only microservices needing discovery without extra infrastructure: Service Connect. Cross-account calls or mixed compute types point to VPC Lattice instead.",
+     "diagram": "flowchart LR\n  C[Client task] --> PX[Service Connect proxy]\n  PX --> NS[Cloud Map namespace]\n  PX --> T1[Server task, AZ a]\n  PX --> T2[Server task, AZ b]\n  PX -.-> CW[CloudWatch metrics]",
+     "video": {
+      "id": "bcjqcv9zLwU",
+      "title": "Amazon ECS: ECS Service Connect",
+      "channel": "Amazon Web Services",
+      "min": 10
+     },
+     "source": {
+      "title": "Use Service Connect to connect Amazon ECS services with short names",
+      "url": "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-connect.html"
+     }
+    },
+    {
+     "title": "Decouple with EventBridge buses and pipes",
+     "gist": "Producers emit events to a bus; rules filter and route them to many targets, so services never call each other directly.",
+     "points": [
+      "Event buses: many sources to many targets, with filtering and optional transformation.",
+      "Pipes: point-to-point from one source, such as a DynamoDB stream, to one target.",
+      "Scheduler runs cron and rate tasks centrally, replacing cron servers.",
+      "Custom buses can retain events and replay them.",
+      "Put SQS in front of a slow consumer to buffer bursts."
+     ],
+     "tip": "Fan-out with content filtering to many consumers: EventBridge. Smoothing bursts to one slow worker: SQS. Chains of synchronous API calls are the coupling trap.",
+     "diagram": "flowchart LR\n  P1[Orders service] --> BUS{{Event bus}}\n  P2[SaaS partner events] --> BUS\n  BUS -->|rule: type=paid| L[Lambda: invoice]\n  BUS -->|rule: amount over 1000| SF[Step Functions: review]\n  BUS --> Q[SQS: analytics buffer]",
+     "video": {
+      "id": "TXh5oU_yo9M",
+      "title": "Intro to Amazon EventBridge",
+      "channel": "Amazon Web Services",
+      "min": 9
+     },
+     "source": {
+      "title": "What Is Amazon EventBridge?",
+      "url": "https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-what-is.html"
+     }
+    },
+    {
+     "title": "Step Functions: Standard vs Express",
+     "gist": "Step Functions runs multi-step workflows as a state machine; pick Standard for long, exact runs and Express for fast, high-volume ones.",
+     "points": [
+      "Standard: up to one year, exactly-once, priced per state transition.",
+      "Express: up to five minutes, at-least-once when async, priced by executions, duration, memory.",
+      "Standard suits non-idempotent steps like payments; Express suits idempotent stream processing.",
+      "Express lacks `.sync` and `.waitForTaskToken` patterns, Distributed Map and activities.",
+      "The workflow type cannot be changed after creation."
+     ],
+     "tip": "Human approval, long waits or payments mean Standard. IoT or streaming at huge rates means Express. Watch for any step longer than five minutes.",
+     "diagram": "flowchart TB\n  S{Workflow need?} -->|over 5 min or human wait| STD[Standard: exactly-once]\n  S -->|high volume, short| EXP[Express: at-least-once]\n  STD --> P1[Payments, EMR jobs, approvals]\n  EXP --> P2[IoT ingest, stream transforms]",
+     "video": {
+      "id": "RrdvSoQNABg",
+      "title": "Standard vs Express AWS Step Functions - Whats The Difference?",
+      "channel": "Be A Better Dev",
+      "min": 12
+     },
+     "source": {
+      "title": "Choosing workflow type in Step Functions",
+      "url": "https://docs.aws.amazon.com/step-functions/latest/dg/choosing-workflow-type.html"
+     }
+    },
+    {
+     "title": "Transit Gateway and Direct Connect hub",
+     "gist": "Transit Gateway is a regional router that connects many VPCs and on-premises links through one hub instead of a peering mesh.",
+     "points": [
+      "Attach VPCs, Site-to-Site VPN, Direct Connect gateways, Connect attachments and peered TGWs.",
+      "Separate route tables isolate groups such as prod and dev; blackhole routes drop traffic.",
+      "Transit gateway peering, including across Regions, uses static routes only.",
+      "Direct Connect VIFs: private to a VPC, public to AWS services, transit to TGW.",
+      "Enable appliance mode for stateful firewalls so a flow keeps the same AZ."
+     ],
+     "tip": "Dozens of VPCs plus on-premises: TGW with a Direct Connect gateway. Full-mesh peering does not scale and is not transitive. Site-to-Site VPN is the cheap backup path.",
+     "diagram": "flowchart LR\n  DC[On-premises data centre] -->|Direct Connect| DXG[DX gateway]\n  DXG -->|transit VIF| TGW{{Transit Gateway}}\n  DC -.->|VPN backup| TGW\n  TGW --> P[Prod VPCs route table]\n  TGW --> DV[Dev VPCs route table]\n  TGW --> SH[Shared services VPC]",
+     "video": {
+      "id": "a55Iud-66q0",
+      "title": "A Deep Dive into AWS Transit Gateway",
+      "channel": "LearnCantrill",
+      "min": 14
+     },
+     "source": {
+      "title": "How transit gateways work",
+      "url": "https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Choosing the right managed building blocks for agents, RAG, service networking, event-driven integration, workflows and hybrid connectivity.",
+    "must_know": [
+     "AgentCore hosts agents; Gateway turns APIs into MCP tools; Memory keeps context.",
+     "RAG with Knowledge Bases keeps answers current and citable; fine-tuning does not.",
+     "VPC Lattice: app-layer service networking across accounts, overlapping CIDRs, IAM auth policies.",
+     "Service Connect: ECS-only discovery and proxy through a Cloud Map namespace.",
+     "EventBridge fans out filtered events; SQS buffers work for one consumer.",
+     "Step Functions Standard: one year, exactly-once; Express: five minutes, at-least-once.",
+     "Transit Gateway is the hub for many VPCs, VPNs and Direct Connect."
+    ],
+    "traps": [
+     "Using Transit Gateway or peering when overlapping CIDRs and service-level auth point to Lattice.",
+     "Choosing Express workflows for long waits, human approval or non-idempotent payment steps.",
+     "Fine-tuning a model to keep facts fresh instead of using RAG."
+    ]
+   }
   },
   {
    "domain": "Security, compliance & governance",
@@ -178,7 +353,159 @@
     "third party",
     "policy",
     "policies"
-   ]
+   ],
+   "notes": [
+    {
+     "title": "SCPs and RCPs: org-wide permission ceilings",
+     "gist": "SCPs cap what your own users and roles can do; RCPs cap what anyone can do to your resources. Neither grants access.",
+     "points": [
+      "SCP: limits IAM principals in member accounts, including root; never the management account.",
+      "RCP: limits access to resources, including by principals outside the organization.",
+      "Effective access is the intersection of SCPs, RCPs, identity and resource policies.",
+      "SCPs skip service-linked roles; attach at most 10 SCPs and 5 RCPs per target.",
+      "Test on a sandbox OU first; never remove `FullAWSAccess` without a replacement allow."
+     ],
+     "tip": "Stop outside accounts reaching your S3 buckets org-wide: RCP. Stop your developers using a Region: SCP. Any answer where an SCP grants access is wrong.",
+     "diagram": "flowchart LR\n  REQ([API request]) --> SCP{SCP allows principal?}\n  SCP -->|no| DENY[Denied]\n  SCP -->|yes| RCP{RCP allows resource access?}\n  RCP -->|no| DENY\n  RCP -->|yes| IAM{Identity or resource policy allows?}\n  IAM -->|no| DENY\n  IAM -->|yes| OK[Allowed]",
+     "video": {
+      "id": "vJOgH8B7Elo",
+      "title": "Using resource control policies (RCPs) to centrally restrict access to AWS resources",
+      "channel": "Amazon Web Services",
+      "min": 19
+     },
+     "source": {
+      "title": "Managing organization policies with AWS Organizations",
+      "url": "https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies.html"
+     }
+    },
+    {
+     "title": "Control Tower landing zone and controls",
+     "gist": "Control Tower builds a best-practice multi-account setup for you and keeps it governed with ready-made controls.",
+     "points": [
+      "Orchestrates Organizations, IAM Identity Center and Service Catalog to build the landing zone.",
+      "Controls are preventive, detective or proactive; mandatory, strongly recommended or elective.",
+      "Account Factory vends new accounts from approved, preconfigured templates.",
+      "Dashboard shows noncompliant resources by account and OU; drift detection flags changes.",
+      "Existing organizations can be registered and existing accounts enrolled."
+     ],
+     "tip": "Many accounts, fast governed setup, least effort: Control Tower. Hand-building Organizations plus custom scripts is the high-effort distractor unless heavy customisation is required.",
+     "diagram": "flowchart TB\n  CT[Control Tower] --> ORG[Organizations: OUs]\n  CT --> IDC[Identity Center: SSO]\n  CT --> AF[Account Factory]\n  ORG --> SEC[Security OU: log archive, audit]\n  ORG --> WL[Workload OUs]\n  CT --> CTRL[Controls: preventive, detective, proactive]\n  CTRL --> WL",
+     "video": {
+      "id": "3-aaw-B1j8Y",
+      "title": "AWS Control Tower Overview and Landing Zone Hands-On",
+      "channel": "Digital Cloud Training",
+      "min": 10
+     },
+     "source": {
+      "title": "What Is AWS Control Tower?",
+      "url": "https://docs.aws.amazon.com/controltower/latest/userguide/what-is-control-tower.html"
+     }
+    },
+    {
+     "title": "Security Hub: one pane for findings",
+     "gist": "Security Hub gathers security findings from many accounts and tools into one place and scores you against standards.",
+     "points": [
+      "Standards: AWS Foundational Security Best Practices, CIS, PCI DSS and NIST.",
+      "Ingests GuardDuty, Inspector, Macie and partner findings in the ASFF format.",
+      "Consolidates findings across accounts; an aggregation Region gives one cross-Region view.",
+      "Automation rules update or suppress findings; EventBridge triggers remediation.",
+      "Collects only findings created after you enable it; nothing retroactive."
+     ],
+     "tip": "Central compliance view across accounts means Security Hub. GuardDuty detects threats, Inspector finds vulnerabilities, Macie finds S3 PII; they feed Security Hub, not replace it.",
+     "diagram": "flowchart LR\n  GD[GuardDuty threats] --> SH{{Security Hub}}\n  IN[Inspector vulnerabilities] --> SH\n  MA[Macie S3 PII] --> SH\n  CK[Control checks: FSBP, CIS] --> SH\n  SH --> EB[EventBridge rule]\n  EB --> FIX[Automated remediation]",
+     "video": {
+      "id": "oBac-GAoZJ8",
+      "title": "An Overview of AWS Security Hub",
+      "channel": "Amazon Web Services",
+      "min": 9
+     },
+     "source": {
+      "title": "What is AWS Security Hub CSPM?",
+      "url": "https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html"
+     }
+    },
+    {
+     "title": "Bedrock Guardrails for safe GenAI",
+     "gist": "Guardrails screen prompts and model answers for harmful content, banned topics, PII and hallucinations before users see them.",
+     "points": [
+      "Filters: content, denied topics, words, sensitive information, contextual grounding, Automated Reasoning.",
+      "Sensitive information filters block or mask PII, including custom regex patterns.",
+      "Contextual grounding checks flag RAG answers not supported by the retrieved sources.",
+      "Attach by guardrail ID and version at inference, or call `ApplyGuardrail` without a model.",
+      "Organizations Bedrock policies can enforce guardrails across accounts."
+     ],
+     "tip": "Redact PII, block off-topic advice or catch hallucinations in a GenAI app: Guardrails. Prompt wording alone is the weak distractor; it is not an enforced control.",
+     "diagram": "flowchart LR\n  U([User prompt]) --> G1[Guardrail: input check]\n  G1 -->|blocked| MSG[Configured blocked message]\n  G1 -->|ok| FM[Foundation model]\n  FM --> G2[Guardrail: output check]\n  G2 -->|violates| MSG\n  G2 -->|PII masked, grounded| OUT([Safe answer])",
+     "video": {
+      "id": "srQxO_o9KgM",
+      "title": "NEW DEMO - Amazon Bedrock Guardrails",
+      "channel": "Amazon Web Services",
+      "min": 9
+     },
+     "source": {
+      "title": "Detect and filter harmful content by using Amazon Bedrock Guardrails",
+      "url": "https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html"
+     }
+    },
+    {
+     "title": "KMS post-quantum: ML-KEM and ML-DSA",
+     "gist": "AWS KMS adds quantum-resistant options: hybrid ML-KEM TLS to protect traffic, and ML-DSA keys for digital signatures.",
+     "points": [
+      "Hybrid TLS combines ECDH with ML-KEM, NIST FIPS 203, on all KMS endpoints.",
+      "It defends long-lived secrets against harvest now, decrypt later attacks.",
+      "Hybrid TLS protects data in transit only; KMS key encryption is unchanged.",
+      "ML-DSA keys, FIPS 204, sign and verify: `ML_DSA_44`, `ML_DSA_65`, `ML_DSA_87`.",
+      "Confirm in CloudTrail `tlsDetails.keyExchange`, for example `X25519MLKEM768`."
+     ],
+     "tip": "Long-term secrets sent over TLS against future quantum attackers: enable hybrid post-quantum TLS in the SDK. Quantum-safe signing: an ML-DSA KMS key. Don't mix them up.",
+     "diagram": "flowchart LR\n  APP[App with AWS SDK] -->|hybrid TLS: ECDH + ML-KEM| KMS[AWS KMS endpoint]\n  KMS --> CT[CloudTrail: keyExchange field]\n  PIPE[Release pipeline] -->|Sign| MLD[ML-DSA key in KMS]\n  MLD --> VER[Verify signature]",
+     "video": null,
+     "source": {
+      "title": "Using hybrid post-quantum TLS with AWS KMS",
+      "url": "https://docs.aws.amazon.com/kms/latest/developerguide/pqtls.html"
+     }
+    },
+    {
+     "title": "Clean Rooms: analyse shared data privately",
+     "gist": "Clean Rooms lets partners run approved queries across combined datasets without either side seeing the other's raw rows.",
+     "points": [
+      "Create a collaboration, invite accounts, link configured tables; data stays where it is.",
+      "Analysis rules restrict which SQL can run and what output is allowed.",
+      "Differential privacy adds mathematical protection against re-identifying individuals.",
+      "Cryptographic computing keeps data encrypted even while queries run.",
+      "Clean Rooms ML finds lookalike users without sharing the training data."
+     ],
+     "tip": "Two companies must match customers or measure campaigns without exchanging raw data: Clean Rooms. Copying data into a shared S3 bucket breaks the privacy requirement.",
+     "diagram": "flowchart LR\n  A[(Advertiser data in S3)] --> COL{{Clean Rooms collaboration}}\n  B[(Publisher data in S3)] --> COL\n  COL --> AR[Analysis rules + differential privacy]\n  AR --> OUT[Aggregated results only]\n  COL -.-> LOG[Analysis logs for audit]",
+     "video": {
+      "id": "Eugxv1ioZy0",
+      "title": "Getting Started with AWS Clean Rooms",
+      "channel": "Amazon Web Services",
+      "min": 10
+     },
+     "source": {
+      "title": "What is AWS Clean Rooms?",
+      "url": "https://docs.aws.amazon.com/clean-rooms/latest/userguide/what-is.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Governing many accounts with preventive and detective controls, central findings, and protecting data and GenAI workloads.",
+    "must_know": [
+     "SCPs and RCPs only cap permissions; they never grant access.",
+     "SCPs limit your principals; RCPs limit access to your resources, including by outsiders.",
+     "Neither SCPs nor RCPs affect the management account.",
+     "Control Tower builds the landing zone; Account Factory vends governed accounts.",
+     "Security Hub aggregates GuardDuty, Inspector and Macie findings and checks standards.",
+     "Guardrails filter content, mask PII and check grounding for Bedrock apps.",
+     "Hybrid ML-KEM TLS protects KMS traffic; ML-DSA keys give post-quantum signatures."
+    ],
+    "traps": [
+     "Expecting an SCP to grant a permission, or to restrict the management account.",
+     "Picking GuardDuty or Macie when the need is a central compliance score across accounts.",
+     "Copying raw data into a shared bucket when Clean Rooms keeps rows private."
+    ]
+   }
   },
   {
    "domain": "Cost-optimized design",
@@ -224,7 +551,149 @@
     "spend",
     "savings",
     "economical"
-   ]
+   ],
+   "notes": [
+    {
+     "title": "Savings Plans: commit dollars per hour",
+     "gist": "Commit to a steady hourly spend for one or three years and AWS discounts matching usage automatically.",
+     "points": [
+      "Compute SP: up to 66% off; any family, size, Region, OS; covers Fargate and Lambda.",
+      "EC2 Instance SP: up to 72% off; locked to one family in one Region.",
+      "Database SP: up to 35% off across Aurora, RDS, DynamoDB and more.",
+      "Pay all, partial or no upfront; terms cannot change after purchase.",
+      "Cost Explorer recommends the commitment level from your usage history."
+     ],
+     "tip": "Steady baseline that may change family or Region, or move to Fargate: Compute SP. Fixed family, biggest discount: EC2 Instance SP. Spot usage is never covered.",
+     "diagram": "flowchart LR\n  W([Steady baseline usage]) --> Q{Will family or Region change?}\n  Q -->|yes, or uses Fargate, Lambda| CSP[Compute SP: up to 66%]\n  Q -->|no, fixed family| ESP[EC2 Instance SP: up to 72%]\n  W --> DB{Database fleet?}\n  DB -->|yes| DSP[Database SP: up to 35%]",
+     "video": {
+      "id": "-t148tYgnJU",
+      "title": "Amazon/AWS EC2 Pricing Simply Explained | On-Demand, Spot, Reserved, Savings Plans",
+      "channel": "Tiny Technical Tutorials",
+      "min": 9
+     },
+     "source": {
+      "title": "Savings Plans types",
+      "url": "https://docs.aws.amazon.com/savingsplans/latest/userguide/plan-types.html"
+     }
+    },
+    {
+     "title": "Spot Instances for interruptible work",
+     "gist": "Spot sells spare EC2 capacity at steep discounts, but AWS can take it back with a two-minute warning.",
+     "points": [
+      "Fits batch jobs, data analysis, background processing and other flexible, fault-tolerant work.",
+      "Interruption notice is two minutes; a rebalance recommendation can warn earlier.",
+      "Price is set per instance type and AZ from long-term supply and demand.",
+      "Spot is not covered by Savings Plans and doesn't count toward commitments.",
+      "Spread across instance types and AZs so losing one capacity pool hurts less."
+     ],
+     "tip": "Cheapest for stateless, retry-safe work: Spot. Never pick Spot alone for a database or a job that cannot be interrupted; keep an On-Demand or Savings Plan baseline.",
+     "diagram": "flowchart LR\n  J([Workload]) --> F{Can it be interrupted?}\n  F -->|no| OD[On-Demand or Savings Plan]\n  F -->|yes| SP[Spot: many types and AZs]\n  SP --> NT[Two minute interruption notice]\n  NT --> CK[Checkpoint and requeue work]",
+     "video": null,
+     "source": {
+      "title": "Spot Instances",
+      "url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html"
+     }
+    },
+    {
+     "title": "Pick the right S3 storage class",
+     "gist": "Match each dataset's access pattern to a storage class; colder classes cost less to store but more to read.",
+     "points": [
+      "Standard-IA and One Zone-IA: 30-day minimum, 128 KB minimum billed size, retrieval fee.",
+      "One Zone-IA lives in one AZ: only for re-creatable data or CRR replicas.",
+      "Glacier Instant Retrieval: millisecond reads, 90-day minimum, for roughly quarterly access.",
+      "Glacier Flexible: minutes to hours, 90 days; Deep Archive: hours, 180 days.",
+      "Intelligent-Tiering moves objects after 30 and 90 idle days; under 128 KB never tiers."
+     ],
+     "tip": "Unpredictable access: Intelligent-Tiering. Rare access but instant reads: Glacier Instant Retrieval. One Zone-IA for the only copy of irreplaceable data is the classic trap.",
+     "diagram": "flowchart LR\n  D([Data]) --> A{Access pattern?}\n  A -->|frequent| STD[S3 Standard]\n  A -->|unknown or changing| IT[Intelligent-Tiering]\n  A -->|monthly, ms reads| IA[Standard-IA]\n  A -->|quarterly, ms reads| GIR[Glacier Instant Retrieval]\n  A -->|yearly, can wait hours| GDA[Glacier Flexible or Deep Archive]",
+     "video": {
+      "id": "w5ocEIDR5WE",
+      "title": "Amazon S3 Storage Classes: Optimized storage for your workload needs",
+      "channel": "Amazon Web Services",
+      "min": 6
+     },
+     "source": {
+      "title": "Understanding and managing Amazon S3 storage classes",
+      "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/storage-class-intro.html"
+     }
+    },
+    {
+     "title": "S3 Lifecycle rules automate tiering",
+     "gist": "Lifecycle rules move ageing objects to cheaper classes and delete them when no longer needed, with no code.",
+     "points": [
+      "Transition actions change the storage class; expiration actions delete objects.",
+      "Rules apply to existing objects as well as new uploads.",
+      "Transitions are billed per request; weigh that for millions of small objects.",
+      "Expiring before a class's minimum storage duration still charges that minimum.",
+      "Bucket policies cannot block lifecycle deletions or transitions."
+     ],
+     "tip": "Known ageing pattern, like logs hot for 30 days then archived: lifecycle rules. Unknown pattern: Intelligent-Tiering. A Lambda that moves objects is the over-built answer.",
+     "diagram": "flowchart LR\n  UP([Upload]) --> S[Standard: days 0 to 30]\n  S -->|day 30| IA[Standard-IA]\n  IA -->|day 90| GF[Glacier Flexible Retrieval]\n  GF -->|day 365| EXP[Expire: delete]",
+     "video": null,
+     "source": {
+      "title": "Managing the lifecycle of objects",
+      "url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html"
+     }
+    },
+    {
+     "title": "Cut data transfer costs",
+     "gist": "Data moving through NAT, across Regions and out to the internet costs money, so design short, private paths.",
+     "points": [
+      "Gateway VPC endpoints for S3 and DynamoDB have no hourly charge and skip NAT.",
+      "Interface endpoints via PrivateLink have an hourly fee but avoid public paths.",
+      "Place NAT gateways in the same AZ as the high-traffic instances.",
+      "CloudFront caches at edge locations, cutting origin load and transfer.",
+      "Direct Connect can cut network cost versus internet links; Snow devices move petabytes offline."
+     ],
+     "tip": "EC2 pulling lots of S3 data through a NAT gateway: add an S3 gateway endpoint, which has no hourly charge. This is the most common cost fix tested.",
+     "diagram": "flowchart LR\n  EC2[EC2 in private subnet] -->|costly path| NAT[NAT gateway]\n  NAT --> S3A[(S3 public endpoint)]\n  EC2 ==>|cheaper path| GWE[S3 gateway endpoint]\n  GWE --> S3B[(S3)]\n  U([Global users]) --> CF[CloudFront edge cache]\n  CF --> ORG[Origin]",
+     "video": null,
+     "source": {
+      "title": "COST08-BP03 Implement services to reduce data transfer costs",
+      "url": "https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/cost_data_transfer_implement_services.html"
+     }
+    },
+    {
+     "title": "Cost visibility, tags and rightsizing",
+     "gist": "You can't cut what you can't see: tag resources, track spend per team, then rightsize using real utilisation data.",
+     "points": [
+      "Cost allocation tags must be activated in Billing before they appear in reports.",
+      "Only the management account manages cost allocation tags for an organization.",
+      "Compute Optimizer reads 14 days of CloudWatch metrics to suggest sizes and spot idle resources.",
+      "It covers EC2, Auto Scaling groups, EBS, Lambda, Fargate, RDS, NAT gateways and more.",
+      "Opt in first; opt in the management account for organization-wide recommendations."
+     ],
+     "tip": "Chargeback per team or project: activated cost allocation tags plus Cost Explorer. Oversized fleet: Compute Optimizer. Forgetting to activate tags is the common gap.",
+     "diagram": "flowchart LR\n  T[Tag resources: CostCenter, App] --> ACT[Activate tags in Billing]\n  ACT --> CE[Cost Explorer by tag]\n  ACT --> BUD[Budgets and alerts]\n  CW[(14 days of CloudWatch metrics)] --> CO[Compute Optimizer]\n  CO --> RS[Rightsize or remove idle]",
+     "video": {
+      "id": "HmXkLtSYHtk",
+      "title": "How can I tag my AWS resources to divide up my bill by cost center or project?",
+      "channel": "Amazon Web Services",
+      "min": 4
+     },
+     "source": {
+      "title": "Organizing and tracking costs using AWS cost allocation tags",
+      "url": "https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Picking the cheapest pricing model, storage class and network path that still meets the workload's needs.",
+    "must_know": [
+     "Compute SP up to 66%, flexible; EC2 Instance SP up to 72%, one family and Region.",
+     "Spot gives deep discounts with a two-minute interruption notice; Savings Plans don't cover it.",
+     "IA classes: 30-day minimum; Glacier Instant and Flexible 90 days; Deep Archive 180.",
+     "Intelligent-Tiering for unknown access; lifecycle rules for known ageing patterns.",
+     "S3 and DynamoDB gateway endpoints have no hourly charge and bypass NAT.",
+     "Activate cost allocation tags before they appear in Cost Explorer.",
+     "Compute Optimizer uses 14 days of metrics to rightsize and flag idle resources."
+    ],
+    "traps": [
+     "Putting the only copy of irreplaceable data in One Zone-IA.",
+     "Running stateful or non-interruptible workloads on Spot alone.",
+     "Routing heavy S3 traffic through NAT gateways instead of a gateway endpoint."
+    ]
+   }
   },
   {
    "domain": "Resilience, migration & business continuity",
@@ -290,7 +759,182 @@
     "data center",
     "move",
     "transfer"
-   ]
+   ],
+   "notes": [
+    {
+     "title": "RTO and RPO set the design",
+     "gist": "RTO is how long you can be down; RPO is how much recent data you can lose. Both come from business impact.",
+     "points": [
+      "RTO: maximum acceptable time from interruption to restored service.",
+      "RPO: maximum acceptable time since the last recovery point.",
+      "A business impact analysis sets targets per workload; impact can vary by date.",
+      "Backup frequency sets the achievable RPO; redeploy speed sets the RTO.",
+      "Don't spend more on recovery than the outage would cost, unless regulation requires it."
+     ],
+     "tip": "Read the numbers first: minutes of RPO rule out nightly backups; minutes of RTO rule out rebuilding from backups. Then pick the cheapest strategy that fits.",
+     "diagram": "flowchart LR\n  LP[Last recovery point] -->|RPO: data you may lose| X{{Disaster}}\n  X -->|RTO: downtime allowed| BK[Service restored]\n  BIA[Business impact analysis] -.-> LP\n  BIA -.-> BK",
+     "video": null,
+     "source": {
+      "title": "Business Continuity Plan (BCP) - Disaster Recovery of Workloads on AWS",
+      "url": "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/business-continuity-plan-bcp.html"
+     }
+    },
+    {
+     "title": "Four DR strategies, cost versus speed",
+     "gist": "DR runs from cheap, slow backups to costly active-active; each step up keeps more of the stack running elsewhere.",
+     "points": [
+      "Backup and restore: data backed up, infrastructure redeployed by IaC; highest RTO.",
+      "Pilot light: data replicated live, core infrastructure ready but app servers off.",
+      "Warm standby: a scaled-down but fully working copy that can take traffic at once.",
+      "Active-active: every Region serves traffic; async replication gives near-zero RPO.",
+      "Fail over with data plane actions; avoid depending on control plane calls."
+     ],
+     "tip": "Pilot light versus warm standby is the classic trap: pilot light cannot serve requests until scaled up; warm standby serves immediately at reduced capacity.",
+     "diagram": "flowchart LR\n  B[Backup and restore: lowest cost] --> PL[Pilot light: data live, app off]\n  PL --> WS[Warm standby: small live copy]\n  WS --> AA[Active-active: all Regions serve]\n  AA --> R[Lower RTO and RPO, higher cost]",
+     "video": {
+      "id": "QSz6pFfHQfg",
+      "title": "Disaster Recovery in Cloud Computing | AWS Pilot Light | Warm Standby | AWS Disaster Recovery",
+      "channel": "Go Cloud Architects",
+      "min": 9
+     },
+     "source": {
+      "title": "Disaster recovery options in the cloud",
+      "url": "https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/disaster-recovery-options-in-the-cloud.html"
+     }
+    },
+    {
+     "title": "Resilience Hub: check RTO and RPO",
+     "gist": "Resilience Hub checks whether an app's design can meet its RTO and RPO goals and tells you what to fix.",
+     "points": [
+      "Set goals in a resiliency policy, then assess the application against them.",
+      "Recommendations follow the AWS Well-Architected Framework.",
+      "Create and run Fault Injection Service experiments from the hub.",
+      "Works alongside AWS Backup, Elastic Disaster Recovery and ARC.",
+      "Run assessments regularly to keep tracking whether targets are still met."
+     ],
+     "tip": "A question asking to continuously validate that workloads still meet RTO and RPO targets points to Resilience Hub, not a one-off manual architecture review.",
+     "diagram": "flowchart LR\n  POL[Resiliency policy: RTO, RPO targets] --> ASM[Assess application]\n  APP[(Application resources)] --> ASM\n  ASM --> REC[Recommendations to close gaps]\n  REC --> FIS[Run FIS experiments]\n  FIS --> ASM",
+     "video": {
+      "id": "Hp9waMg2258",
+      "title": "Manage Application Resilience with AWS Resilience Hub, Part 1",
+      "channel": "Amazon Web Services",
+      "min": 7
+     },
+     "source": {
+      "title": "What is AWS Resilience Hub?",
+      "url": "https://docs.aws.amazon.com/resilience-hub/latest/userguide/what-is.html"
+     }
+    },
+    {
+     "title": "Fault Injection Service chaos experiments",
+     "gist": "FIS breaks things on purpose, in a controlled way, so you learn how the system fails before a real outage does.",
+     "points": [
+      "Experiment template = actions + targets + stop conditions.",
+      "Targets are chosen by resource ID or by tags and state.",
+      "Stop conditions are CloudWatch alarms that halt the experiment automatically.",
+      "Actions run in sequence or in parallel; multi-account experiments are supported.",
+      "FIS takes real actions on real resources; rehearse in pre-production first."
+     ],
+     "tip": "Prove the app survives instance or AZ loss with safety guardrails: FIS with alarm stop conditions. Home-made scripts that terminate instances lack those controls.",
+     "diagram": "flowchart LR\n  T[Experiment template] --> A[Actions: stop instances, add latency]\n  T --> TG[Targets: by tag]\n  T --> SC[Stop condition: CloudWatch alarm]\n  A --> RUN[Run experiment]\n  TG --> RUN\n  RUN --> OBS[Observe and fix weaknesses]\n  SC -.->|alarm fires| HALT[Experiment stopped]",
+     "video": {
+      "id": "AThR8dFmPP4",
+      "title": "Back to Basics: Chaos Engineering with AWS Fault Injection Simulator",
+      "channel": "Amazon Web Services",
+      "min": 7
+     },
+     "source": {
+      "title": "What is AWS Fault Injection Service?",
+      "url": "https://docs.aws.amazon.com/fis/latest/userguide/what-is.html"
+     }
+    },
+    {
+     "title": "ARC: zonal shift and Region failover",
+     "gist": "Application Recovery Controller moves traffic away from a sick AZ or Region quickly and safely.",
+     "points": [
+      "Zonal shift: manual, temporary move away from one AZ, expiry up to three days.",
+      "Zonal autoshift: AWS shifts traffic for you when its telemetry sees an AZ impairment.",
+      "Routing control: highly reliable DNS failover between Regions, with safety rules.",
+      "Region switch: orchestrated multi-Region recovery plans across accounts.",
+      "Readiness check watches quotas, capacity and routing so the standby can take load."
+     ],
+     "tip": "Gray failure or a bad deploy in one AZ: zonal shift. Controlled Region failover: routing control or Region switch, not hand-edited DNS records.",
+     "diagram": "flowchart LR\n  IMP{Impairment scope?} -->|one AZ| ZS[Zonal shift or autoshift]\n  ZS --> HAZ[Healthy AZs, same Region]\n  IMP -->|whole Region| RC[Routing control or Region switch]\n  RC --> R2[Standby Region]\n  RDY[Readiness check] -.-> R2",
+     "video": {
+      "id": "AlyFfuTpMt8",
+      "title": "How to use Region switch for multi-Region application recovery",
+      "channel": "Amazon Web Services",
+      "min": 10
+     },
+     "source": {
+      "title": "What is ARC?",
+      "url": "https://docs.aws.amazon.com/r53recovery/latest/dg/what-is-route53-recovery.html"
+     }
+    },
+    {
+     "title": "The 7 Rs migration strategies",
+     "gist": "Each app gets one of seven moves, from shutting it down to rebuilding it cloud-native, based on value, risk and effort.",
+     "points": [
+      "Retire switches the app off; retain keeps it where it is for now.",
+      "Rehost is lift and shift; relocate moves to a cloud version of the same platform.",
+      "Replatform makes small tweaks, such as SQL Server to Amazon RDS.",
+      "Repurchase swaps the app for SaaS: drop and shop.",
+      "Refactor re-architects cloud-native; most complex, so avoid it during large migrations."
+     ],
+     "tip": "Fastest with least change: rehost. Managed database with little code change: replatform. Big agility goals: refactor. Large migrations should move first and modernise later.",
+     "diagram": "flowchart LR\n  APP([Application]) --> NV{Still needed?}\n  NV -->|no| RET[Retire]\n  NV -->|not yet| RTN[Retain]\n  NV -->|yes| C{How much change?}\n  C -->|none| RH[Rehost or relocate]\n  C -->|small| RP[Replatform]\n  C -->|replace with SaaS| RPU[Repurchase]\n  C -->|redesign| RF[Refactor]",
+     "video": {
+      "id": "bJCmZn9fASM",
+      "title": "AWS Cloud Migration | 7 Rs Migration Strategies and AWS Migration Services",
+      "channel": "Digital Cloud Training",
+      "min": 9
+     },
+     "source": {
+      "title": "About the migration strategies - AWS Prescriptive Guidance",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/large-migration-guide/migration-strategies.html"
+     }
+    },
+    {
+     "title": "Migration tools: MGN, DMS, DataSync",
+     "gist": "Pick the tool by what you are moving: whole servers, databases, or files and objects.",
+     "points": [
+      "MGN, now AWS Transform MGN: block-level server replication, cutover in minutes.",
+      "DMS: full load plus ongoing change replication keeps source and target in sync.",
+      "DMS Schema Conversion or AWS SCT converts schemas when the engine changes.",
+      "DataSync: online file and object transfer with encryption and integrity checks.",
+      "Migration Hub closed to new customers in November 2025; AWS Transform replaces it."
+     ],
+     "tip": "Rehost servers: MGN. Change database engine with little downtime: Schema Conversion plus DMS ongoing replication. Bulk files online: DataSync. Too little bandwidth: Snowball.",
+     "diagram": "flowchart LR\n  SRC([On-premises estate]) --> K{What is moving?}\n  K -->|servers, VMs| MGN[AWS Transform MGN]\n  K -->|databases| DMS[DMS + Schema Conversion]\n  K -->|files and objects| DS[DataSync]\n  K -->|petabytes, low bandwidth| SNOW[Snowball Edge]",
+     "video": {
+      "id": "ao8geVzmmRo",
+      "title": "AWS Application Migration Service Architecture",
+      "channel": "Amazon Web Services",
+      "min": 9
+     },
+     "source": {
+      "title": "What Is AWS Transform MGN?",
+      "url": "https://docs.aws.amazon.com/mgn/latest/ug/what-is-application-migration-service.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Matching DR strategies to RTO and RPO, testing resilience, and choosing the right migration strategy and tool.",
+    "must_know": [
+     "RTO is allowed downtime; RPO is allowed data loss, measured in time.",
+     "Backup and restore, pilot light, warm standby, active-active: rising cost, falling RTO.",
+     "Pilot light cannot serve traffic until scaled up; warm standby can at once.",
+     "Resilience Hub assesses apps against RTO and RPO targets; FIS injects real faults safely.",
+     "ARC zonal shift moves traffic off one AZ; routing control fails over Regions.",
+     "7 Rs: retire, retain, rehost, relocate, replatform, repurchase, refactor.",
+     "MGN for servers, DMS for databases, DataSync for files, Snowball for offline bulk."
+    ],
+    "traps": [
+     "Confusing pilot light with warm standby when the RTO is minutes.",
+     "Refactoring during a large migration instead of rehosting first and modernising later.",
+     "Failing over with control plane actions instead of data plane switches."
+    ]
+   }
   },
   {
    "domain": "Operational excellence & automation",
@@ -351,7 +995,159 @@
     "ci/cd",
     "runbook",
     "incident"
-   ]
+   ],
+   "notes": [
+    {
+     "title": "Security gates in the CI/CD pipeline",
+     "gist": "Build security checks into every pipeline stage so vulnerable code or images are stopped before they reach production.",
+     "points": [
+      "ECR enhanced scanning uses Amazon Inspector for OS and language package CVEs.",
+      "Enhanced scanning runs on push and continuously; new findings emit EventBridge events.",
+      "Basic scanning covers OS packages only, on push or manually.",
+      "Fail the pipeline stage when findings exceed an agreed severity.",
+      "Well-Architected DevOps Guidance lists capabilities, metrics and anti-patterns to measure maturity."
+     ],
+     "tip": "Re-checking already pushed images as new CVEs appear needs ECR enhanced scanning with Inspector. Basic scan on push alone misses vulnerabilities published later.",
+     "diagram": "flowchart LR\n  SRC[Commit] --> BLD[Build and unit tests]\n  BLD --> SAST[Code scan]\n  SAST --> IMG[Push image to ECR]\n  IMG --> SCAN{Critical Inspector findings?}\n  SCAN -->|yes| STOP[Fail pipeline and notify]\n  SCAN -->|no| DEP[Deploy]",
+     "video": null,
+     "source": {
+      "title": "Scan images for software vulnerabilities in Amazon ECR",
+      "url": "https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html"
+     }
+    },
+    {
+     "title": "Blue/green, canary and linear deployments",
+     "gist": "Shift traffic to a new version gradually or all at once, and keep a fast way back if alarms fire.",
+     "points": [
+      "In-place on EC2: AllAtOnce, HalfAtATime or OneAtATime, set by minimum healthy hosts.",
+      "Canary: 10% first, the rest after a wait, e.g. `LambdaCanary10Percent5Minutes`.",
+      "Linear: equal steps, e.g. 10% every minute until all traffic moves.",
+      "ECS and Lambda deployments shift traffic to a new task set or function version.",
+      "With a Network Load Balancer, ECS supports only `ECSAllAtOnce`."
+     ],
+     "tip": "Least risk with quick rollback: blue/green or canary with alarm-based rollback. All-at-once in place is the fastest but riskiest distractor.",
+     "diagram": "flowchart LR\n  V1[Blue: current version] --> LB{Traffic shift}\n  LB -->|10% canary| V2[Green: new version]\n  V2 --> AL{Alarms healthy?}\n  AL -->|yes| ALL[Shift remaining 90%]\n  AL -->|no| RB[Roll back to blue]",
+     "video": {
+      "id": "AWVTKBUnoIg",
+      "title": "Top 5 Most-Used Deployment Strategies",
+      "channel": "ByteByteGo",
+      "min": 10
+     },
+     "source": {
+      "title": "Working with deployment configurations in CodeDeploy",
+      "url": "https://docs.aws.amazon.com/codedeploy/latest/userguide/deployment-configurations.html"
+     }
+    },
+    {
+     "title": "Lakehouse governance: Lake Formation + Iceberg",
+     "gist": "Lake Formation is the single permission layer for your data lake; Iceberg tables add database-like updates on S3.",
+     "points": [
+      "Fine-grained grants at database, table, column, row and cell level.",
+      "Tag-based access control, LF-TBAC, scales permissions with tags instead of per-table grants.",
+      "Manages permissions for open table formats: Apache Iceberg, Hudi and Delta Lake.",
+      "Shares data across accounts and organizations without copying it.",
+      "Hybrid access mode lets you adopt Lake Formation permissions gradually alongside IAM."
+     ],
+     "tip": "Column or row-level access for many analysts across accounts: Lake Formation. Juggling many S3 bucket policies and IAM rules is the high-effort wrong answer.",
+     "diagram": "flowchart LR\n  S3[(S3: Iceberg tables)] --> CAT[Glue Data Catalog]\n  CAT --> LF{{Lake Formation permissions}}\n  LF -->|columns, rows| ATH[Athena analysts]\n  LF -->|tags| ETL[EMR or Glue jobs]\n  LF -->|cross-account share| ACC2[Consumer account]",
+     "video": {
+      "id": "TsmhRZElPvM",
+      "title": "Apache Iceberg: What It Is and Why Everyone’s Talking About It.",
+      "channel": "Confluent Developer",
+      "min": 13
+     },
+     "source": {
+      "title": "What is AWS Lake Formation?",
+      "url": "https://docs.aws.amazon.com/lake-formation/latest/dg/what-is-lake-formation.html"
+     }
+    },
+    {
+     "title": "CloudWatch observability: signals, synthetics, RUM",
+     "gist": "CloudWatch shows how the app behaves for real users and across accounts, not just whether servers are up.",
+     "points": [
+      "Application Signals auto-collects call volume, latency, faults and errors; tracks SLOs.",
+      "It draws an application map; supports Java, Python, Node.js and .NET.",
+      "Synthetics canaries probe endpoints on a schedule; RUM measures real user sessions.",
+      "Cross-account observability links source accounts to a monitoring account, also via Organizations.",
+      "Alarms on metrics or SLOs can trigger notifications and automated runbooks."
+     ],
+     "tip": "Find problems before users report them: Synthetics canaries. Measure real user experience: RUM. One view across many accounts: cross-account observability, not log-copying scripts.",
+     "diagram": "flowchart LR\n  RUM[RUM: real browsers] --> AS{{Application Signals}}\n  SYN[Synthetics canaries] --> AS\n  APP[Services on ECS, EKS, EC2] --> AS\n  AS --> SLO[SLOs and application map]\n  SRC[Source accounts] -->|link| MON[Monitoring account]\n  AS --> MON",
+     "video": {
+      "id": "HfmqZvqaEjA",
+      "title": "Amazon CloudWatch Application Signals [Preview]",
+      "channel": "Amazon Web Services",
+      "min": 7
+     },
+     "source": {
+      "title": "Application Signals - Amazon CloudWatch",
+      "url": "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Application-Monitoring-Sections.html"
+     }
+    },
+    {
+     "title": "Systems Manager Automation runbooks",
+     "gist": "Systems Manager runs fixes and routine tasks across fleets and accounts as repeatable runbooks, not manual logins.",
+     "points": [
+      "Managed nodes need SSM Agent; no bastion hosts or SSH required.",
+      "Runbooks are AWS-provided or custom; `aws:executeScript` runs Python or PowerShell.",
+      "Rate controls set concurrency and error thresholds for safe bulk changes.",
+      "Run automations across multiple accounts and Regions from one place.",
+      "EventBridge can trigger runbooks, for example to remediate a compliance finding."
+     ],
+     "tip": "Auto-remediate drift or findings with least effort: EventBridge rule to an SSM Automation runbook. Custom Lambda scripts or manual SSH are the usual weaker options.",
+     "diagram": "flowchart LR\n  FND[Config or Security Hub finding] --> EB[EventBridge rule]\n  EB --> RB[SSM Automation runbook]\n  RB -->|rate control| FLEET[Instances across accounts]\n  RB --> LOG[CloudWatch Logs output]\n  RB -->|approval step| OPS([Operator])",
+     "video": {
+      "id": "fQ_KahCPBeU",
+      "title": "Create Automation Runbooks with AWS Systems Manager",
+      "channel": "Amazon Web Services",
+      "min": 5
+     },
+     "source": {
+      "title": "AWS Systems Manager Automation",
+      "url": "https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-automation.html"
+     }
+    },
+    {
+     "title": "StackSets: one template, many accounts",
+     "gist": "StackSets deploy the same CloudFormation stack to many accounts and Regions in one operation.",
+     "points": [
+      "An administrator account owns the template; stack instances land in target accounts and Regions.",
+      "Service-managed permissions with Organizations can auto-deploy to new accounts in an OU.",
+      "Typical use: org baselines such as IAM roles, Config rules and logging.",
+      "Run StackSet changes from a pipeline so baselines are reviewed before rollout.",
+      "Also useful for DR: deploy identical infrastructure into a recovery Region."
+     ],
+     "tip": "Deploy a baseline to every current and future account automatically: StackSets with service-managed permissions and auto-deployment. Running scripts per account is the error-prone distractor.",
+     "diagram": "flowchart LR\n  ADM[Administrator account] --> SS{{StackSet template}}\n  SS --> OU1[OU: prod accounts]\n  SS --> OU2[OU: dev accounts]\n  OU1 --> R1[Stacks in two Regions]\n  NEW([New account joins OU]) -.->|auto-deploy| SS",
+     "video": {
+      "id": "KVDt4559cTs",
+      "title": "AWS CloudFormation StackSets Tutorial",
+      "channel": "Stephane Maarek",
+      "min": 11
+     },
+     "source": {
+      "title": "Managing stacks across accounts and Regions with StackSets",
+      "url": "https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/what-is-cfnstacksets.html"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Automating deployments, security checks, monitoring and remediation across accounts with the least manual operations effort.",
+    "must_know": [
+     "ECR enhanced scanning with Inspector re-scans images continuously as new CVEs appear.",
+     "CodeDeploy canary shifts 10% first; linear shifts equal steps; all-at-once is riskiest.",
+     "Lake Formation grants database, table, column, row and cell access; LF-TBAC scales it.",
+     "Application Signals, Synthetics and RUM cover service health, probes and real users.",
+     "Cross-account observability links source accounts to one monitoring account.",
+     "EventBridge rule to SSM Automation runbook is the standard auto-remediation path.",
+     "StackSets with service-managed permissions auto-deploy baselines to new OU accounts."
+    ],
+    "traps": [
+     "Writing custom Lambda or SSH scripts where an SSM runbook or StackSet already fits.",
+     "Choosing all-at-once deployment when the question stresses minimal risk or fast rollback.",
+     "Managing many S3 bucket policies instead of Lake Formation fine-grained grants."
+    ]
+   }
   }
  ]
 }

@@ -95,7 +95,188 @@
     "channel": "SavageCamp",
     "min": 10
    },
-   "diagram": "flowchart TB\n  P([Pod not working]) --> S{kubectl get pod: status?}\n  S -->|Pending| D1[describe pod: scheduling, taints, resources, PVC]\n  S -->|CrashLoopBackOff| D2[logs --previous: app error, probes, command]\n  S -->|ImagePullBackOff| D3[image name, tag, registry secret]\n  S -->|Running, no traffic| D4[Service selector, endpoints, NetworkPolicy]\n  N([Node NotReady]) --> K[systemctl status kubelet, journalctl -u kubelet]\n  CP([API server down]) --> SP[static pods in /etc/kubernetes/manifests, crictl ps]"
+   "diagram": "flowchart TB\n  P([Pod not working]) --> S{kubectl get pod: status?}\n  S -->|Pending| D1[describe pod: scheduling, taints, resources, PVC]\n  S -->|CrashLoopBackOff| D2[logs --previous: app error, probes, command]\n  S -->|ImagePullBackOff| D3[image name, tag, registry secret]\n  S -->|Running, no traffic| D4[Service selector, endpoints, NetworkPolicy]\n  N([Node NotReady]) --> K[systemctl status kubelet, journalctl -u kubelet]\n  CP([API server down]) --> SP[static pods in /etc/kubernetes/manifests, crictl ps]",
+   "notes": [
+    {
+     "title": "Pending or Waiting pods: read Events",
+     "gist": "A Pending pod never got a node; a Waiting pod got one but cannot start, usually because the image will not pull.",
+     "points": [
+      "Pending means no node fits: CPU or memory, taints, nodeSelector, or an unbound PVC.",
+      "`kubectl describe pod <p>`: the scheduler explains itself in Events at the bottom.",
+      "Waiting with ImagePullBackOff: check image name, tag, registry access and pull secret.",
+      "Stuck Terminating usually means a finalizer that a webhook stops the control plane removing."
+     ],
+     "tip": "Tasks say 'make the pod run'. Read Events before editing. Trap: raising resources when the real cause is a taint, a selector typo or a Pending PVC.",
+     "diagram": "flowchart TB\n  A([Pod not Running]) --> B{Has a node?}\n  B -->|no| C[Pending: describe, read Events]\n  C --> D[Resources, taints, selector, PVC]\n  B -->|yes| E[Waiting: image pull failing?]\n  E --> F[Fix image name, tag, secret]",
+     "video": null,
+     "source": {
+      "title": "Debug Pods",
+      "url": "https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/"
+     }
+    },
+    {
+     "title": "CrashLoopBackOff: read the dead container",
+     "gist": "The container starts, dies and is restarted with growing delays; the reason sits in the previous container's logs and exit state.",
+     "points": [
+      "`kubectl logs <p> --previous` shows output of the crashed instance, not the fresh one.",
+      "Restart delay grows exponentially, capped at 5 minutes by default, and resets after a stable run.",
+      "Causes: app error, wrong command or args, missing config, failing liveness or startup probe.",
+      "`kubectl describe pod`: Last State shows the exit code and reason, such as OOMKilled.",
+      "`restartPolicy` defaults to Always; Deployments allow only Always."
+     ],
+     "tip": "Expect 'the pod keeps restarting, find why and fix it'. Trap: reading current logs instead of `--previous`, or forgetting `-c` in multi-container pods.",
+     "diagram": "flowchart LR\n  A[Container starts] --> B[Exits or probe fails]\n  B --> C[kubelet restarts it]\n  C --> D[Backoff grows, max 5 min]\n  D -.-> A\n  B --> E[Read previous logs, Last State]",
+     "video": null,
+     "source": {
+      "title": "Pod Lifecycle",
+      "url": "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/"
+     }
+    },
+    {
+     "objective": "Manage and evaluate container output streams",
+     "title": "Container logs: streams, files, rotation",
+     "gist": "Apps write to stdout and stderr; the runtime stores that in files on the node, and kubectl logs reads them back.",
+     "points": [
+      "`kubectl logs <p> -c <container> -f` follows one container; `--previous` reads the crashed one.",
+      "Node files live under `/var/log/pods`; kubelet and runtime log to journald: `journalctl -u kubelet`.",
+      "kubelet rotates at `containerLogMaxSize` 10Mi and keeps `containerLogMaxFiles` 5 by default.",
+      "`kubectl logs` returns only the newest file, so older rotated output is not shown.",
+      "A streaming sidecar can tail a log file to its own stdout for `kubectl logs`."
+     ],
+     "tip": "Tasks ask you to save a pod's error lines: `kubectl logs p | grep -i error > /opt/out.txt`. Trap: wrong container or namespace, or the wrong output path.",
+     "diagram": "flowchart LR\n  A[App stdout and stderr] --> B[Container runtime]\n  B --> C[(Log files in /var/log/pods)]\n  C --> D[kubelet]\n  D --> E[kubectl logs]\n  F[Sidecar tails app log file] -.-> B",
+     "video": {
+      "id": "zG9i-Jvw6bM",
+      "title": "Troubleshooting Kubernetes : Logging Architecture and Logging Patterns in Kubernetes | packtpub.com",
+      "channel": "Packt ",
+      "min": 7
+     },
+     "source": {
+      "title": "Logging Architecture",
+      "url": "https://kubernetes.io/docs/concepts/cluster-administration/logging/"
+     }
+    },
+    {
+     "title": "Debug inside pods: exec and debug",
+     "gist": "When logs are not enough, open a shell in the container, or attach a temporary debug container if it has none.",
+     "points": [
+      "`kubectl exec -it <p> -- sh` runs a shell in a running container.",
+      "No shell? `kubectl debug -it <p> --image=busybox:1.28 --target=<container>` adds an ephemeral container.",
+      "`--copy-to=<new>` debugs a copy; add `--set-image` or a new command, original untouched.",
+      "`kubectl debug node/<node> -it --image=ubuntu` gives a node shell; host files at `/host`."
+     ],
+     "tip": "Use when a task says 'find the process or file' in a shell-less pod. Trap: forgetting `--` before the command, or inspecting the copy, not the original.",
+     "diagram": "flowchart TB\n  A{Image has a shell?} -->|yes| B[kubectl exec -it pod sh]\n  A -->|no| C[kubectl debug: ephemeral container]\n  C --> D[target: sees app processes]\n  A -->|need changes| E[debug copy-to: new pod]\n  F[Node problem] --> G[debug node: host at /host]",
+     "video": {
+      "id": "qKb6loAEPV0",
+      "title": "How to Debug Kubernetes Applications With Ephemeral Containers",
+      "channel": "DevOps & AI Toolkit",
+      "min": 7
+     },
+     "source": {
+      "title": "Debug Running Pods",
+      "url": "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/"
+     }
+    },
+    {
+     "objective": "Troubleshoot clusters and nodes",
+     "title": "Node NotReady: bring the kubelet back",
+     "gist": "A node turns NotReady when its kubelet stops reporting: the service is stopped, misconfigured, or cannot reach the API server.",
+     "points": [
+      "`kubectl describe node <n>`: conditions show Unknown, 'Kubelet stopped posting node status'.",
+      "Unreachable nodes get `node.kubernetes.io/unreachable` taints with NoSchedule and NoExecute.",
+      "On the node: `systemctl status kubelet`, then `journalctl -u kubelet` for the real error.",
+      "Usual fixes: start and enable kubelet, correct a bad flag or config path, turn swap off.",
+      "After editing kubelet config: `systemctl daemon-reload && systemctl restart kubelet`."
+     ],
+     "tip": "Task: 'node01 is NotReady, fix it permanently'. Trap: `systemctl start` without `enable`, so it breaks again after reboot, or fixing the wrong node over ssh.",
+     "diagram": "flowchart LR\n  A([Node NotReady]) --> B[describe node: conditions]\n  B --> C[ssh to the node]\n  C --> D{kubelet active?}\n  D -->|no| E[Start and enable kubelet]\n  D -->|yes, failing| F[journalctl -u kubelet: read error]\n  F --> G[Fix config, daemon-reload, restart]",
+     "video": {
+      "id": "wPlL_Gr-a7Y",
+      "title": "Troubleshooting: Node Not Ready Status",
+      "channel": "Google Cloud Tech",
+      "min": 5
+     },
+     "source": {
+      "title": "Troubleshooting Clusters",
+      "url": "https://kubernetes.io/docs/tasks/debug/debug-cluster/"
+     }
+    },
+    {
+     "objective": "Troubleshoot cluster components",
+     "title": "Control plane down: static pod manifests",
+     "gist": "On kubeadm clusters the API server, etcd, scheduler and controller-manager are static pods the kubelet runs from YAML files on disk.",
+     "points": [
+      "Manifests live in `/etc/kubernetes/manifests`; kubelet recreates the pod when a file changes.",
+      "API server down, kubectl fails: on the node run `crictl ps -a`, `crictl logs <id>`.",
+      "Container log files under `/var/log/pods` stay readable even when the API is down.",
+      "Typical breakage: a typo in a flag, wrong cert path, wrong etcd endpoint or port.",
+      "Scheduler down: new pods stay Pending. Controller-manager down: lost pods are not replaced."
+     ],
+     "tip": "Task: 'the cluster stopped answering after a change, fix it'. Trap: trying `kubectl edit` on a static pod; edit the manifest file, then wait for kubelet.",
+     "diagram": "flowchart TB\n  A[kubelet] -->|watches| B[Static pod YAML files]\n  B --> C[kube-apiserver]\n  B --> D[etcd]\n  B --> E[kube-scheduler]\n  B --> F[controller-manager]\n  C -.->|down?| G[crictl ps -a, crictl logs]",
+     "video": null,
+     "source": {
+      "title": "Troubleshooting Clusters",
+      "url": "https://kubernetes.io/docs/tasks/debug/debug-cluster/"
+     }
+    },
+    {
+     "objective": "Monitor cluster and application resource usage",
+     "title": "Resource usage with kubectl top",
+     "gist": "metrics-server collects CPU and memory from every kubelet and serves it through the Metrics API that kubectl top and the HPA read.",
+     "points": [
+      "`kubectl top nodes` and `kubectl top pods -A --sort-by=cpu` show live usage.",
+      "`kubectl top pod <p> --containers` splits usage per container.",
+      "No metrics-server means `kubectl top` errors: the `metrics.k8s.io` API is missing.",
+      "It shows current usage only, not history or alerts.",
+      "Compare with requests and limits under Allocated resources in `kubectl describe node`."
+     ],
+     "tip": "Task: 'write the pod using most CPU in namespace X to a file'. Trap: missing `-n`, or sorting by memory when the task asked for CPU.",
+     "diagram": "flowchart LR\n  A[kubelet on each node] --> B[metrics-server]\n  B --> C[Metrics API: metrics.k8s.io]\n  C --> D[kubectl top]\n  C --> E[HPA and VPA]",
+     "video": null,
+     "source": {
+      "title": "Resource metrics pipeline",
+      "url": "https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/"
+     }
+    },
+    {
+     "objective": "Troubleshoot services and networking",
+     "title": "Service unreachable: test hop by hop",
+     "gist": "Check each hop in order: the Service exists, DNS resolves it, endpoints exist, pods answer directly, then kube-proxy and policies.",
+     "points": [
+      "Endpoints: `kubectl get endpointslices -l kubernetes.io/service-name=<svc>`; empty means a selector mismatch.",
+      "Service `targetPort` must equal the pod's `containerPort`; a mismatch is accepted without error.",
+      "Name fails but IP works: DNS problem. Test `nslookup kubernetes.default` from a pod.",
+      "Pods answer by IP but the Service does not: suspect kube-proxy and read its logs.",
+      "Failing readiness probes remove pod IPs from the endpoints."
+     ],
+     "tip": "Adds to the playbook's Service steps. Trap: fixing the Service when a NetworkPolicy blocks traffic, or testing a short name from another namespace.",
+     "diagram": "flowchart LR\n  A[Service exists?] --> B[DNS name resolves?]\n  B --> C[EndpointSlices not empty?]\n  C --> D[Pods answer on targetPort?]\n  D --> E[kube-proxy and NetworkPolicy]",
+     "video": null,
+     "source": {
+      "title": "Debug Services",
+      "url": "https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can find and fix a broken pod, node, control plane component or Service fast, using describe, logs, events and node tools.",
+    "must_know": [
+     "Read Events at the bottom of `kubectl describe` before changing anything.",
+     "`kubectl logs --previous` shows why a crashed container died.",
+     "Node NotReady: `systemctl status kubelet` and `journalctl -u kubelet` on that node.",
+     "Control plane pods are static: edit files in `/etc/kubernetes/manifests`, not live objects.",
+     "`kubectl top` needs metrics-server and shows current CPU and memory only.",
+     "A Service with no endpoints means its selector does not match pod labels.",
+     "Container logs rotate at 10Mi by default; only the newest file is returned."
+    ],
+    "traps": [
+     "Starting the kubelet without enabling it, so it is down again after a reboot.",
+     "Reading current logs of a crash-looping container instead of `--previous`.",
+     "Working in the default namespace when the broken pod lives elsewhere."
+    ]
+   }
   },
   {
    "domain": "Cluster Architecture, Installation & Configuration",
@@ -138,7 +319,208 @@
     "channel": "ByteByteGo",
     "min": 6
    },
-   "diagram": "flowchart LR\n  subgraph CPL[Control plane]\n    API[kube-apiserver] --- ETCD[(etcd)]\n    API --- SCH[scheduler]\n    API --- CM[controller-manager]\n  end\n  subgraph NODE[Worker node]\n    KL[kubelet] --> CRI[containerd]\n    KP[kube-proxy]\n    CRI --> POD[Pods]\n  end\n  KUBECTL([kubectl]) --> API\n  API --> KL\n  KUBEADM[kubeadm: init, join, upgrade] -.-> API"
+   "diagram": "flowchart LR\n  subgraph CPL[Control plane]\n    API[kube-apiserver] --- ETCD[(etcd)]\n    API --- SCH[scheduler]\n    API --- CM[controller-manager]\n  end\n  subgraph NODE[Worker node]\n    KL[kubelet] --> CRI[containerd]\n    KP[kube-proxy]\n    CRI --> POD[Pods]\n  end\n  KUBECTL([kubectl]) --> API\n  API --> KL\n  KUBEADM[kubeadm: init, join, upgrade] -.-> API",
+   "notes": [
+    {
+     "objective": "Manage role based access control (RBAC)",
+     "title": "RBAC: roles, bindings, verify with can-i",
+     "gist": "A Role lists allowed verbs on resources; a binding hands that list to a user, group or ServiceAccount.",
+     "points": [
+      "Role and RoleBinding are namespaced; ClusterRole and ClusterRoleBinding are cluster-wide.",
+      "A RoleBinding may reference a ClusterRole to grant it inside one namespace only.",
+      "`roleRef` is immutable: delete and recreate the binding to change the role.",
+      "ServiceAccount user name format: `system:serviceaccount:<ns>:<name>`.",
+      "Check with `kubectl auth can-i <verb> <resource> --as=<user> -n <ns>`."
+     ],
+     "tip": "Typical task: a ServiceAccount may only list deployments in one namespace. Trap: a ClusterRoleBinding grants every namespace; a binding in the wrong namespace makes can-i say no.",
+     "diagram": "flowchart LR\n  B[RoleBinding: one namespace] --> A[Subject: user, group, SA]\n  C[ClusterRoleBinding: all namespaces] --> A\n  B --> D[Role]\n  B -.->|may reference| E[ClusterRole]\n  C --> E",
+     "video": {
+      "id": "G3R24JSlGjY",
+      "title": "Understand Role Based Access Control in Kubernetes",
+      "channel": "Microsoft Azure",
+      "min": 7
+     },
+     "source": {
+      "title": "Using RBAC Authorization",
+      "url": "https://kubernetes.io/docs/reference/access-authn-authz/rbac/"
+     }
+    },
+    {
+     "objective": "Prepare underlying infrastructure for installing a Kubernetes cluster; Understand extension interfaces (CNI, CSI, CRI, etc.)",
+     "title": "Prepare nodes: runtime, CNI, kernel settings",
+     "gist": "Every node needs a CRI runtime, IP forwarding on and swap handled; the cluster then needs a CNI plugin for pod networking.",
+     "points": [
+      "Minimum: 2 GB RAM per machine, 2 CPUs for control plane, unique hostname, MAC, product_uuid.",
+      "kubelet fails to start if swap is on: `swapoff -a` and remove swap from `/etc/fstab`.",
+      "Set `net.ipv4.ip_forward = 1` in sysctl config; check with `sysctl net.ipv4.ip_forward`.",
+      "Use the `systemd` cgroup driver in both kubelet and containerd (`SystemdCgroup = true`).",
+      "CRI plugs in the runtime, CNI the pod network, CSI the storage drivers."
+     ],
+     "tip": "Tasks may say 'prepare this node and install kubeadm'. Trap: kubelet and runtime cgroup drivers differ, or forgetting `apt-mark hold kubelet kubeadm kubectl`.",
+     "diagram": "flowchart TB\n  N[Linux node] --> S[Swap off, IP forwarding on]\n  N --> R[CRI runtime: containerd]\n  R --> K[kubelet: same cgroup driver]\n  K --> C[CNI plugin: pod network]\n  K --> V[CSI driver: volumes]",
+     "video": {
+      "id": "Uh1cG7iY39g",
+      "title": "CRI, CNI, CSI - what's this all about?",
+      "channel": "mkdev",
+      "min": 2
+     },
+     "source": {
+      "title": "Installing kubeadm",
+      "url": "https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/"
+     }
+    },
+    {
+     "objective": "Create and manage Kubernetes clusters using kubeadm",
+     "title": "kubeadm init and join",
+     "gist": "kubeadm init builds the control plane on one node, you add a CNI plugin, then other nodes run the printed join command.",
+     "points": [
+      "`kubeadm init --pod-network-cidr=<cidr>` if your CNI needs it; never overlap host networks.",
+      "Copy `/etc/kubernetes/admin.conf` to `$HOME/.kube/config` so kubectl works.",
+      "CoreDNS will not start until a CNI pod network add-on is installed.",
+      "Workers: `kubeadm join <host>:6443 --token <t> --discovery-token-ca-cert-hash sha256:<h>`.",
+      "Lost the join line? `kubeadm token create --print-join-command` prints a fresh one."
+     ],
+     "tip": "Task: join node02 to the cluster. Trap: running join on the control plane, or reusing an expired token instead of printing a new join command.",
+     "diagram": "flowchart LR\n  A[Prepare nodes] --> B[kubeadm init on control plane]\n  B --> C[Copy admin.conf for kubectl]\n  C --> D[Install CNI add-on]\n  D --> E[kubeadm join on workers]\n  E --> F[kubectl get nodes: Ready]",
+     "video": {
+      "id": "xX52dc3u2HU",
+      "title": "Setup Kubernetes Cluster Using Kubeadm [Multi-node]",
+      "channel": "DevopsCube",
+      "min": 16
+     },
+     "source": {
+      "title": "Creating a cluster with kubeadm",
+      "url": "https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/"
+     }
+    },
+    {
+     "objective": "Implement and configure a highly-available control plane",
+     "title": "Highly available control plane",
+     "gist": "Run several control plane nodes behind one load-balanced endpoint so losing a node does not stop the API.",
+     "points": [
+      "Stacked: etcd runs on each control plane node; simpler, needs at least three nodes.",
+      "External etcd: separate etcd hosts; at least three control plane plus three etcd hosts.",
+      "Workers reach `kube-apiserver` through a load balancer in both topologies.",
+      "Set `--control-plane-endpoint` at `kubeadm init`; a single-node cluster cannot be converted later.",
+      "Stacked risk: losing one node removes an etcd member and an API server together."
+     ],
+     "tip": "Questions ask which topology fits or why a third node matters. Trap: thinking two control plane nodes are HA; etcd stops working without a majority.",
+     "diagram": "flowchart TB\n  W[Workers and kubectl] --> LB[Load balancer: 6443]\n  LB --> C1[Control plane 1 + etcd]\n  LB --> C2[Control plane 2 + etcd]\n  LB --> C3[Control plane 3 + etcd]",
+     "video": null,
+     "source": {
+      "title": "Options for Highly Available Topology",
+      "url": "https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/"
+     }
+    },
+    {
+     "objective": "Manage the lifecycle of Kubernetes clusters",
+     "title": "Upgrade a cluster with kubeadm",
+     "gist": "Upgrade one minor version at a time: control plane first, then each worker, with kubeadm before kubelet and kubectl.",
+     "points": [
+      "Skipping minor versions is unsupported: 1.36 to 1.37, never 1.35 to 1.37.",
+      "With `pkgs.k8s.io`, switch the apt repo to the target minor version first.",
+      "`apt-mark unhold kubeadm`, install the exact version, then `apt-mark hold kubeadm` again.",
+      "First control plane: `kubeadm upgrade apply v1.x.y`; every other node: `kubeadm upgrade node`.",
+      "Drain before a minor kubelet upgrade; `kubeadm upgrade` also renews its certificates."
+     ],
+     "tip": "Full command list is in the playbook. Trap: `upgrade apply` on a worker, kubelet before kubeadm, or skipping `daemon-reload`, restart and uncordon.",
+     "diagram": "flowchart LR\n  A[Drain node] --> B[Upgrade kubeadm package]\n  B --> C{First control plane?}\n  C -->|yes| D[kubeadm upgrade apply]\n  C -->|no| E[kubeadm upgrade node]\n  D --> F[Upgrade kubelet, kubectl, restart]\n  E --> F\n  F --> G[Uncordon node]",
+     "video": null,
+     "source": {
+      "title": "Upgrading kubeadm clusters",
+      "url": "https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/"
+     }
+    },
+    {
+     "objective": "Manage the lifecycle of Kubernetes clusters",
+     "title": "etcd snapshot backup and restore",
+     "gist": "etcd holds all cluster state; a snapshot file lets you roll the whole cluster back after data loss or a bad change.",
+     "points": [
+      "Get cert paths from `/etc/kubernetes/manifests/etcd.yaml`: `--trusted-ca-file`, `--cert-file`, `--key-file`.",
+      "Save with `etcdctl` (talks to etcd); restore and status with `etcdutl` (works on files).",
+      "`etcdutl --data-dir <new-dir> snapshot restore snap.db` creates the new directory.",
+      "Then point the `etcd-data` hostPath in `etcd.yaml` at that directory.",
+      "Check a file: `etcdutl --write-out=table snapshot status snap.db`."
+     ],
+     "tip": "Save and restore commands are in the playbook. Trap: leaving out `--endpoints` or a cert flag so save fails, or restoring into the live data dir.",
+     "diagram": "flowchart LR\n  A[Read certs from etcd.yaml] --> B[etcdctl snapshot save]\n  B --> C[(snapshot.db)]\n  C --> D[etcdutl restore: new data dir]\n  D --> E[Edit etcd-data hostPath]\n  E --> F[kubelet restarts etcd]",
+     "video": {
+      "id": "idGboAZpniE",
+      "title": "Part 6 | Most Important CKA Question ETCD Backup & Restore | Certified Kubernetes Administrator 2025",
+      "channel": "DevOpsCertification",
+      "min": 6
+     },
+     "source": {
+      "title": "Operating etcd clusters for Kubernetes",
+      "url": "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/"
+     }
+    },
+    {
+     "objective": "Use Helm and Kustomize to install cluster components",
+     "title": "Helm and Kustomize for components",
+     "gist": "Helm installs packaged charts as named releases; Kustomize patches plain YAML through a kustomization.yaml, no templates.",
+     "points": [
+      "Helm: `helm repo add <name> <url>`, then `helm install <release> <name>/<chart> -n <ns>`.",
+      "`helm list -A` shows releases; `helm uninstall <release>` removes one.",
+      "OCI charts need no repo: `helm install <release> oci://<registry>/<chart> --version <v>`.",
+      "Kustomize: `kubectl kustomize <dir>` previews; `kubectl apply -k <dir>` applies.",
+      "kustomization.yaml lists `resources`, `patches`, `images`, `namePrefix`; generators add a hash suffix."
+     ],
+     "tip": "Tasks name the release, chart version and namespace exactly. Trap: forgetting `-n` or `--version`, or `kubectl apply -f` on a kustomize folder instead of `-k`.",
+     "diagram": "flowchart TB\n  A{Install a component} -->|packaged chart| B[helm repo add, helm install]\n  B --> C[Release tracked: helm list]\n  A -->|own YAML + overlays| D[kustomization.yaml: resources, patches]\n  D --> E[kubectl apply -k dir]",
+     "video": {
+      "id": "kJscDZfHXrQ",
+      "title": "What is Helm? | Helm Concepts Explained | KodeKloud",
+      "channel": "KodeKloud",
+      "min": 13
+     },
+     "source": {
+      "title": "Declarative Management of Kubernetes Objects Using Kustomize",
+      "url": "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/"
+     }
+    },
+    {
+     "objective": "Understand CRDs, install and configure operators",
+     "title": "CRDs and operators",
+     "gist": "A CRD adds a new object type to the API; an operator is a controller that watches those objects and acts.",
+     "points": [
+      "A CRD alone only stores data; a custom controller makes it act.",
+      "Operator = custom resources plus a controller that encodes operational know-how.",
+      "Find them: `kubectl get crd`, then `kubectl explain <kind>.spec` for fields.",
+      "Install an operator by applying its CRDs and controller, often with Helm.",
+      "CRDs are Namespaced or Cluster scoped and validate with an OpenAPI v3 schema."
+     ],
+     "tip": "Tasks: list an operator's CRDs, or create a custom object from given YAML. Trap: creating the object before its CRD exists, or a wrong `apiVersion` group.",
+     "diagram": "flowchart LR\n  A[CRD: new kind] --> B[API server stores objects]\n  U([kubectl apply custom object]) --> B\n  B --> C[Operator controller watches]\n  C --> D[Creates pods, services, config]\n  C -.->|updates| E[Object status]",
+     "video": {
+      "id": "ha3LjlD6g7g",
+      "title": "Kubernetes Operator simply explained in 10 mins",
+      "channel": "TechWorld with Nana",
+      "min": 10
+     },
+     "source": {
+      "title": "Custom Resources",
+      "url": "https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can build, upgrade, back up and secure a kubeadm cluster, and install add-ons with Helm, Kustomize and CRDs.",
+    "must_know": [
+     "Upgrade one minor version at a time: control plane first, kubeadm before kubelet.",
+     "`kubeadm upgrade apply` on the first control plane; `kubeadm upgrade node` everywhere else.",
+     "etcd backup needs the endpoint plus three cert flags from the etcd manifest.",
+     "Restore into a new data dir, then repoint the `etcd-data` hostPath.",
+     "A RoleBinding grants in one namespace, even when it references a ClusterRole.",
+     "Verify RBAC with `kubectl auth can-i <verb> <resource> --as=<user>`.",
+     "HA needs at least three control plane nodes behind one endpoint."
+    ],
+    "traps": [
+     "Using a ClusterRoleBinding when the task limits access to one namespace.",
+     "Forgetting to drain, restart kubelet or uncordon during an upgrade.",
+     "Applying a kustomize folder with `-f` instead of `-k`."
+    ]
+   }
   },
   {
    "domain": "Services & Networking",
@@ -176,7 +558,189 @@
     "channel": "KodeKloud",
     "min": 14
    },
-   "diagram": "flowchart LR\n  C([Client]) --> ING[Ingress / Gateway API]\n  ING --> SVC[Service: ClusterIP]\n  NP[NodePort / LoadBalancer] --> SVC\n  SVC -->|selector labels| EP[EndpointSlices]\n  EP --> P1[Pod A]\n  EP --> P2[Pod B]\n  DNS[CoreDNS: svc.ns.svc.cluster.local] -.-> SVC\n  NPOL[NetworkPolicy: allow, deny] -.-> P1"
+   "diagram": "flowchart LR\n  C([Client]) --> ING[Ingress / Gateway API]\n  ING --> SVC[Service: ClusterIP]\n  NP[NodePort / LoadBalancer] --> SVC\n  SVC -->|selector labels| EP[EndpointSlices]\n  EP --> P1[Pod A]\n  EP --> P2[Pod B]\n  DNS[CoreDNS: svc.ns.svc.cluster.local] -.-> SVC\n  NPOL[NetworkPolicy: allow, deny] -.-> P1",
+   "notes": [
+    {
+     "objective": "Understand connectivity between Pods",
+     "title": "Pod networking model",
+     "gist": "Every pod gets its own cluster-wide IP and can reach every other pod directly, on any node, without NAT.",
+     "points": [
+      "One IP per pod; containers in the same pod share it and use localhost.",
+      "Pod to pod across nodes works without proxies or address translation.",
+      "The CNI plugin builds the pod network; kube-proxy implements Service virtual IPs.",
+      "Node agents such as the kubelet can reach all pods on their node.",
+      "Pod IPs change when pods are replaced, so clients use Services."
+     ],
+     "tip": "Questions ask why pods cannot talk: no CNI installed, or a NetworkPolicy. Trap: blaming the Service when pod-to-pod by IP already fails.",
+     "diagram": "flowchart LR\n  P1[Pod A: own IP] -->|direct, no NAT| P2[Pod B on another node]\n  CNI[CNI plugin] -.->|builds pod network| P1\n  CNI -.-> P2\n  KP[kube-proxy] -.->|Service virtual IPs| S[Service]\n  S --> P2",
+     "video": {
+      "id": "J8jAzqbXxjE",
+      "title": "Kubernetes Networking Explained",
+      "channel": "Mischa van den Burg",
+      "min": 18
+     },
+     "source": {
+      "title": "Services, Load Balancing, and Networking",
+      "url": "https://kubernetes.io/docs/concepts/services-networking/"
+     }
+    },
+    {
+     "objective": "Use ClusterIP, NodePort, LoadBalancer service types and endpoints",
+     "title": "Service types, ports and endpoints",
+     "gist": "A Service gives a stable name and IP to a changing set of pods chosen by a label selector.",
+     "points": [
+      "ClusterIP is the default and is reachable only inside the cluster.",
+      "NodePort opens the same port on every node, default range 30000-32767.",
+      "LoadBalancer builds on NodePort and asks the cloud for an external load balancer.",
+      "`port` is the Service port; `targetPort` defaults to the same value.",
+      "`clusterIP: None` makes a headless Service: DNS returns the pod IPs."
+     ],
+     "tip": "Task: expose a deployment on NodePort 30080. Trap: `kubectl expose` cannot set the nodePort, so edit the Service after; and match `targetPort` to the container port.",
+     "diagram": "flowchart LR\n  C([Client outside]) --> LB[LoadBalancer: cloud LB]\n  LB --> NP[NodePort: same port, every node]\n  NP --> CIP[ClusterIP: inside only]\n  CIP -->|selector| EP[EndpointSlices]\n  EP --> P[Pods on targetPort]",
+     "video": {
+      "id": "sjaOsHoF6KY",
+      "title": "Kubernetes Networking: NodePort, LoadBalancer, Ingress, or Gateway API?",
+      "channel": "SystemBlueprint",
+      "min": 13
+     },
+     "source": {
+      "title": "Service",
+      "url": "https://kubernetes.io/docs/concepts/services-networking/service/"
+     }
+    },
+    {
+     "objective": "Define and enforce Network Policies",
+     "title": "NetworkPolicy: isolation and default deny",
+     "gist": "Pods accept all traffic until a NetworkPolicy selects them; after that only what some policy allows gets through.",
+     "points": [
+      "Needs a CNI that enforces policies; otherwise the object exists but does nothing.",
+      "Policies are additive: allowed traffic is the union, and there are no deny rules.",
+      "Default deny ingress: `podSelector: {}`, `policyTypes: [Ingress]`, no ingress rules.",
+      "A connection needs both the source egress and the destination ingress to allow it.",
+      "Egress deny also blocks DNS; allow port 53 UDP and TCP to kube-dns."
+     ],
+     "tip": "Typical: deny all, then allow app to db on one port. Trap: egress rules without DNS break lookups, or the policy lands in the wrong namespace.",
+     "diagram": "flowchart TB\n  A([Traffic to a pod]) --> B{Any policy selects it for ingress?}\n  B -->|no| C[Allowed]\n  B -->|yes| D{Any rule matches source and port?}\n  D -->|yes| C\n  D -->|no| E[Dropped]",
+     "video": {
+      "id": "u1KUft3fsCk",
+      "title": "Kubernetes Network Policy Tutorial - yaml explained + Demo Calico",
+      "channel": "Cloud With Raj",
+      "min": 15
+     },
+     "source": {
+      "title": "Network Policies",
+      "url": "https://kubernetes.io/docs/concepts/services-networking/network-policies/"
+     }
+    },
+    {
+     "objective": "Define and enforce Network Policies",
+     "title": "NetworkPolicy selectors: AND versus OR",
+     "gist": "Inside one from item, podSelector and namespaceSelector must both match; written as separate items, either one is enough.",
+     "points": [
+      "One item holding `namespaceSelector` and `podSelector` = those pods in those namespaces only.",
+      "Two items, each starting with `-`, = either source is allowed.",
+      "A bare `podSelector` in `from` only matches pods in the policy's own namespace.",
+      "Select a namespace by name with label `kubernetes.io/metadata.name: <ns>`.",
+      "See how it was read: `kubectl describe networkpolicy <name>`."
+     ],
+     "tip": "The exam may make you pick the least permissive policy from several files. Trap: one extra dash turns AND into OR and opens a whole namespace.",
+     "diagram": "flowchart TB\n  A[from list] --> B{One item with both selectors?}\n  B -->|yes| C[AND: matching pods in matching namespaces]\n  B -->|no, two items| D[OR: local pods or whole namespaces]",
+     "video": null,
+     "source": {
+      "title": "Network Policies",
+      "url": "https://kubernetes.io/docs/concepts/services-networking/network-policies/"
+     }
+    },
+    {
+     "objective": "Know how to use Ingress controllers and Ingress resources",
+     "title": "Ingress: HTTP routing to Services",
+     "gist": "An Ingress maps hosts and paths to Services, but only a running Ingress controller turns those rules into real routing.",
+     "points": [
+      "Set `ingressClassName` to pick the controller; if omitted, the default IngressClass applies.",
+      "Every path needs a `pathType`: `Exact`, `Prefix` or `ImplementationSpecific`.",
+      "Prefix `/foo` matches `/foo` and `/foo/bar` but not `/foobar`.",
+      "TLS uses a Secret holding cert and key; only port 443 is supported.",
+      "The Ingress API is frozen; Gateway API is the recommended successor."
+     ],
+     "tip": "Task: route shop.example.com/api to Service api on 8080. Trap: wrong `ingressClassName`, a port the Service lacks, or the Ingress in another namespace.",
+     "diagram": "flowchart LR\n  C([Client]) --> IC[Ingress controller pod]\n  IR[Ingress rules: host, path] -.->|configures| IC\n  IC -->|shop.example.com/api| S1[Service api]\n  IC -->|no match| S2[Default backend]",
+     "video": {
+      "id": "NPFbYpb0I7w",
+      "title": "Kubernetes Ingress in 5 mins",
+      "channel": "IBM Technology",
+      "min": 5
+     },
+     "source": {
+      "title": "Ingress",
+      "url": "https://kubernetes.io/docs/concepts/services-networking/ingress/"
+     }
+    },
+    {
+     "objective": "Use the Gateway API to manage Ingress traffic",
+     "title": "Gateway API: classes, gateways, routes",
+     "gist": "Gateway API splits ingress by role: a class names the controller, a Gateway opens listeners, and Routes send traffic to Services.",
+     "points": [
+      "GatewayClass sets the `controllerName` of the implementation; it usually ships with the controller.",
+      "Gateway sets `gatewayClassName` and `listeners` with protocol, port and optional hostname.",
+      "HTTPRoute attaches via `parentRefs` to a Gateway and forwards to `backendRefs` Services.",
+      "A Gateway accepts Routes from its own namespace only, unless `allowedRoutes` says otherwise.",
+      "It is an add-on: its CRDs and a controller must be installed first."
+     ],
+     "tip": "Task: write an HTTPRoute for an existing Gateway, or replace an Ingress. Trap: wrong `parentRefs` name or namespace, or a Route in a namespace the listener rejects.",
+     "diagram": "flowchart LR\n  GC[GatewayClass: controller] --> GW[Gateway: listeners, port 80]\n  R[HTTPRoute: host, path match] -->|parentRefs| GW\n  R -->|backendRefs| S[Service]\n  S --> P[Pods]",
+     "video": {
+      "id": "6m6-VrQPXyY",
+      "title": "Kubernetes Gateway API tutorial: 5 examples of what you can do with it",
+      "channel": "CodiLime",
+      "min": 13
+     },
+     "source": {
+      "title": "Gateway API",
+      "url": "https://kubernetes.io/docs/concepts/services-networking/gateway/"
+     }
+    },
+    {
+     "objective": "Understand and use CoreDNS",
+     "title": "DNS names and CoreDNS",
+     "gist": "CoreDNS gives every Service a predictable name, and each pod searches its own namespace first when resolving short names.",
+     "points": [
+      "Service record `<svc>.<ns>.svc.cluster.local` gives the ClusterIP; headless returns pod IPs.",
+      "Pod `resolv.conf` searches `<ns>.svc.cluster.local` first, so short names work within one namespace.",
+      "Pod record: IP with dashes, for example `172-17-0-3.default.pod.cluster.local`.",
+      "Config is the Corefile in the `coredns` ConfigMap in `kube-system`; the Service is still `kube-dns`.",
+      "Default `dnsPolicy` is ClusterFirst; the value `Default` inherits the node's resolver."
+     ],
+     "tip": "Task: write a Service's FQDN, or add a stub domain with `forward` in the Corefile. Trap: using a short name across namespaces.",
+     "diagram": "flowchart LR\n  P[Pod looks up api.prod] --> R[resolv.conf search list]\n  R --> D[kube-dns Service]\n  D --> C[CoreDNS pods: Corefile]\n  C -->|cluster.local| S[Service ClusterIP]\n  C -->|other names| U[Upstream via forward]",
+     "video": {
+      "id": "VcWpZoRAQXE",
+      "title": "Day 31/40 - Understanding CoreDNS In Kubernetes",
+      "channel": "Tech Tutorials with Piyush",
+      "min": 19
+     },
+     "source": {
+      "title": "DNS for Services and Pods",
+      "url": "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can expose apps with Services, Ingress and Gateway API, restrict traffic with NetworkPolicies, and resolve names through CoreDNS.",
+    "must_know": [
+     "ClusterIP is default; NodePort range 30000-32767; LoadBalancer builds on NodePort.",
+     "Empty endpoints mean the selector does not match pod labels.",
+     "NetworkPolicies are additive allow lists and need a CNI that enforces them.",
+     "One `from` item with both selectors is AND; two items are OR.",
+     "Ingress needs a controller, an `ingressClassName` and a `pathType` on every path.",
+     "Gateway API: GatewayClass, Gateway with listeners, HTTPRoute with `parentRefs` and `backendRefs`.",
+     "FQDN `<svc>.<ns>.svc.cluster.local`; short names resolve only in the same namespace."
+    ],
+    "traps": [
+     "An egress deny policy that forgets DNS on port 53.",
+     "A stray dash in a NetworkPolicy `from` list that widens access.",
+     "Ingress, Route or policy created in a different namespace from its target."
+    ]
+   }
   },
   {
    "domain": "Workloads & Scheduling",
@@ -219,7 +783,184 @@
     "channel": "Microsoft Azure",
     "min": 6
    },
-   "diagram": "flowchart LR\n  DEP[Deployment] --> RS[ReplicaSet]\n  RS --> P1[Pod]\n  RS --> P2[Pod]\n  DEP -->|rolling update, rollback| RS2[New ReplicaSet]\n  P1 --> SCH{Scheduler}\n  SCH -->|requests, nodeSelector, affinity, taints + tolerations| N[(Node)]\n  CMS[ConfigMap / Secret] -.-> P1\n  HPA[HPA] -.-> DEP"
+   "diagram": "flowchart LR\n  DEP[Deployment] --> RS[ReplicaSet]\n  RS --> P1[Pod]\n  RS --> P2[Pod]\n  DEP -->|rolling update, rollback| RS2[New ReplicaSet]\n  P1 --> SCH{Scheduler}\n  SCH -->|requests, nodeSelector, affinity, taints + tolerations| N[(Node)]\n  CMS[ConfigMap / Secret] -.-> P1\n  HPA[HPA] -.-> DEP",
+   "notes": [
+    {
+     "objective": "Understand application deployments and how to perform rolling update and rollbacks",
+     "title": "Rolling updates and rollbacks",
+     "gist": "Changing a Deployment's pod template starts a rollout to a new ReplicaSet; a rollback switches back to an older one.",
+     "points": [
+      "Only `.spec.template` changes create a revision; scaling does not.",
+      "Defaults: `maxUnavailable` 25% and `maxSurge` 25%; `Recreate` kills all pods first.",
+      "`kubectl rollout history deploy/<d>` lists revisions; add `--revision=N` for details.",
+      "`kubectl rollout undo deploy/<d> --to-revision=N` returns to a chosen revision.",
+      "`revisionHistoryLimit` keeps 10 old ReplicaSets; set CHANGE-CAUSE with the `kubernetes.io/change-cause` annotation."
+     ],
+     "tip": "Task: update the image, then roll back to revision 2. Trap: wrong container name in `kubectl set image`, or undoing without checking `rollout history` first.",
+     "diagram": "flowchart LR\n  D[Deployment] --> RS1[ReplicaSet rev 1: old pods]\n  D -->|template change| RS2[ReplicaSet rev 2: new pods]\n  RS1 -.->|scaled down step by step| X[Old pods gone]\n  RS2 -.->|scaled up step by step| Y[New pods ready]\n  D -->|rollout undo| RS1",
+     "video": null,
+     "source": {
+      "title": "Deployments",
+      "url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/"
+     }
+    },
+    {
+     "objective": "Understand the primitives used to create robust, self-healing, application deployments",
+     "title": "Self-healing: controllers, restarts, probes",
+     "gist": "Controllers keep the desired pod count, the kubelet restarts failed containers, and probes decide restarts and traffic.",
+     "points": [
+      "A ReplicaSet, managed by a Deployment, replaces deleted or lost pods to match `replicas`.",
+      "`restartPolicy`: Always (default), OnFailure or Never; Jobs use OnFailure or Never.",
+      "Liveness fails: container restarted. Readiness fails: pod IP removed from Service endpoints.",
+      "A startup probe holds off liveness and readiness until the app has started.",
+      "A bare pod is not recreated if its node dies; use a controller."
+     ],
+     "tip": "Task: add a liveness probe on /healthz port 8080. Trap: adding readiness when a restart was asked for, or a probe port that differs from the container.",
+     "diagram": "flowchart TB\n  A[Container unhealthy] --> B{Which probe failed?}\n  B -->|liveness| C[kubelet restarts container]\n  B -->|startup| C\n  B -->|readiness| D[Removed from endpoints]\n  E[Pod or node lost] --> F[ReplicaSet creates replacement]",
+     "video": {
+      "id": "fqfieWP1jY4",
+      "title": "Kubernetes Health Checks: Liveness vs. Readiness vs. Startup Probe",
+      "channel": "Anton Putra",
+      "min": 2
+     },
+     "source": {
+      "title": "Pod Lifecycle",
+      "url": "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/"
+     }
+    },
+    {
+     "objective": "Use ConfigMaps and Secrets to configure applications",
+     "title": "ConfigMaps and Secrets into pods",
+     "gist": "Keep settings outside the image in a ConfigMap or Secret, then feed them to pods as environment variables or mounted files.",
+     "points": [
+      "`kubectl create configmap app --from-literal=MODE=prod --from-file=app.conf`.",
+      "`kubectl create secret generic db --from-literal=pass=x`; values are base64, not encrypted.",
+      "One key: `env[].valueFrom.configMapKeyRef`; every key: `envFrom` with `configMapRef`.",
+      "Mounted volumes update automatically; env vars and `subPath` mounts need a pod restart.",
+      "ConfigMap data is limited to 1 MiB; `immutable: true` blocks changes."
+     ],
+     "tip": "Task: mount a ConfigMap as files in /etc/app, or expose one Secret key as an env var. Trap: key name typos, or expecting env vars to refresh.",
+     "diagram": "flowchart LR\n  CM[ConfigMap] -->|env, envFrom| E[Env vars: fixed at start]\n  SE[Secret] -->|secretKeyRef| E\n  CM -->|volume| F[Files: auto-update]\n  SE -->|volume| F\n  E --> C[Container]\n  F --> C",
+     "video": {
+      "id": "FAnQTgr04mU",
+      "title": "Kubernetes ConfigMap and Secret as Kubernetes Volumes | Demo",
+      "channel": "TechWorld with Nana",
+      "min": 16
+     },
+     "source": {
+      "title": "ConfigMaps",
+      "url": "https://kubernetes.io/docs/concepts/configuration/configmap/"
+     }
+    },
+    {
+     "objective": "Configure workload autoscaling",
+     "title": "Horizontal Pod Autoscaler",
+     "gist": "The HPA adds or removes replicas so average usage stays near a target, using metrics served by metrics-server.",
+     "points": [
+      "`kubectl autoscale deploy web --min=2 --max=8 --cpu=70%`; older kubectl uses `--cpu-percent=70`.",
+      "Needs metrics-server and CPU requests on the pods, or utilization is undefined.",
+      "desired = ceil(current replicas x current metric / target); skipped within 10% tolerance.",
+      "Checks every 15 seconds; scale-down uses a 5 minute stabilization window by default.",
+      "`autoscaling/v2` adds memory, custom metrics and a `behavior` section."
+     ],
+     "tip": "Task: HPA at 50% CPU, 2 to 5 replicas. Trap: target shows unknown because pods have no CPU requests or metrics-server is not running.",
+     "diagram": "flowchart LR\n  MS[metrics-server] --> H[HPA: checks every 15s]\n  H --> Q{Usage vs target}\n  Q -->|above| U[Scale up]\n  Q -->|below, after 5 min| D2[Scale down]\n  U --> DEP[Deployment replicas]\n  D2 --> DEP",
+     "video": null,
+     "source": {
+      "title": "Horizontal Pod Autoscaling",
+      "url": "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"
+     }
+    },
+    {
+     "objective": "Configure Pod admission and scheduling (limits, node affinity, etc.)",
+     "title": "Requests, limits, LimitRange, ResourceQuota",
+     "gist": "Requests reserve capacity for scheduling, limits cap use at runtime, and LimitRange and ResourceQuota enforce rules per namespace.",
+     "points": [
+      "The scheduler places a pod only where free allocatable covers its requests; else Pending.",
+      "Over the CPU limit: throttled. Over the memory limit: OOM killed.",
+      "CPU in cores or millicores like `500m`; memory in bytes with `Mi` or `Gi`.",
+      "LimitRange sets per-container defaults and min or max; ResourceQuota caps namespace totals.",
+      "`kubectl set resources deploy/web --requests=cpu=100m --limits=memory=256Mi`."
+     ],
+     "tip": "Task: give a pod 100m CPU request and 128Mi limit. Trap: a ResourceQuota on CPU or memory rejects pods that omit requests or limits; read the quota first.",
+     "diagram": "flowchart TB\n  P[Pod requests and limits] --> L1[LimitRange: defaults, min, max]\n  L1 --> Q[ResourceQuota: namespace totals]\n  Q --> S{Node has free allocatable?}\n  S -->|yes| R[Scheduled, limits enforced]\n  S -->|no| PE[Pending]",
+     "video": {
+      "id": "Q-mk6EZVX_Q",
+      "title": "Day 16/40 - Kubernetes Requests and Limits - CKA Full Course 2025",
+      "channel": "Tech Tutorials with Piyush",
+      "min": 18
+     },
+     "source": {
+      "title": "Resource Management for Pods and Containers",
+      "url": "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"
+     }
+    },
+    {
+     "objective": "Configure Pod admission and scheduling (limits, node affinity, etc.)",
+     "title": "nodeSelector and node affinity",
+     "gist": "Label nodes, then make pods require or prefer those labels; this pulls pods toward nodes, while taints push them away.",
+     "points": [
+      "`kubectl label node n1 disktype=ssd`, then `nodeSelector: {disktype: ssd}` in the pod spec.",
+      "`requiredDuringScheduling...` is a hard rule; `preferred...` uses weights from 1 to 100.",
+      "Several `nodeSelectorTerms` are ORed; expressions inside one term are ANDed.",
+      "IgnoredDuringExecution: later label changes do not evict running pods.",
+      "`nodeName` bypasses the scheduler completely, taints included."
+     ],
+     "tip": "Task: run only on nodes labelled zone=east. Trap: placing affinity outside `spec.template.spec` in a Deployment, or a label key typo leaving pods Pending.",
+     "diagram": "flowchart LR\n  N[Label node: disktype=ssd] --> S{Pod rule type}\n  S -->|required| H[Only matching nodes, else Pending]\n  S -->|preferred, weight| P[Matching nodes score higher]\n  S -->|nodeName| B[Scheduler bypassed]",
+     "video": {
+      "id": "DKLMzDD3xqA",
+      "title": "Kubernetes Affinity and Anti Affinity vs NodeSelector (Examples)",
+      "channel": "Anton Putra",
+      "min": 5
+     },
+     "source": {
+      "title": "Assigning Pods to Nodes",
+      "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/"
+     }
+    },
+    {
+     "objective": "Configure Pod admission and scheduling (limits, node affinity, etc.)",
+     "title": "Taints and tolerations",
+     "gist": "A taint keeps pods off a node unless they carry a matching toleration; a toleration permits, it does not attract.",
+     "points": [
+      "`kubectl taint node n1 gpu=true:NoSchedule`; add a trailing `-` to remove it.",
+      "NoSchedule blocks new pods; PreferNoSchedule is soft; NoExecute also evicts running pods.",
+      "With NoExecute, `tolerationSeconds` keeps a pod that long before eviction.",
+      "Toleration `operator` defaults to Equal; `Exists` matches any value and takes no value.",
+      "kubeadm control plane nodes carry `node-role.kubernetes.io/control-plane:NoSchedule`."
+     ],
+     "tip": "Task: run a pod on the tainted node. Trap: a toleration alone may still land elsewhere; add nodeSelector or affinity, and match key, value and effect exactly.",
+     "diagram": "flowchart TB\n  T[Node taint gpu=true:NoSchedule] --> Q{Pod tolerates it?}\n  Q -->|no| X[Never scheduled there]\n  Q -->|yes| Y[Allowed there, not forced]\n  Y --> A[Add affinity to pin it]",
+     "video": {
+      "id": "mo2UrkjA7FE",
+      "title": "Kubernetes For Beginners: Taints & Tolerations",
+      "channel": "KodeKloud",
+      "min": 9
+     },
+     "source": {
+      "title": "Taints and Tolerations",
+      "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can roll out and roll back Deployments, configure apps with ConfigMaps and Secrets, autoscale, and control where pods land.",
+    "must_know": [
+     "Only pod template changes create a revision; `rollout undo --to-revision` rolls back.",
+     "Rolling update defaults: 25% max unavailable, 25% max surge.",
+     "ConfigMap env vars do not refresh; mounted files do, except `subPath` mounts.",
+     "HPA needs metrics-server and CPU requests; scale-down waits 5 minutes by default.",
+     "Requests drive scheduling; CPU over limit is throttled, memory over limit is OOM killed.",
+     "Affinity attracts pods, taints repel them, tolerations only permit.",
+     "NoExecute evicts running pods; NoSchedule only blocks new ones."
+    ],
+    "traps": [
+     "Putting nodeSelector, tolerations or probes outside `spec.template.spec` in a Deployment.",
+     "Expecting a toleration alone to place a pod on one specific node.",
+     "HPA target stuck at unknown because the pods have no CPU requests."
+    ]
+   }
   },
   {
    "domain": "Storage",
@@ -237,7 +978,7 @@
     },
     {
      "title": "Configure a pod to use a PVC",
-     "url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/",
+     "url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/",
      "note": "The exact YAML shape the exam wants."
     }
    ],
@@ -247,7 +988,126 @@
     "channel": "Microsoft Azure",
     "min": 5
    },
-   "diagram": "flowchart LR\n  POD[Pod volumeMounts] --> PVC[PersistentVolumeClaim: size, accessMode]\n  PVC -->|bind| PV[PersistentVolume]\n  SC[StorageClass: provisioner, reclaimPolicy] -->|dynamic provisioning| PV\n  PV --> DISK[(Disk, NFS, CSI)]"
+   "diagram": "flowchart LR\n  POD[Pod volumeMounts] --> PVC[PersistentVolumeClaim: size, accessMode]\n  PVC -->|bind| PV[PersistentVolume]\n  SC[StorageClass: provisioner, reclaimPolicy] -->|dynamic provisioning| PV\n  PV --> DISK[(Disk, NFS, CSI)]",
+   "notes": [
+    {
+     "objective": "Manage persistent volumes and persistent volume claims",
+     "title": "PV and PVC binding",
+     "gist": "A PV is a piece of storage, a PVC is a request for it, and Kubernetes binds matching pairs one to one.",
+     "points": [
+      "Binding needs enough size, a matching access mode and the same `storageClassName`.",
+      "No match: the PVC stays Pending until a suitable PV appears.",
+      "Static PV without a class: set `storageClassName: \"\"` on the PVC, or the default class applies.",
+      "Pod side: `volumes[].persistentVolumeClaim.claimName` plus a matching `volumeMounts` entry.",
+      "A PVC in use by a pod is only removed after the pod is gone."
+     ],
+     "tip": "Task: create a PV, a PVC and a pod mounting it at /data. Trap: PVC Pending from a class or access mode mismatch; `kubectl describe pvc` says which.",
+     "diagram": "flowchart LR\n  P[Pod: volumeMounts at /data] --> C[PVC: size, mode, class]\n  C --> Q{Matching PV?}\n  Q -->|no| PE[PVC stays Pending]\n  Q -->|yes, 1:1| V[PV: capacity, mode, class]\n  V --> D[(Disk, NFS, hostPath)]",
+     "video": {
+      "id": "OulmwTYTauI",
+      "title": "Kubernetes Volumes 2:  Understanding Persistent Volume (PV) and Persistent Volume Claim (PVC)",
+      "channel": "Sean",
+      "min": 8
+     },
+     "source": {
+      "title": "Persistent Volumes",
+      "url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/"
+     }
+    },
+    {
+     "objective": "Configure volume types, access modes and reclaim policies",
+     "title": "Access modes: RWO, ROX, RWX, RWOP",
+     "gist": "Access modes say how many nodes or pods may mount a volume and whether they may write to it.",
+     "points": [
+      "RWO ReadWriteOnce: read-write by one node; pods on that node can share it.",
+      "ROX ReadOnlyMany: read-only on many nodes. RWX ReadWriteMany: read-write on many nodes.",
+      "RWOP ReadWriteOncePod: exactly one pod in the whole cluster.",
+      "Modes drive PV and PVC matching; a volume mounts with one mode at a time.",
+      "Backend decides support: hostPath is RWO only, NFS supports RWX."
+     ],
+     "tip": "Questions ask which mode lets replicas on different nodes write. Trap: choosing RWO, which ties the volume to one node, or thinking modes enforce write protection.",
+     "diagram": "flowchart TB\n  Q{Who needs to mount it?} -->|one pod only| A[RWOP]\n  Q -->|pods on one node| B[RWO]\n  Q -->|many nodes, read only| C[ROX]\n  Q -->|many nodes, read write| D[RWX]",
+     "video": null,
+     "source": {
+      "title": "Persistent Volumes",
+      "url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes"
+     }
+    },
+    {
+     "objective": "Configure volume types, access modes and reclaim policies",
+     "title": "Reclaim policies and PV phases",
+     "gist": "The reclaim policy decides what happens to a PV and its data once its claim is deleted.",
+     "points": [
+      "Retain: the PV becomes Released and keeps its data; an admin cleans up by hand.",
+      "Delete: removes the PV object and the backing storage asset.",
+      "Recycle is deprecated; use dynamic provisioning instead.",
+      "Dynamic PVs take the StorageClass `reclaimPolicy`, which defaults to Delete.",
+      "Phases: Available, Bound, Released, Failed. Change policy with `kubectl patch pv` on `persistentVolumeReclaimPolicy`."
+     ],
+     "tip": "Task: make sure data survives PVC deletion. Trap: a Released PV will not bind a new claim until its old `claimRef` is cleared.",
+     "diagram": "flowchart LR\n  A[Available] -->|PVC binds| B[Bound]\n  B -->|PVC deleted| C{reclaimPolicy}\n  C -->|Retain| R[Released: data kept]\n  C -->|Delete| X[PV and disk removed]\n  R -.->|admin clears claimRef| A",
+     "video": null,
+     "source": {
+      "title": "Persistent Volumes",
+      "url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming"
+     }
+    },
+    {
+     "objective": "Implement storage classes and dynamic volume provisioning",
+     "title": "StorageClass and dynamic provisioning",
+     "gist": "A StorageClass tells a provisioner how to create PVs on demand, so a PVC naming the class gets a fresh volume.",
+     "points": [
+      "Fields: `provisioner` (required), `parameters`, `reclaimPolicy` (default Delete), `allowVolumeExpansion`.",
+      "Default class: annotation `storageclass.kubernetes.io/is-default-class: \"true\"`; class-less PVCs use it.",
+      "`volumeBindingMode` defaults to Immediate; `WaitForFirstConsumer` waits for a pod and its node.",
+      "With WaitForFirstConsumer, a pod using `nodeName` leaves the PVC Pending.",
+      "Growing a PVC works only if its class has `allowVolumeExpansion: true`."
+     ],
+     "tip": "Task: create a class and make it the default. Trap: two default classes, or treating a WaitForFirstConsumer PVC as broken while it waits for a pod.",
+     "diagram": "flowchart LR\n  PVC[PVC: storageClassName fast] --> SC[StorageClass fast]\n  SC --> PR[Provisioner, CSI driver]\n  PR --> PV[New PV, bound]\n  SC -.->|WaitForFirstConsumer| W[Waits for a pod first]",
+     "video": null,
+     "source": {
+      "title": "Storage Classes",
+      "url": "https://kubernetes.io/docs/concepts/storage/storage-classes/"
+     }
+    },
+    {
+     "objective": "Configure volume types, access modes and reclaim policies",
+     "title": "Volume types: emptyDir, hostPath, local",
+     "gist": "Pick a volume by lifetime: emptyDir lives with the pod, hostPath and local tie data to a node, PVCs outlive pods.",
+     "points": [
+      "emptyDir: created empty when scheduled, survives container crashes, deleted when the pod leaves.",
+      "`emptyDir.medium: Memory` uses RAM; set `sizeLimit` to cap it.",
+      "hostPath mounts a node path and is risky; `type: DirectoryOrCreate` creates it if missing.",
+      "`local` volumes are static PVs only, with node affinity; no dynamic provisioning.",
+      "Share files between containers by mounting one emptyDir in both."
+     ],
+     "tip": "Task: app and sidecar share logs through an emptyDir. Trap: names differ between `volumes` and `volumeMounts`, or expecting emptyDir data after pod deletion.",
+     "diagram": "flowchart TB\n  Q{How long must data live?} -->|pod lifetime| E[emptyDir]\n  Q -->|tied to one node| H[hostPath or local PV]\n  Q -->|beyond the pod| P[PVC bound to PV]\n  E --> S[Shared by containers in pod]",
+     "video": null,
+     "source": {
+      "title": "Volumes",
+      "url": "https://kubernetes.io/docs/concepts/storage/volumes/"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can create PVs, PVCs and StorageClasses, mount them in pods, and choose the right access mode and reclaim policy.",
+    "must_know": [
+     "A PVC binds a PV only when size, access mode and class all match.",
+     "An unmatched PVC stays Pending; `kubectl describe pvc` shows why.",
+     "RWO is one node, RWOP is one pod, RWX is many nodes writing.",
+     "Retain keeps data and leaves the PV Released; Delete removes PV and disk.",
+     "StorageClass `reclaimPolicy` defaults to Delete; binding mode defaults to Immediate.",
+     "WaitForFirstConsumer delays binding until a pod uses the PVC.",
+     "emptyDir data is gone once the pod leaves its node."
+    ],
+    "traps": [
+     "A static PV with no class, while the PVC silently gets the default StorageClass.",
+     "Treating a WaitForFirstConsumer PVC in Pending as broken.",
+     "Expecting a Released PV to bind again without clearing its `claimRef`."
+    ]
+   }
   }
  ],
  "playbook": [

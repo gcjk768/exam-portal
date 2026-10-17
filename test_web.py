@@ -103,6 +103,13 @@ for sj in (ROOT / "study").glob("*.json"):
     for d in json.loads(sj.read_text(encoding="utf-8"))["domains"]:
         assert re.fullmatch(r"[\w-]{11}", d["video"]["id"]) and d["video"]["title"], (sj.name, d["domain"])
         assert d["diagram"].startswith("flowchart"), (sj.name, d["domain"])
+        assert d.get("notes"), (sj.name, d["domain"], "no study notes")
+        sm = d.get("summary") or {}
+        assert sm.get("tests") and 4 <= len(sm.get("must_know", [])) <= 8 and sm.get("traps"), (sj.name, d["domain"], "summary")
+        for n in d["notes"]:                     # study notes: short text, one diagram, optional video, a source
+            assert n["title"] and n["gist"] and 2 <= len(n["points"]) <= 6 and n["tip"], (sj.name, n.get("title"))
+            assert n["diagram"].startswith("flowchart") and n["source"]["url"].startswith("http"), (sj.name, n["title"])
+            assert n.get("video") is None or re.fullmatch(r"[\w-]{11}", n["video"]["id"]), (sj.name, n["title"])
 for key, e in web.EXAMS.items():
     ds = e.study["domains"]
     found = sum(any(d["domain"] == q["domain"] for d in ds)
