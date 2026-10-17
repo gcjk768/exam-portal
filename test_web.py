@@ -117,6 +117,10 @@ for key, e in web.EXAMS.items():
                 for q in e.mod.QUESTIONS.values())
     assert found / len(e.mod.QUESTIONS) > 0.9, (key, found, len(e.mod.QUESTIONS))
 
+# every official icon the diagram renderer can pick exists in static/icons (tools/build_icons.py builds them)
+icons_used = set(re.findall(r'"([\w-]+\.(?:svg|png))"', (ROOT / "static" / "app.js").read_text(encoding="utf-8")))
+assert len(icons_used) > 60 and not [f for f in icons_used if not (ROOT / "static" / "icons" / f).exists()], icons_used
+
 vault_lines = list((tmp / "vault" / "ccarp" / "Activity").rglob("*.md"))
 assert vault_lines and "🌐 web" in vault_lines[0].read_text(encoding="utf-8")
 

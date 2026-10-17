@@ -184,24 +184,104 @@
     $$(".topic-diagram[data-src]", root).forEach(dia => { const src = dia.dataset.src; delete dia.dataset.src; drawDiagram(dia, src); });
   }
 
+  // Diagram palette: shapes carry meaning. Stadium = start/end (exam accent), diamond = decision (amber),
+  // cylinder = data store (teal), hexagon = model/service (violet), everything else = an accent-tinted step.
+  const LIGHT = matchMedia("(prefers-color-scheme: light)").matches;
+  const PAL = LIGHT
+    ? { bg: "#ffffff", text: "#1d1d19", line: "#8a897f", amber: "#e2a93b", teal: "#3a9d91", violet: "#8b6fe0" }
+    : { bg: "#272823", text: "#ebe9e0", line: "#8f8e84", amber: "#e3b04b", teal: "#4fb5a8", violet: "#a68cf0" };
+  const mix = (a, b, t) => "#" + [1, 3, 5].map(i => Math.round(parseInt(a.slice(i, i + 2), 16) * t + parseInt(b.slice(i, i + 2), 16) * (1 - t))
+    .toString(16).padStart(2, "0")).join("");
+  const OPEN = { "([": "term", "[(": "db", "{{": "hex", "{": "dec" };
+  const CLOSE = { "([": "])", "[(": ")]", "[[": "]]", "((": "))", "{{": "}}", "[": "]", "(": ")", "{": "}" };
+  // Official icons (static/icons, built by tools/build_icons.py) for labels that name a product. First match wins.
+  // Scope: null = every exam; Kubernetes kinds only for CKA; words that are ambiguous outside AWS only for the AWS exams.
+  const K8S = ["cka"], AWS = ["sapc03", "aipc01"];
+  const ICONS = [
+    [/CronJob/, "k8s-cronjob.svg", K8S], [/\bJobs?\b/, "k8s-job.svg", K8S], [/PersistentVolumeClaim|\bPVCs?\b/, "k8s-pvc.svg", K8S],
+    [/PersistentVolume\b|\bPVs?\b/, "k8s-pv.svg", K8S], [/StorageClass/, "k8s-sc.svg", K8S], [/ConfigMap/, "k8s-cm.svg", K8S],
+    [/\bSecrets?\b/, "k8s-secret.svg", K8S], [/Ingress|Gateway API/, "k8s-ing.svg", K8S], [/\bHPA\b/, "k8s-hpa.svg", K8S],
+    [/NetworkPolic/, "k8s-netpol.svg", K8S], [/Namespace/, "k8s-ns.svg", K8S], [/Endpoint/, "k8s-ep.svg", K8S],
+    [/DaemonSet/, "k8s-ds.svg", K8S], [/StatefulSet/, "k8s-sts.svg", K8S], [/ServiceAccount/, "k8s-sa.svg", K8S],
+    [/ClusterRoleBinding/, "k8s-crb.svg", K8S], [/ClusterRole/, "k8s-c-role.svg", K8S], [/RoleBinding/, "k8s-rb.svg", K8S],
+    [/\bRoles?\b|RBAC/, "k8s-role.svg", K8S], [/ReplicaSet/, "k8s-rs.svg", K8S], [/Deployment/, "k8s-deploy.svg", K8S],
+    [/\bPods?\b/, "k8s-pod.svg", K8S], [/\bService\b|ClusterIP|NodePort|LoadBalancer/, "k8s-svc.svg", K8S],
+    [/etcd/, "k8s-etcd.svg", K8S], [/kube-apiserver|API server/i, "k8s-api.svg", K8S], [/kubelet/, "k8s-kubelet.svg", K8S],
+    [/kube-proxy/, "k8s-k-proxy.svg", K8S], [/[Ss]cheduler/, "k8s-sched.svg", K8S], [/controller-manager/, "k8s-c-m.svg", K8S],
+    [/[Cc]ontrol plane/, "k8s-control-plane.svg", K8S], [/\bNodes?\b|[Ww]orker node/, "k8s-node.svg", K8S],
+    [/[Vv]olume/, "k8s-vol.svg", K8S],
+    [/Bedrock|AgentCore/, "aws-bedrock.png"], [/Knowledge Base|Guardrail|Foundation model|\bFM\b/, "aws-bedrock.png", AWS],
+    [/SageMaker/, "aws-sagemaker.png"], [/Organizations|\bSCPs?\b|\bOUs?\b/, "aws-organizations.png", AWS],
+    [/Control Tower/, "aws-control-tower.png"], [/Macie/, "aws-macie.png"], [/GuardDuty/, "aws-guardduty.png"],
+    [/Security Hub/, "aws-security-hub.png"], [/Inspector/, "aws-inspector.png", AWS], [/Transit Gateway/, "aws-transit-gateway.png"],
+    [/Direct Connect/, "aws-direct-connect.png"], [/\bECR\b/, "aws-ecr.png"], [/API Gateway/, "aws-api-gateway.svg"],
+    [/Athena/, "aws-athena.svg"], [/Aurora|pgvector/, "aws-aurora.svg"], [/\bACM\b|Certificate Manager/, "aws-certificate-manager.svg"],
+    [/CloudFormation|StackSets/, "aws-cloudformation.svg"], [/CloudFront/, "aws-cloudfront.svg"], [/CloudTrail/, "aws-cloudtrail.svg"],
+    [/CloudWatch/, "aws-cloudwatch.svg"], [/CodePipeline/, "aws-codepipeline.svg"], [/Cognito/, "aws-cognito.svg"],
+    [/AWS Config|Config rules?/, "aws-config.svg", AWS], [/DynamoDB/, "aws-dynamodb.svg"], [/\bEC2\b/, "aws-ec2.svg"],
+    [/\bECS\b/, "aws-ecs.svg"], [/\bEKS\b/, "aws-eks.svg"], [/\bELB\b|\bALB\b|\bNLB\b|Load Balancer/, "aws-elb.svg", AWS],
+    [/EventBridge/, "aws-eventbridge.svg"], [/Fargate/, "aws-fargate.svg"], [/Glacier/, "aws-glacier.svg"], [/\bGlue\b/, "aws-glue.svg"],
+    [/\bIAM\b|Identity Center/, "aws-iam.svg"], [/Kinesis/, "aws-kinesis.svg"], [/\bKMS\b/, "aws-kms.svg"],
+    [/Lake Formation/, "aws-lake-formation.svg"], [/Lambda/, "aws-lambda.svg"], [/\bRDS\b/, "aws-rds.svg"], [/Route 53/, "aws-route53.svg"],
+    [/\bS3\b/, "aws-s3.svg"], [/Secrets Manager/, "aws-secrets-manager.svg"], [/\bSNS\b/, "aws-sns.svg"], [/\bSQS\b/, "aws-sqs.svg"],
+    [/Step Functions/, "aws-step-functions.svg"], [/Systems Manager|\bSSM\b/, "aws-systems-manager.svg"], [/\bVPC\b/, "aws-vpc.svg"],
+    [/\bWAF\b/, "aws-waf.svg"], [/X-Ray/, "aws-xray.svg"], [/OpenSearch/, "opensearch.svg"], [/PostgreSQL/, "postgresql.svg"],
+    [/Claude|Haiku|Sonnet|Opus|Fable/, "claude-icon.svg"], [/Anthropic/, "anthropic-icon.svg"], [/OpenAI|GPT/, "openai-icon.svg"],
+    [/\bHCP\b|Terraform\b/, "terraform-icon.svg"], [/HashiCorp/, "hashicorp-icon.svg"], [/\bVault\b/, "vault-icon.svg"],
+    [/GitLab|\bRunners?\b/, "gitlab.svg", ["gitlabci"]], [/GitLab/, "gitlab.svg"], [/GitHub/, "github-icon.svg"], [/\bGit\b/, "git-icon.svg"],
+    [/Docker|\bdind\b/, "docker-icon.svg"], [/Kubernetes|\bK8s\b|kubectl|kubeadm/, "kubernetes.svg"], [/Helm/i, "helm.svg"],
+    [/Prometheus/, "prometheus.svg"], [/Grafana/, "grafana.svg"], [/NGINX|nginx/, "nginx.svg"], [/Python/, "python.svg"], [/Slack/, "slack-icon.svg"],
+  ];
+  const iconFor = (label) => ICONS.find(([re, , scope]) => (!scope || scope.includes(state.exam)) && re.test(label))?.[1];
+  function styled(src) {
+    const css = getComputedStyle(document.documentElement);
+    const accent = css.getPropertyValue("--accent").trim(), ink = css.getPropertyValue("--accent-ink").trim();
+    const sets = { term: new Set(), db: new Set(), hex: new Set(), dec: new Set() };
+    const iconised = new Set();
+    for (const line of src.split("\n").slice(1))              // node ids sit at a segment start, after an edge or its |label|
+      for (const seg of line.split(/-\.->|-->|==>|---/)) {
+        const m = seg.replace(/^\s*\|[^|]*\|/, "").match(/^\s*([A-Za-z]\w*)\s*(\(\[|\[\(|\[\[|\(\(|\{\{|\[|\(|\{)/);
+        if (!m) continue;
+        const [, id, open] = m;
+        if (OPEN[open]) sets[OPEN[open]].add(id);
+        const rest = seg.slice(seg.indexOf(id + open) + id.length + open.length), end = rest.indexOf(CLOSE[open]);
+        const label = end > 0 ? rest.slice(0, end) : "", icon = label && open !== "{" && !iconised.has(id) && iconFor(label);
+        if (!icon) continue;
+        iconised.add(id);                                      // the icon sits above the text inside the same node shape
+        src = src.replace(id + open + label + CLOSE[open], `${id}${open}"<img src='/static/icons/${icon}' class='ni' width='36' height='36' style='display:block;margin:2px auto 6px;object-fit:contain;box-sizing:border-box;padding:4px'/>${esc(label)}"${CLOSE[open]}`);
+      }
+    const tint = (c, t) => `fill:${mix(c, PAL.bg, t)},stroke:${c},stroke-width:1.6px,color:${PAL.text}`;
+    const defs = [
+      `classDef default ${tint(accent, LIGHT ? .1 : .16)}`,
+      `classDef term fill:${accent},stroke:${accent},stroke-width:1.6px,color:${ink},font-weight:600`,
+      `classDef dec ${tint(PAL.amber, LIGHT ? .16 : .2)}`,
+      `classDef db ${tint(PAL.teal, LIGHT ? .14 : .2)}`,
+      `classDef hex ${tint(PAL.violet, LIGHT ? .14 : .22)}`,
+      `linkStyle default stroke:${PAL.line},stroke-width:1.6px`,
+    ];
+    for (const [k, ids] of Object.entries(sets)) if (ids.size) defs.push(`class ${[...ids].join(",")} ${k}`);
+    return `${src}\n${defs.join("\n")}`;
+  }
+
   let mermaidP = null, mmdN = 0;
   function mermaidLib() {
     return mermaidP ||= import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs").then(m => {
-      const light = matchMedia("(prefers-color-scheme: light)").matches;
-      m.default.initialize({ startOnLoad: false, theme: light ? "default" : "dark", securityLevel: "strict",
-                             fontFamily: "Geist, system-ui, sans-serif", flowchart: { htmlLabels: false, useMaxWidth: true } });
+      m.default.initialize({ startOnLoad: false, theme: "base", securityLevel: "loose",   // loose: HTML labels carry the icons (own content, labels escaped)
+        themeVariables: { fontFamily: "Geist, system-ui, sans-serif", fontSize: "15px", primaryTextColor: PAL.text,
+                          lineColor: PAL.line, edgeLabelBackground: PAL.bg, background: "transparent" },
+        flowchart: { htmlLabels: true, useMaxWidth: true, curve: "basis", nodeSpacing: 36, rankSpacing: 46, padding: 14 } });
       return m.default;
     });
   }
   async function drawDiagram(box, src) {
     try {
-      const { svg } = await (await mermaidLib()).render(`mmd${++mmdN}`, src);
+      const { svg } = await (await mermaidLib()).render(`mmd${++mmdN}`, styled(src));
       box.innerHTML = svg;
       box.title = "Click to enlarge";
       box.onclick = () => {
-        const img = $("#lightbox-img");
-        img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(box.innerHTML);
-        img.classList.add("svg"); $("#lightbox").showModal();
+        $("#lightbox-img").hidden = true;                     // inline copy: icons and HTML labels survive (an <img> of the SVG drops them)
+        $("#lightbox-svg").innerHTML = box.innerHTML; $("#lightbox-svg").hidden = false;
+        $("#lightbox").showModal();
       };
     } catch (e) {
       mermaidP = null;                                   // CDN hiccup: let the next diagram retry the import
@@ -367,7 +447,7 @@
     else if (ev.kind === "photo") {
       el = document.createElement("article"); el.className = "card card-photo";
       el.innerHTML = `<img src="data:image/png;base64,${ev.png}" alt="Diagram"><div class="cap html">${tg(ev.html)}</div>`;
-      $("img", el).onclick = () => { $("#lightbox-img").src = $("img", el).src; $("#lightbox-img").classList.remove("svg"); $("#lightbox").showModal(); };
+      $("img", el).onclick = () => { $("#lightbox-img").src = $("img", el).src; $("#lightbox-img").hidden = false; $("#lightbox-svg").hidden = true; $("#lightbox").showModal(); };
     } else {
       el = document.createElement("article");
       const k = ev.error ? "err" : kindOf(ev.html);
