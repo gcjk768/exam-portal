@@ -65,29 +65,25 @@ async def fake_tutor(q, picked):
 mod.ask_claude = fake_tutor
 mod.render = lambda kind, code: b"\x89PNG fake"
 
-# answer correctly -> verdict with Explain more, then a diagram too (portal only; the bots skip it)
+# answer correctly -> verdict + Explain more button, no diagram and no Claude call
 q = mod.QUESTIONS[qid]
+calls = []
+mod.ask_claude = lambda q, p: calls.append(1) or fake_tutor(q, p)
 ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": sorted(q["answer"])}))
 assert ev[0]["op"] == "meta" and ev[0]["graded"]["right"] is True
-ops = [(e["op"], e.get("kind")) for e in ev][1:]
 ev = ev[1:]
-assert ev[0]["html"].startswith("🟢") and ev[0]["buttons"][0][0]["data"].startswith("e|"), ev
-assert ("delete", None) in ops and ("add", "photo") in ops, ops
+assert len(ev) == 1 and ev[0]["html"].startswith("🟢") and ev[0]["buttons"][0][0]["data"].startswith("e|"), ev
 st = mod.load_state()
 assert st["ok"][qid] == 1 and st["pending"] is None and st["log"][-1]["first"] is True
-assert st["last"]["teach"] == "Because X."
 
-# wrong answer: verdict, "drawing" note edited/deleted, diagram or fallback
+# wrong answer: verdict + Explain more only, still no diagram and no Claude call
 wrong = next(l for l in q["letters"] if l not in q["answer"])
-ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": [wrong]}))
-ops = [(e["op"], e.get("kind")) for e in ev][1:]
-ev = ev[1:]
-assert ops[0] == ("add", "text") and ev[0]["html"].startswith("🔴"), ev[0]
-assert ("delete", None) in ops and ("add", "photo") in ops, ops
-assert mod.load_state()["last"]["teach"] == "Because X."
-# Explain more after a wrong answer is free (no Claude call)
+ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": [wrong]}))[1:]
+assert len(ev) == 1 and ev[0]["html"].startswith("🔴") and ev[0]["buttons"][0][0]["data"] == f"e|{qid}|{wrong}", ev
+assert mod.load_state()["bad"][qid] == 1 and not calls
+# the button is the only thing that draws: text, then the diagram
 ev = events(c.post("/api/ccarp/act", json={"data": f"e|{qid}|{wrong}"}))
-assert "Because X." in ev[0]["html"]
+assert calls and any("Because X." in e.get("html", "") for e in ev) and any(e.get("kind") == "photo" for e in ev), ev
 
 # stats, bad input, reset
 assert "PROGRESS" in events(c.post("/api/ccarp/act", json={"data": "stats"}))[0]["html"]

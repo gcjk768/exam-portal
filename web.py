@@ -332,12 +332,8 @@ async def act(exam: Exam, data: str, rec: Recorder) -> None:
                 await send_task(exam, rec, state, q)
             else:
                 await mod.send_question(rec, state, q)
-        elif kind == "e":                                 # Explain more
-            last = state.get("last") or {}
-            if last.get("id") == qid and last.get("teach"):   # wrong answer: text already generated, free
-                await rec.send_message(mod.teach_text(q, last["teach"]), reply_markup=mod.NEXT_KB)
-            else:                                              # right answer / exam review: ask Claude now
-                await mod.explain(rec, q, set(filter(None, (rest[0] if rest else "").split(","))))
+        elif kind == "e":                                 # Explain more: the only place the portal draws a diagram
+            await mod.explain(rec, q, set(filter(None, (rest[0] if rest else "").split(","))))
         else:
             raise HTTPException(400, f"unknown action {data}")
     else:
@@ -353,26 +349,20 @@ async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder) -> None
         raise HTTPException(400, "pick at least one option")
     rec.emit({"op": "meta", "graded": {"id": q["id"], "picked": sorted(letters), "correct": sorted(q["answer"]),
                                        "right": letters == q["answer"]}})
-    state = exam.mod.load_state()
-    await exam.mod.grade(rec, state, q, letters)
-    if letters == q["answer"]:   # the bots skip Claude on a right answer; the portal draws it too
-        await draw(exam.mod, rec, state, q, letters)
-
-
-async def draw(mod, rec: Recorder, state: dict, q: dict, letters: set[str]) -> None:
-    """bot.grade()'s wrong-answer tutor path: diagram now, text cached so 'Explain more' is free."""
-    note = await rec.send_message("⏳ <i>Drawing the architecture…</i>")
-    try:
-        out = await mod.ask_claude(q, letters)
-    except Exception as exc:
-        log.warning("tutor failed: %s", exc)
-        await note.edit_text(f"⚠️ Tutor unavailable: <code>{html.escape(str(exc)[:200])}</code>", reply_markup=mod.NEXT_KB)
+    mod, state = exam.mod, exam.mod.load_state()
+    right = letters == q["answer"]
+    if right:
+        await mod.grade(rec, state, q, letters)          # right answers never call Claude in the bots
         return
-    state["last"]["teach"] = out.get("teach", "")
+    # Wrong: the bot's grade() would draw the tutor diagram now; the portal waits for the "Explain more" button.
+    state["last"] = {"id": q["id"], "picked": sorted(letters)}
+    state["pending"] = None
+    record(exam, state, q["id"], False)
     mod.save_state(state)
-    mod.vault_log(f"{mod.TITLE['tutor']} **drew**", q["id"])
-    await note.delete()
-    await mod.send_diagram(rec, q, out, mod.NEXT_KB)
+    mod.vault_log(f"{mod.TITLE['bad']} **wrong**", f"{q['id']} picked {','.join(sorted(letters))} answer {q['correct']}")
+    head = (f"{mod.TITLE['bad']} <b>WRONG</b> · you picked <code>{html.escape(','.join(sorted(letters)))}</code>, "
+            f"answer <code>{html.escape(q['correct'])}</code>")
+    await rec.send_message(f"{head}\n\n{html.escape(q['explanation'])}", reply_markup=mod.after_kb(q, letters))
 
 
 def stream(exam: Exam, run) -> StreamingResponse:
