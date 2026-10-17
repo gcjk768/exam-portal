@@ -409,6 +409,18 @@
   // ── Feed ──────────────────────────────────────────────────────────────────
   const feed = $("#feed");
   function clearFeed() { feed.innerHTML = ""; state.cards.clear(); state.pendingCard = null; state.feedLoaded = ""; }
+  // One question per screen: when the next question (or task) starts, everything already on the feed folds into a History list.
+  function archiveFeed() {
+    const cards = [...feed.children].filter(c => c.id !== "history" && !c.classList.contains("empty"));
+    if (!cards.length) return;
+    let h = $("#history", feed);
+    if (!h) {
+      h = document.createElement("details"); h.id = "history"; h.className = "history"; h.innerHTML = "<summary></summary>";
+      feed.prepend(h);
+    }
+    cards.forEach(c => h.append(c));
+    $("summary", h).textContent = `History · ${h.children.length - 1} earlier`;
+  }
   function renderMode(p) {
     const bar = $("#mode-bar"); bar.hidden = !p;
     if (!p) return;
@@ -448,6 +460,7 @@
     if (state.busy) return;
     setBusy(true, label || (body.data === "study" ? "Writing the study card" : body.data === "report" ? "Preparing the report" : "Working"));
     $(".empty", feed)?.remove();
+    state.fresh = body.data === "next" || /^[dq]\|/.test(body.data || "");   // next question: start a clean screen on its first card
     try {
       const res = await post(path, body);
       const reader = res.body.getReader(), dec = new TextDecoder();
@@ -461,7 +474,7 @@
       }
     } catch (e) {
       apply({ op: "error", html: `Connection lost: ${esc(String(e))}` });
-    } finally { setBusy(false); }
+    } finally { state.fresh = false; setBusy(false); }
   }
 
   let tick = null;
@@ -480,6 +493,7 @@
   }
 
   function apply(ev) {
+    if (ev.op === "add" && state.fresh) { state.fresh = false; archiveFeed(); }
     if (ev.op === "add") addCard(ev);
     else if (ev.op === "edit") editCard(ev);
     else if (ev.op === "delete") { state.cards.get(ev.id)?.remove(); state.cards.delete(ev.id); }
@@ -491,7 +505,8 @@
       if (ev.graded_task) finishTask(ev.graded_task);
     }
     else if (ev.op === "error") addCard({ op: "add", id: `err${Date.now()}`, kind: "text", html: ev.html, buttons: [], error: true });
-    feed.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
+    if (ev.op === "add" && ev.question) state.cards.get(ev.id)?.scrollIntoView({ block: "start", behavior: "smooth" });   // a new question starts at the top
+    else feed.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
   }
 
   const KIND = { "📝": "q", "🟢": "ok", "🔴": "bad", "🎓": "tutor", "📊": "stats", "📚": "study", "⏳": "wait", "⚠️": "err", "🆕": "bank", "🗺": "map", "🔄": "bank", "🛠": "taskq", "🧭": "guide", "📘": "solution" };
