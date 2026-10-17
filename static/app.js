@@ -806,12 +806,10 @@
         opts.append(b);
       }
       const ex = document.createElement("div"); ex.className = "expl"; ex.textContent = r.explanation; el.append(ex);
-      if (!r.right) {
-        const a = document.createElement("div"); a.className = "actions";
-        const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Explain more with a diagram";
-        b.onclick = () => { go("quiz"); setTimeout(() => act(`e|${r.id}|${r.picked.join(",")}`), 50); };
-        a.append(b); el.append(a);
-      }
+      const a = document.createElement("div"); a.className = "actions";
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Explain more with a diagram";
+      b.onclick = () => { go("quiz"); setTimeout(() => act(`e|${r.id}|${r.picked.join(",")}`), 50); };
+      a.append(b); el.append(a);
       list.append(el); addTopic(el);
     }
     window.scrollTo({ top: 0 });

@@ -353,7 +353,26 @@ async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder) -> None
         raise HTTPException(400, "pick at least one option")
     rec.emit({"op": "meta", "graded": {"id": q["id"], "picked": sorted(letters), "correct": sorted(q["answer"]),
                                        "right": letters == q["answer"]}})
-    await exam.mod.grade(rec, exam.mod.load_state(), q, letters)
+    state = exam.mod.load_state()
+    await exam.mod.grade(rec, state, q, letters)
+    if letters == q["answer"]:   # the bots skip Claude on a right answer; the portal draws it too
+        await draw(exam.mod, rec, state, q, letters)
+
+
+async def draw(mod, rec: Recorder, state: dict, q: dict, letters: set[str]) -> None:
+    """bot.grade()'s wrong-answer tutor path: diagram now, text cached so 'Explain more' is free."""
+    note = await rec.send_message("⏳ <i>Drawing the architecture…</i>")
+    try:
+        out = await mod.ask_claude(q, letters)
+    except Exception as exc:
+        log.warning("tutor failed: %s", exc)
+        await note.edit_text(f"⚠️ Tutor unavailable: <code>{html.escape(str(exc)[:200])}</code>", reply_markup=mod.NEXT_KB)
+        return
+    state["last"]["teach"] = out.get("teach", "")
+    mod.save_state(state)
+    mod.vault_log(f"{mod.TITLE['tutor']} **drew**", q["id"])
+    await note.delete()
+    await mod.send_diagram(rec, q, out, mod.NEXT_KB)
 
 
 def stream(exam: Exam, run) -> StreamingResponse:

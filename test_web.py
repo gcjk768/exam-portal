@@ -54,16 +54,7 @@ qid = ev[0]["question"]["id"]
 assert ev[0]["buttons"][0][0]["data"] == f"a|{qid}|{ev[0]['question']['options'][0]['l']}"
 assert c.get("/api/ccarp/home").json()["pending"]["question"]["id"] == qid
 
-# answer correctly (no Claude call on a right answer)
-q = web.EXAMS["ccarp"].mod.QUESTIONS[qid]
-ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": sorted(q["answer"])}))
-assert ev[0]["op"] == "meta" and ev[0]["graded"]["right"] is True
-ev = ev[1:]
-assert ev[0]["html"].startswith("🟢") and ev[0]["buttons"][0][0]["data"].startswith("e|"), ev
-st = web.EXAMS["ccarp"].mod.load_state()
-assert st["ok"][qid] == 1 and st["pending"] is None and st["log"][-1]["first"] is True
-
-# wrong answer: tutor monkeypatched -> verdict, "drawing" note edited/deleted, diagram or fallback
+# tutor monkeypatched (no real Claude calls)
 mod = web.EXAMS["ccarp"].mod
 
 
@@ -73,6 +64,20 @@ async def fake_tutor(q, picked):
 
 mod.ask_claude = fake_tutor
 mod.render = lambda kind, code: b"\x89PNG fake"
+
+# answer correctly -> verdict with Explain more, then a diagram too (portal only; the bots skip it)
+q = mod.QUESTIONS[qid]
+ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": sorted(q["answer"])}))
+assert ev[0]["op"] == "meta" and ev[0]["graded"]["right"] is True
+ops = [(e["op"], e.get("kind")) for e in ev][1:]
+ev = ev[1:]
+assert ev[0]["html"].startswith("🟢") and ev[0]["buttons"][0][0]["data"].startswith("e|"), ev
+assert ("delete", None) in ops and ("add", "photo") in ops, ops
+st = mod.load_state()
+assert st["ok"][qid] == 1 and st["pending"] is None and st["log"][-1]["first"] is True
+assert st["last"]["teach"] == "Because X."
+
+# wrong answer: verdict, "drawing" note edited/deleted, diagram or fallback
 wrong = next(l for l in q["letters"] if l not in q["answer"])
 ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": [wrong]}))
 ops = [(e["op"], e.get("kind")) for e in ev][1:]
