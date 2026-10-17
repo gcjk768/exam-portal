@@ -78,6 +78,8 @@ class Exam:
         if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks
             sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
         self.mod.vault_log = vault_writer(vault)
+        png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
+        self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
         self.lock = asyncio.Lock()
         sj = ROOT / "study" / f"{key}.json"
         self.study = json.loads(sj.read_text(encoding="utf-8")) if sj.exists() else {}
@@ -215,6 +217,9 @@ class Msg:
         self.rec.emit({"op": "delete", "id": self.id})
 
 
+MERMAID_SRC = b"\0mermaid\0"   # marks a "photo" that is really Mermaid source (see Exam.__init__)
+
+
 class Recorder:
     """Duck-types bot.Dest: send_message / send_photo. Each call becomes one streamed event."""
 
@@ -249,6 +254,10 @@ class Recorder:
 
     async def send_photo(self, photo: bytes, caption: str = "", reply_markup=None, **_) -> Msg:
         self.n += 1
+        if photo.startswith(MERMAID_SRC):
+            self.emit({"op": "add", "id": self.n, "kind": "mermaid", "src": photo[len(MERMAID_SRC):].decode("utf-8", "replace"),
+                       "html": caption, "buttons": self.buttons(reply_markup)})
+            return Msg(self, self.n)
         self.emit({"op": "add", "id": self.n, "kind": "photo", "png": base64.b64encode(photo).decode(),
                    "html": caption, "buttons": self.buttons(reply_markup)})
         return Msg(self, self.n)

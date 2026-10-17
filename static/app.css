@@ -224,6 +224,8 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 .card-photo img { display: block; width: 100%; height: auto; border-radius: 10px; background: #fff; cursor: zoom-in; }
 .card-photo .cap { padding: .6rem .6rem .2rem; color: var(--muted); font-size: .9rem; }
 .card-photo .actions { padding: 0 .5rem .4rem; }
+.card-mmd .topic-diagram { min-height: 10rem; }
+.mmd-src { margin: 0; width: 100%; font-family: var(--font-mono); font-size: .8rem; white-space: pre-wrap; text-align: left; color: var(--muted); cursor: auto; }
 .score-strip { display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: center; margin-bottom: .8rem; }
 .score-strip strong { font-family: var(--font-display); font-size: 2.6rem; line-height: 1; }
 .score-strip span { color: var(--muted); }

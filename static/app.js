@@ -245,10 +245,11 @@
         const [, id, open] = m;
         if (OPEN[open]) sets[OPEN[open]].add(id);
         const rest = seg.slice(seg.indexOf(id + open) + id.length + open.length), end = rest.indexOf(CLOSE[open]);
-        const label = end > 0 ? rest.slice(0, end) : "", icon = label && open !== "{" && !iconised.has(id) && iconFor(label);
+        const label = end > 0 ? rest.slice(0, end) : "", text = label.replace(/^"(.*)"$/, "$1");   // tutor labels may be "quoted"
+        const icon = text && open !== "{" && !/["<>`]/.test(text) && !iconised.has(id) && iconFor(text);
         if (!icon) continue;
         iconised.add(id);                                      // the icon sits above the text inside the same node shape
-        src = src.replace(id + open + label + CLOSE[open], `${id}${open}"<img src='/static/icons/${icon}' class='ni' width='36' height='36' style='display:block;margin:2px auto 6px;object-fit:contain;box-sizing:border-box;padding:4px'/>${esc(label)}"${CLOSE[open]}`);
+        src = src.replace(id + open + label + CLOSE[open], `${id}${open}"<img src='/static/icons/${icon}' class='ni' width='36' height='36' style='display:block;margin:2px auto 6px;object-fit:contain;box-sizing:border-box;padding:4px'/>${esc(text)}"${CLOSE[open]}`);
       }
     const tint = (c, t) => `fill:${mix(c, PAL.bg, t)},stroke:${c},stroke-width:1.6px,color:${PAL.text}`;
     const defs = [
@@ -274,19 +275,25 @@
     });
   }
   async function drawDiagram(box, src) {
-    try {
-      const { svg } = await (await mermaidLib()).render(`mmd${++mmdN}`, styled(src));
-      box.innerHTML = svg;
-      box.title = "Click to enlarge";
-      box.onclick = () => {
-        $("#lightbox-img").hidden = true;                     // inline copy: icons and HTML labels survive (an <img> of the SVG drops them)
-        $("#lightbox-svg").innerHTML = box.innerHTML; $("#lightbox-svg").hidden = false;
-        $("#lightbox").showModal();
-      };
-    } catch (e) {
+    let lib;
+    try { lib = await mermaidLib(); } catch (e) {
       mermaidP = null;                                   // CDN hiccup: let the next diagram retry the import
       box.textContent = "Diagram could not be drawn (offline?).";
+      return;
     }
+    // Styled first; tutor (model-written) Mermaid may not follow the notes' label rules, so fall back to plain, then to the code.
+    let svg = "";
+    for (const text of [styled(src), src]) {
+      try { ({ svg } = await lib.render(`mmd${++mmdN}`, text)); break; } catch (e) { document.getElementById(`dmmd${mmdN}`)?.remove(); }
+    }
+    if (!svg) { box.innerHTML = `<pre class="mmd-src">${esc(src)}</pre>`; return; }
+    box.innerHTML = svg;
+    box.title = "Click to enlarge";
+    box.onclick = () => {
+      $("#lightbox-img").hidden = true;                     // inline copy: icons and HTML labels survive (an <img> of the SVG drops them)
+      $("#lightbox-svg").innerHTML = box.innerHTML; $("#lightbox-svg").hidden = false;
+      $("#lightbox").showModal();
+    };
   }
 
   // The study domain a question belongs to: same domain name, else the most keyword hits (banks tagged by source).
@@ -444,7 +451,12 @@
   function addCard(ev) {
     let el;
     if (ev.question && !ev.question.task) el = questionCard(ev);
-    else if (ev.kind === "photo") {
+    else if (ev.kind === "mermaid") {                        // tutor diagram drawn here, same style + icons as Study
+      el = document.createElement("article"); el.className = "card card-photo card-mmd";
+      el.append(lazyDiagram(ev.src));
+      el.insertAdjacentHTML("beforeend", `<div class="cap html">${tg(ev.html)}</div>`);
+      drawPending(el);
+    } else if (ev.kind === "photo") {
       el = document.createElement("article"); el.className = "card card-photo";
       el.innerHTML = `<img src="data:image/png;base64,${ev.png}" alt="Diagram"><div class="cap html">${tg(ev.html)}</div>`;
       $("img", el).onclick = () => { $("#lightbox-img").src = $("img", el).src; $("#lightbox-img").hidden = false; $("#lightbox-svg").hidden = true; $("#lightbox").showModal(); };

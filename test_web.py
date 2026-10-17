@@ -96,6 +96,13 @@ study = c.get("/api/ccarp/study").json()
 assert study["reading"]["domains"][0]["links"][0]["url"].startswith("http") and study["reading"]["start"]
 assert c.get("/api/sapc03/study").json()["has_cards"] is True
 
+# tutor Mermaid goes to the browser as source (drawn in the portal's style + icons); `diagrams` scripts stay PNG
+assert web.EXAMS["sapc03"].mod.render("mermaid", "flowchart LR\nA-->B").startswith(web.MERMAID_SRC)
+rq: asyncio.Queue = asyncio.Queue()
+asyncio.run(web.Recorder(web.EXAMS["sapc03"], rq).send_photo(web.MERMAID_SRC + b"flowchart LR\nA-->B", caption="map"))
+mev = rq.get_nowait()
+assert mev["kind"] == "mermaid" and mev["src"] == "flowchart LR\nA-->B" and "png" not in mev, mev
+
 # topic media: every study domain of every exam has a YouTube id + a Mermaid diagram; a question finds its
 # domain by name, else by keywords (the same rule as topicFor() in app.js)
 import re  # noqa: E402
