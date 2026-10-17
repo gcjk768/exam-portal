@@ -393,13 +393,18 @@
       box.append(row);
     }
   }
-  const resetBtn = $("#btn-reset");
+  // Two buttons (quiz + progress view), same two-click confirm. Reset restarts the bank at question 1.
   let resetArmed = 0;
-  resetBtn.onclick = () => {
-    if (!resetArmed) { resetBtn.textContent = "Confirm reset"; resetArmed = setTimeout(() => { resetArmed = 0; resetBtn.textContent = "Reset progress"; }, 5000); return; }
-    clearTimeout(resetArmed); resetArmed = 0; resetBtn.textContent = "Reset progress";
-    go("quiz"); setTimeout(() => act("reset"), 50);
-  };
+  const resetBtns = $$(".js-reset");
+  const setResetLabel = t => resetBtns.forEach(b => b.textContent = t);
+  resetBtns.forEach(b => b.onclick = async () => {
+    if (!resetArmed) { setResetLabel("Confirm reset"); resetArmed = setTimeout(() => { resetArmed = 0; setResetLabel("Reset progress"); }, 5000); return; }
+    clearTimeout(resetArmed); resetArmed = 0; setResetLabel("Reset progress");
+    go("quiz");
+    clearFeed(); state.feedLoaded = state.exam; state.home = null;   // drop stale cards and cached progress
+    await act("reset");
+    state.home = await api("/home"); renderMode(state.home.progress);
+  });
 
   // ── Feed ──────────────────────────────────────────────────────────────────
   const feed = $("#feed");
