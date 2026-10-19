@@ -45,6 +45,8 @@ for d in ("reset", "report", "refresh", "e|x|A"):
     ev = events(c.post("/api/ccarp/act", json={"data": d}, headers=pub))
     assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
 
+assert 'data-public="1"' in c.get("/", headers=pub).text and 'data-public="1"' not in c.get("/").text
+assert c.get("/static/app.css").headers["cache-control"] == "no-cache"
 hp = c.get("/api/ccarp/home", headers=pub).json()
 assert hp["score"] == 0 and hp["verdict"] == "" and hp["week"] == {"n": 0, "ok": 0}, hp
 

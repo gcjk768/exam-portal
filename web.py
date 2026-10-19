@@ -34,7 +34,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -771,9 +771,21 @@ async def api_exam_submit(key: str, body: ExamSubmit, req: Request):
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 
+@app.middleware("http")
+async def revalidate_static(req: Request, call_next):
+    """Browsers heuristically cache css/js; make them revalidate so a deploy reaches every visitor."""
+    resp = await call_next(req)
+    if req.url.path.startswith("/static/"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
 @app.get("/")
-def index():
-    return FileResponse(ROOT / "static" / "index.html", headers={"Cache-Control": "no-store"})
+def index(req: Request):
+    page = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    if is_public(req):                         # set server-side too, so the public view never depends on cached JS
+        page = page.replace("<html", '<html data-public="1"', 1)
+    return HTMLResponse(page, headers={"Cache-Control": "no-store"})
 
 
 if __name__ == "__main__":
