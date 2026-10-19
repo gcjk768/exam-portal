@@ -22,6 +22,7 @@
     state.exams = await (await fetch("/api/exams")).json();
     state.public = (await (await fetch("/api/access")).json()).public;   // public link: no Claude, no reset
     document.documentElement.dataset.public = state.public ? "1" : "";
+    const sc = $("#scope"); sc.hidden = false; sc.textContent = state.public ? "Public view" : "Private"; sc.dataset.public = state.public ? "1" : "";
     if (!state.exams.some(e => e.key === state.exam)) state.exam = state.exams[0].key;
     renderSwitch();
     setExam(state.exam, false);
@@ -463,7 +464,7 @@
     closePeek();
     setBusy(true, label || (body.data === "study" ? "Writing the study card" : body.data === "report" ? "Preparing the report" : "Working"));
     $(".empty", feed)?.remove();
-    state.fresh = body.data === "next" || /^[dq]\|/.test(body.data || "");   // next question: start a clean screen on its first card
+    state.fresh = body.data === "next" || body.data === "weak" || /^[dq]\|/.test(body.data || "");   // next question: start a clean screen on its first card
     try {
       const res = await post(path, body);
       const reader = res.body.getReader(), dec = new TextDecoder();
@@ -624,7 +625,7 @@
   const hist = () => JSON.parse(localStorage.getItem(histKey()) || "[]");
   function remember(g) {
     const h = hist().filter(x => x.id !== g.id);
-    h.push({ id: g.id, picked: g.picked });
+    h.push({ id: g.id, picked: g.picked, right: g.right, dom: g.dom || "" });
     localStorage.setItem(histKey(), JSON.stringify(h.slice(-300)));
   }
   const peek = { list: [], i: 0 };
@@ -652,8 +653,21 @@
     box.append(el);
   }
   function closePeek() { $("#peek").hidden = true; feed.hidden = false; }
+  function peekList() {
+    const wrong = $("#peek-wrong").checked, dom = $("#peek-dom").value;
+    return hist().filter(x => x.id !== state.curQ && (!wrong || x.right === false) && (!dom || x.dom === dom));   // the question on screen is not "previous"
+  }
+  function refilter() {
+    peek.list = peekList(); peek.i = peek.list.length - 1;
+    if (!peek.list.length) { $("#peek-card").innerHTML = `<p class="muted">Nothing matches that filter.</p>`; $("#peek-pos").textContent = ""; $("#peek-older").disabled = $("#peek-newer").disabled = true; return; }
+    showPeek();
+  }
+  $("#peek-wrong").onchange = $("#peek-dom").onchange = refilter;
   $("#btn-prev-q").onclick = () => {
-    peek.list = hist().filter(x => x.id !== state.curQ);          // the question on screen is not "previous"
+    const doms = [...new Set(hist().map(x => x.dom).filter(Boolean))].sort();
+    $("#peek-dom").innerHTML = `<option value="">All domains</option>` + doms.map(d => `<option>${esc(d)}</option>`).join("");
+    $("#peek-wrong").checked = false;
+    peek.list = peekList();
     if (!peek.list.length) { apply({ op: "error", html: "No earlier answered question yet." }); return; }
     peek.i = peek.list.length - 1;
     feed.hidden = true; $("#peek").hidden = false; showPeek(); window.scrollTo({ top: 0 });
@@ -663,8 +677,8 @@
   $("#peek-close").onclick = closePeek;
 
   function markGraded(g) {
-    remember(g);
     const el = [...state.cards.values()].reverse().find(c => c.querySelector(".qid")?.textContent === g.id);
+    remember({ ...g, dom: el?.querySelector(".dom")?.textContent || "" });
     if (!el) return;
     $$(".opt", el).forEach(b => {
       if (g.correct.includes(b.dataset.l)) b.classList.add("is-correct");

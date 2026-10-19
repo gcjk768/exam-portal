@@ -25,6 +25,10 @@ import json
 import logging
 import os
 import random
+import secrets
+import time
+from collections import defaultdict, deque
+from contextvars import ContextVar
 import re
 import sys
 import urllib.error
@@ -34,14 +38,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 log = logging.getLogger("portal")
 ROOT = Path(__file__).resolve().parent
 SGT = timezone(timedelta(hours=8))
-PUBLIC_HIDDEN = {"Tutorials Dojo"}   # paid question sources: shown on LAN/tailnet only, never on the public Funnel link
+VISITOR: ContextVar[str | None] = ContextVar("visitor", default=None)   # public visitor id (cookie); None = the owner
+PUBLIC_HIDDEN = {x.strip() for x in os.environ.get("PUBLIC_HIDDEN_SOURCES", "Tutorials Dojo").split(",") if x.strip()}   # paid question sources: shown on LAN/tailnet only, never on the public Funnel link
 # key (= the bot's logger name) -> short, full name, real exam length, real exam minutes
 META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
         "sapc03": ("SAP-C03", "AWS Solutions Architect Professional", 75, 180),
@@ -71,6 +76,11 @@ def vault_writer(root: str | None):
     return vault_log
 
 
+def quiet_for_public(fn):
+    """Public visitors' activity stays out of the owner's vault log."""
+    return lambda *a, **k: None if VISITOR.get() else fn(*a, **k)
+
+
 class Exam:
     def __init__(self, key: str, bot_dir: str, vault: str | None):
         self.key, self.dir = key, Path(bot_dir)
@@ -81,13 +91,42 @@ class Exam:
             sys.modules["scrape"] = self._load("scrape", self.dir / "scrape.py")   # ponytail: one scrape.py across exams
         if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks
             sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
-        self.mod.vault_log = vault_writer(vault)
+        self.mod.vault_log = quiet_for_public(vault_writer(vault))
+        self._own_state(self.mod)
         self.mod.PREFER_MERMAID = True                         # tutor draws Mermaid here (icons are added in the browser)
         png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
         self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
         self.lock = asyncio.Lock()
         sj = ROOT / "study" / f"{key}.json"
         self.study = json.loads(sj.read_text(encoding="utf-8")) if sj.exists() else {}
+
+    @staticmethod
+    def _own_state(mod) -> None:
+        """Public visitors get their own progress file (data/public/<cookie>.json); the bot code is unchanged."""
+        load, save = mod.load_state, mod.save_state
+
+        def where() -> Path | None:
+            v = VISITOR.get()
+            return mod.STATE_PATH.parent / "public" / f"{v}.json" if v else None
+
+        def load_state() -> dict:
+            p = where()
+            if p is None:
+                return load()
+            try:
+                return json.loads(p.read_text(encoding="utf-8"))
+            except Exception:
+                return {"ok": {}, "bad": {}}
+
+        def save_state(state: dict) -> None:
+            p = where()
+            if p is None:
+                return save(state)
+            p.parent.mkdir(exist_ok=True)
+            tmp = p.with_suffix(".tmp")
+            tmp.write_text(json.dumps(state, indent=1), encoding="utf-8")
+            os.replace(tmp, p)
+        mod.load_state, mod.save_state = load_state, save_state
 
     @staticmethod
     def _load(name: str, path: Path):
@@ -317,6 +356,22 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
             await mod.send_study(rec, state)
         else:
             await rec.send_message("📚 <i>No study cards for this exam yet. Use the reading list.</i>", reply_markup=mod.NEXT_KB)
+    elif data == "weak":                                  # quiz me on the weakest topic
+        m = mod.metrics(state, datetime.now(SGT))
+        seen = {q["domain"] for q in exam.questions(public).values()}
+        tried = sorted((r / n, d) for d, (r, n) in m["by_dom"].items() if n >= 3 and d in seen)
+        fresh = [d for d, (r, n) in m["by_dom"].items() if n < 3 and d in seen]
+        if tried and tried[0][0] < 0.8:
+            dom, why = tried[0][1], f"{round(100 * tried[0][0])}% right first time"
+        elif fresh:
+            dom, why = random.choice(fresh), "not enough answers yet"
+        else:
+            dom, why = (tried[0][1], f"{round(100 * tried[0][0])}% right first time") if tried else (None, "")
+        if dom is None:
+            raise HTTPException(404, "no questions available")
+        await rec.send_message(f"🎯 <b>Weak topic</b> · {html.escape(dom)} ({why})")
+        q = exam.pick(state, dom, public)
+        await (send_task(exam, rec, state, q) if not q["letters"] else mod.send_question(rec, state, q))
     elif data == "report":
         m = mod.metrics(state, datetime.now(SGT))
         rec.emit({"op": "meta", "metrics": {**m, "pass": mod.PASS, "verdict": mod.verdict(m)}})
@@ -609,6 +664,10 @@ async def check_videos(first_delay: int = 60) -> None:
 async def lifespan(_: FastAPI):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     EXAMS.update(load_exams())
+    for e in EXAMS.values():                      # public visitors' progress files older than 90 days
+        for f in (e.mod.STATE_PATH.parent / "public").glob("*.json"):
+            if time.time() - f.stat().st_mtime > 90 * 86400:
+                f.unlink(missing_ok=True)
     task = asyncio.create_task(check_videos())
     yield
     task.cancel()
@@ -740,7 +799,7 @@ def api_study(key: str, req: Request):
 @app.post("/api/{key}/act")
 async def api_act(key: str, body: Act, req: Request):
     e = exam_or_404(key)
-    if is_public(req) and (body.data in ("report", "refresh", "reset") or body.data.startswith("e|")):   # Claude calls + state wipe
+    if is_public(req) and (body.data in ("report", "refresh") or body.data.startswith("e|")):   # Claude calls and the shared bank refresh
         return stream(e, deny)
     return stream(e, functools.partial(act, e, body.data, public=is_public(req)))
 
@@ -784,10 +843,37 @@ async def api_exam_submit(key: str, body: ExamSubmit, req: Request):
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 
+HITS: dict[str, deque] = defaultdict(deque)
+PID_RX = re.compile(r"[0-9a-f]{32}")
+RATE = {"visitor": (90, 60), "all": (900, 60)}      # public requests allowed per (count, seconds), per visitor and overall
+
+
+def too_many(key: str, name: str) -> bool:
+    n, secs = RATE[name]
+    q, now = HITS[f"{name}:{key}"], time.monotonic()
+    while q and now - q[0] > secs:
+        q.popleft()
+    q.append(now)
+    if len(HITS) > 5000:                      # forget idle visitors
+        for k in [k for k, v in HITS.items() if not v or now - v[-1] > 120]:
+            HITS.pop(k, None)
+    return len(q) > n
+
+
 @app.middleware("http")
-async def revalidate_static(req: Request, call_next):
-    """Browsers heuristically cache css/js; make them revalidate so a deploy reaches every visitor."""
+async def visitors(req: Request, call_next):
+    """Public requests: own progress via a cookie, and a rate limit. Static files always revalidate after a deploy."""
+    pub = is_public(req) and not req.url.path.startswith("/static/")
+    pid, new = req.cookies.get("pid", ""), False
+    if pub:
+        if not PID_RX.fullmatch(pid):
+            pid, new = secrets.token_hex(16), True
+        if too_many(pid, "visitor") or too_many("x", "all"):
+            return JSONResponse({"detail": "Too many requests, slow down."}, status_code=429, headers={"Retry-After": "30"})
+        VISITOR.set(pid)
     resp = await call_next(req)
+    if new:
+        resp.set_cookie("pid", pid, max_age=90 * 86400, httponly=True, samesite="lax", secure=True)
     if req.url.path.startswith("/static/"):
         resp.headers["Cache-Control"] = "no-cache"
     return resp

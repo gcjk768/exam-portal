@@ -13,6 +13,7 @@
 <body>
 <header class="top">
   <a class="brand" href="#home" data-view="home">Exam<span>Portal</span></a>
+  <span class="scope" id="scope" hidden></span>
   <nav class="exams" id="exam-switch" aria-label="Exam"></nav>
   <nav class="views" aria-label="Section">
     <a href="#home" data-view="home">Home</a>
@@ -91,6 +92,8 @@
     </div>
     <div class="peek" id="peek" hidden>
       <div class="peek-nav">
+        <label class="small"><input type="checkbox" id="peek-wrong"> Wrong only</label>
+        <select id="peek-dom" aria-label="Domain"><option value="">All domains</option></select>
         <button class="btn" type="button" id="peek-older">← Older</button>
         <span class="muted small" id="peek-pos"></span>
         <button class="btn" type="button" id="peek-newer">Newer →</button>
@@ -107,6 +110,7 @@
     <div class="feed-actions">
       <button class="btn" type="button" id="btn-prev-q">← Previous question</button>
       <button class="btn btn-accent" type="button" data-act="next">Next question</button>
+      <button class="btn" type="button" data-act="weak" title="Quiz me on my weakest topic">🎯 Weak topic</button>
       <button class="btn" type="button" data-act="study" id="btn-study-feed">Study card</button>
       <button class="btn" type="button" data-act="stats">Stats</button>
       <button class="btn" type="button" data-act="report">Report</button>

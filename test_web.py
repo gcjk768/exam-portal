@@ -41,7 +41,7 @@ def events(resp):
 # public (Tailscale Funnel) link: no Claude, no reset; local keeps both
 pub = {"Tailscale-Funnel-Request": "?1"}
 assert c.get("/api/access").json() == {"public": False} and c.get("/api/access", headers=pub).json() == {"public": True}
-for d in ("reset", "report", "refresh", "e|x|A"):
+for d in ("report", "refresh", "e|x|A"):
     ev = events(c.post("/api/ccarp/act", json={"data": d}, headers=pub))
     assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
 
@@ -54,6 +54,29 @@ if tdq := [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("sour
     assert c.get(f"/api/ccarp/question/{tdq[0]}", headers=pub).status_code == 404 and c.get(f"/api/ccarp/question/{tdq[0]}").status_code == 200
 hp = c.get("/api/ccarp/home", headers=pub).json()
 assert hp["score"] == 0 and hp["verdict"] == "" and hp["week"] == {"n": 0, "ok": 0}, hp
+
+# public visitors keep their own progress (cookie pid), the owner's state.json and vault are untouched
+mod = web.EXAMS["ccarp"].mod
+owner_before = json.dumps(mod.load_state(), sort_keys=True)
+pc = {"Cookie": "pid=" + "ab" * 16}
+for _ in range(3):
+    ev = events(c.post("/api/ccarp/act", json={"data": "next"}, headers={**pub, **pc}))
+    qv = ev[0]["question"]
+    events(c.post("/api/ccarp/answer", json={"id": qv["id"], "picked": ["A"]}, headers={**pub, **pc}))
+assert json.dumps(mod.load_state(), sort_keys=True) == owner_before                      # owner untouched
+pst = c.get("/api/ccarp/home", headers={**pub, **pc}).json()
+assert pst["coverage"]["seen"] >= 1, pst["coverage"]                                        # visitor has their own progress
+assert c.get("/api/ccarp/home").json()["coverage"]["seen"] == json.loads(owner_before).get("ok", {}).__len__() + len(json.loads(owner_before).get("bad", {}))
+assert events(c.post("/api/ccarp/act", json={"data": "reset"}, headers={**pub, **pc}))[0]["html"].startswith("🔄")   # public reset = own progress only
+assert json.dumps(mod.load_state(), sort_keys=True) == owner_before
+ev = events(c.post("/api/ccarp/act", json={"data": "weak"}))                                # weak-topic quiz: header message then a question
+assert "Weak topic" in ev[0]["html"] and ev[1]["question"], ev
+events(c.post("/api/ccarp/act", json={"data": "reset"}))
+# rate limit: one visitor over its budget gets 429
+web.HITS.clear()
+codes = [c.get("/api/exams", headers={**pub, "Cookie": "pid=" + "cd" * 16}).status_code for _ in range(95)]
+assert codes[0] == 200 and codes[-1] == 429, codes[-3:]
+web.HITS.clear()
 
 # paid Tutorials Dojo questions (ids TD-*) are served on LAN/tailnet only, never on the public link
 tdq = [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") == "Tutorials Dojo"]

@@ -297,6 +297,25 @@
       "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
       "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
      }
+    },
+    {
+     "objective": "Place identity, data handling and logging in the integration",
+     "title": "Identity and data decisions belong on the server",
+     "gist": "Inject identity server-side, send only the fields the language task needs, and log enough to reconstruct an incident.",
+     "points": [
+      "Identity comes from your authentication layer into the system prompt; a role the user types is just a claim.",
+      "Authorization of the underlying system must also govern the Claude layer.",
+      "Necessity filter for the context window: pass a reference id, not an SSN, when the task does not need it.",
+      "Log request, response, context (role, session, cache) and outcome; unlogged data paths cannot be allowed by a reviewer.",
+      "Use a separate API key per tenant so a rate limit breach can be attributed; audit tools for least privilege."
+     ],
+     "tip": "PII in the user message ends up in plaintext application logs even if the model never stores it.",
+     "diagram": "flowchart LR\n  A[User request] --> B[Server authenticates, adds role to prompt]\n  B --> C[Redact fields the task does not need]\n  C --> D[Claude call]\n  D --> E[Log request, response, context, outcome]",
+     "video": null,
+     "source": {
+      "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
+     }
     }
    ],
    "summary": {
@@ -525,6 +544,25 @@
       "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
       "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
      }
+    },
+    {
+     "objective": "Size and scope a use case and map its ROI",
+     "title": "Size it, scope it, then map the ROI",
+     "gist": "Build a cost model before code, give a feasibility verdict with its constraints, then compare baseline and projected business metrics.",
+     "points": [
+      "Sizing inputs: call volume from the business owner, token budget per request, model tier, and a sensitivity check.",
+      "Batch API gives about half price for asynchronous work; the default cache lasts 5 minutes, so rare calls will not benefit.",
+      "Scope in four steps: capabilities, architecture sketch, boundary conditions, then the statement of work.",
+      "Verdicts: feasible as scoped, feasible with constraints (document them), or not feasible (say which constraint).",
+      "ROI: measured baseline, projected state including human review, minus run cost from the sizing model, then payback with sensitivity."
+     ],
+     "tip": "Never promise full automation when the design needs a human gate, and never use an estimated baseline.",
+     "diagram": "flowchart TB\n  A[Business requirement] --> B[Capability list]\n  B --> C[Architecture sketch]\n  C --> D[Boundary conditions]\n  D --> E{Verdict}\n  E --> F[Feasible, with constraints, or not]\n  F --> G[ROI: baseline vs projected minus run cost]",
+     "video": null,
+     "source": {
+      "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
+     }
     }
    ],
    "summary": {
@@ -706,6 +744,82 @@
       "title": "Chapter 12: Observability at Scale",
       "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/12-observability-at-scale.md"
      }
+    },
+    {
+     "objective": "Build evals as acceptance criteria before production code",
+     "title": "Write the eval before the code",
+     "gist": "An eval suite defined first turns 'looks right' into a measurable gate for every later change.",
+     "points": [
+      "Stages: define the task, build a golden dataset with edge cases, run code checks, score with a judge, interpret per category.",
+      "Success criteria come from the business requirement, with named failure modes and adversarial inputs, not from what the prototype scores.",
+      "Re-run evals on every model swap, prompt edit, context change or retrieval change, and keep the dataset current.",
+      "Single-turn sets miss conversation failures: multi-turn evals need full transcripts with good answers at each turn.",
+      "A stale eval gives false confidence: the summary prompt changed, the old set still passed, and legal clauses were truncated in production."
+     ],
+     "tip": "Trap: a golden set built from ten convenient inputs, or manual spot-checks treated as an eval. Representative and current beats clever.",
+     "diagram": "flowchart LR\n  A[Define task and pass criteria] --> B[Golden dataset incl. edge cases]\n  B --> C[Code checks]\n  C --> D[Judge for interpretation]\n  D --> E[Per-category result]\n  E --> F[Gate every change]",
+     "video": null,
+     "source": {
+      "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
+     }
+    },
+    {
+     "objective": "Identify what changes between a POC and production",
+     "title": "A POC proves capability, not cost or reliability",
+     "gist": "Cost, latency, reliability and failure modes are invisible at demo volume, so model them before choosing the architecture.",
+     "points": [
+      "Model cost from call volume, token budget per request (a skewed tail, not the average) and model tier.",
+      "Design to p95 latency, not the median; SLA breaches live in the slow 5 percent.",
+      "Caching helps most with a long stable prefix; remember cache writes cost more and a stale cache can break live-state use.",
+      "Retries with backoff sit near the call, circuit breakers at the service boundary, fallback chains in orchestration.",
+      "Pin model versions and keep an update runbook; failures differ by shape (agent: unbounded tools, RAG: retrieval drift, pipeline: no low-confidence path)."
+     ],
+     "tip": "A cost estimate from raw demo spend, or no tested fallback for a 529 at peak, is the classic miss.",
+     "diagram": "flowchart TB\n  A[POC works] --> B[Scale to production volume]\n  B --> C[Cost: tail of long requests]\n  B --> D[Latency: p95 under load]\n  B --> E[Reliability: retry, breaker, fallback]\n  B --> F[Failure modes per architecture]",
+     "video": null,
+     "source": {
+      "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
+     }
+    },
+    {
+     "objective": "Run structured A/B tests and shadow tests",
+     "title": "Hypothesis first, then sample size, then shadow if risky",
+     "gist": "A 50-session comparison that looks like a win is noise; fix the metric and the sample before looking.",
+     "points": [
+      "A usable hypothesis names the treatment, the primary metric, the threshold and the constraint on secondary metrics.",
+      "Assign randomly and consistently per user or session; size the sample from the minimum effect and baseline variance.",
+      "Significant is not the same as worth shipping: check effect size, cost, and any degraded secondary metric.",
+      "Shadow testing runs the new version on copied live traffic, serves the old answer, and scores offline; use it when one bad output is too risky.",
+      "Cost of shadow testing: no downstream user signal, so scoring needs rubrics or golden answers."
+     ],
+     "tip": "Choosing the metric after seeing results, or comparing 50 against 50 sessions, is outcome-shopping.",
+     "diagram": "flowchart TB\n  A{Can users be exposed to a worse version?} -->|Yes, high traffic| B[Live A/B test]\n  A -->|No, risky or low traffic| C[Shadow test, score offline]\n  B --> D[Pre-set metric and sample size]\n  C --> D",
+     "video": null,
+     "source": {
+      "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
+     }
+    },
+    {
+     "objective": "Design observability and classify failures",
+     "title": "Four observability questions and a failure taxonomy",
+     "gist": "Trace what the system does, aggregate it, alert on it and attribute the change, then classify the failure before fixing.",
+     "points": [
+      "Per request: model version, token counts, latency, stop reason, tool calls; log the outcome signal from the downstream system too.",
+      "Aggregate per request, not only as averages: a few requests can eat most of the budget.",
+      "Alert on cost above about 150 percent of the 7-day average and on p95 over the SLA; drift needs periodic distribution checks.",
+      "Attribute a change to model drift, data drift or a model update; each has a different fix.",
+      "Classify first: prompt failure, hallucination (ground it), model mismatch (eval-gate the tier), orchestrator failure (shared trace id)."
+     ],
+     "tip": "Map technical metrics to the business KPI at build time, or the first business review cannot be answered.",
+     "diagram": "flowchart LR\n  A[Request traces] --> B[Metric aggregation]\n  B --> C[Anomaly alerts]\n  C --> D[Change attribution]\n  D --> E[Failure class]\n  E --> F[Targeted fix]",
+     "video": null,
+     "source": {
+      "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
+     }
     }
    ],
    "summary": {
@@ -862,6 +976,120 @@
      "source": {
       "title": "Chapter 17: Proving It to Someone Who Was Not There",
       "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/17-proving-it-to-someone-who-was-not-there.md"
+     }
+    },
+    {
+     "objective": "Separate model alignment from deployment controls",
+     "title": "Training handles broad harm, you own the domain rules",
+     "gist": "Four layers each cover something the layer below cannot; a rule never encoded in any layer is not enforced.",
+     "points": [
+      "Trained behaviour reduces general harm, based on a written constitution, but knows nothing of your policies or data rules.",
+      "A system prompt steers one request; instructions are not enforcement against adversarial input.",
+      "Runtime screening catches disallowed content but does not authorise side-effecting actions.",
+      "Authorization decides whether this caller may do this action; it says nothing about content quality or fairness.",
+      "Everything above trained behaviour is the architect's to build and own."
+     ],
+     "tip": "The silent failure: assuming Claude enforces 'no cross-unit record access' because it refused every harmful test prompt.",
+     "diagram": "flowchart TB\n  A[Trained behaviour: Anthropic] --> B[System prompt: architect]\n  B --> C[Runtime screening: architect]\n  C --> D[Authorization: architect]\n  D --> E[Domain policy enforced only here]",
+     "video": null,
+     "source": {
+      "title": "Responsible AI, Safety & Risk for Architects (Architect module 3, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/responsible-ai-safety-risk-for-architects"
+     }
+    },
+    {
+     "objective": "Place guardrails and choose fail direction",
+     "title": "Three gates, each with a fail direction",
+     "gist": "Input screening, output screening and tool-call authorization guard different things; a single output filter is not a guarded path.",
+     "points": [
+      "Ambiguous intent needs a model-based check; clear rules fit a deterministic check; tool authorization should be deterministic and replayable.",
+      "Instructions inside retrieved documents and tool outputs bypass user-input screening, so screen those before they enter context.",
+      "Operator-built guardrails must fail closed; failing open silently removes protection while looking guarded.",
+      "A refusal appears as stop_reason refusal, with stop_details on newer models; route by category and reset the refused context.",
+      "Log every blocked or failed gate so an incident can be reconstructed."
+     ],
+     "tip": "Output filters judge text, not actions: the refund tool had already run before the filter looked.",
+     "diagram": "flowchart LR\n  A[Request] --> B[Input screen, fail closed]\n  B --> C[Model]\n  C --> D[Tool call authorization]\n  D --> E[Output screen, fail closed]\n  E --> F[Response, gates logged]",
+     "video": null,
+     "source": {
+      "title": "Responsible AI, Safety & Risk for Architects (Architect module 3, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/responsible-ai-safety-risk-for-architects"
+     }
+    },
+    {
+     "objective": "Control skill supply-chain risk",
+     "title": "Audit a skill before it runs, then confine it",
+     "gist": "A skill is distributed code plus instructions, so the risk is upstream of your input filters.",
+     "points": [
+      "Audit the bundle for anomalous calls (network, shell, file system, credentials) and out-of-scope behaviour for its stated job.",
+      "Run skills with least privilege in a sandbox: limited files, limited network, no standing credentials.",
+      "Accept skills only from a vetted internal registry, verified publishers or signed releases.",
+      "Do not assume the platform vets skills; read what automated scanning actually covers.",
+      "Record a verdict every time: approve, reject, or remediate and re-audit."
+     ],
+     "tip": "Audit decides what gets in; sandboxing contains what the audit misses. Neither alone is enough.",
+     "diagram": "flowchart LR\n  A[Skill from vetted source] --> B[Audit bundle]\n  B --> C{Verdict}\n  C -->|Approve| D[Run in sandbox]\n  C -->|Remediate| B\n  C -->|Reject| E[Never enters environment]",
+     "video": null,
+     "source": {
+      "title": "Responsible AI, Safety & Risk for Architects (Architect module 3, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/responsible-ai-safety-risk-for-architects"
+     }
+    },
+    {
+     "objective": "Design for fairness and transparency",
+     "title": "Fairness enters at four points you control",
+     "gist": "Unequal outcomes come from your corpus, prompt framing, few-shot examples and routing, so instrument those, not the vendor.",
+     "points": [
+      "Four injection points: retrieval corpus, prompt framing, few-shot examples, downstream routing.",
+      "Three audiences: the affected user (reasons they can act on), the regulator (reconstructable, consistent), your team (full trace).",
+      "Decision logging captures inputs, retrieved context, output and routing; govern the log itself under HIPAA or GDPR.",
+      "Overall metrics can look fine while harm sits in one subgroup.",
+      "A 'no' on any checklist question is a design gap."
+     ],
+     "tip": "Assigning fairness to the model provider left a team unable to say where the skew came from.",
+     "diagram": "flowchart TB\n  A[Corpus] --> E[Outcome]\n  B[Prompt framing] --> E\n  C[Few-shot examples] --> E\n  D[Routing] --> E\n  E --> F[Decision log: user, regulator, build team]",
+     "video": null,
+     "source": {
+      "title": "Responsible AI, Safety & Risk for Architects (Architect module 3, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/responsible-ai-safety-risk-for-architects"
+     }
+    },
+    {
+     "objective": "Choose human review placement by stakes",
+     "title": "Where the reviewer sits, and what they see",
+     "gist": "Review attention is a budget: spend it on irreversible or costly, low-confidence decisions and show reviewers the inputs and the flag reason.",
+     "points": [
+      "Stakes come from reversibility and cost of error; confidence only sets how much volume can pass unreviewed, and only if calibrated.",
+      "Pre-action approval is safest and slowest; post-action audit suits reversible low-cost work; sampled review monitors rather than guards.",
+      "Reviewers need the inputs, the output and why it was flagged.",
+      "Anthropic's finding: per-step approval brings friction without safety, so move review to plan level or exceptions to avoid consent fatigue.",
+      "Routing everything to review makes review meaningless."
+     ],
+     "tip": "Two independent failures: too much volume, and missing context. Fixing only one still fails.",
+     "diagram": "flowchart TB\n  A{Irreversible or high cost?} -->|Yes, low confidence| B[Pre-action approval]\n  A -->|Reversible, low cost| C[Post-action audit or sample]\n  B --> D[Reviewer sees inputs, output, flag reason]",
+     "video": null,
+     "source": {
+      "title": "Responsible AI, Safety & Risk for Architects (Architect module 3, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/responsible-ai-safety-risk-for-architects"
+     }
+    },
+    {
+     "objective": "Turn obligations into controls with evidence",
+     "title": "Every obligation needs a control, an owner and evidence",
+     "gist": "Passing the entry-point pre-filter is not proof; reviewers want a live artifact for each rule.",
+     "points": [
+      "HIPAA: a signed BAA covering the exact configuration, HIPAA setting enabled, eligible features only; beta features are generally excluded.",
+      "Residency on the direct API: inference_geo accepts us and global, so EU pinning needs a cloud route; check logs and caches stay in region too.",
+      "FedRAMP: Claude for Government, Bedrock GovCloud or Vertex Assured Workloads; direct-API Enterprise is not authorised.",
+      "Privilege: API behind the firm's own gateway, SSO, and an audit log the firm owns.",
+      "Separate training use from retention: data can be excluded from training and still logged or monitored."
+     ],
+     "tip": "A residency control true at design time and false in production because a log config changed, with no owner or artifact watching.",
+     "diagram": "flowchart LR\n  A[Obligation] --> B[Technical control]\n  B --> C[Named owner]\n  C --> D[Live evidence artifact]\n  D --> E[Revalidate on a schedule]",
+     "video": null,
+     "source": {
+      "title": "Responsible AI, Safety & Risk for Architects (Architect module 3, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/responsible-ai-safety-risk-for-architects"
      }
     }
    ],
@@ -1024,6 +1252,82 @@
      "source": {
       "title": "Chapter 3: Sizing, Scoping, and the Feasibility Verdict",
       "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/03-sizing-scoping-feasibility.md"
+     }
+    },
+    {
+     "objective": "Run discovery as structured elicitation",
+     "title": "Translate a preference into four buckets",
+     "gist": "A stated preference like seamless hides constraints; ask what would break it and write the answer in a translation table.",
+     "points": [
+      "Listen, translate, write down, before proposing anything.",
+      "Four buckets: what the system must do, must not do, what it must cost, what it must prove.",
+      "A translation row holds the statement, implied constraint, forced architectural decision and the assumption to confirm.",
+      "'It is just a quick review' may be a mandatory authorization gate; ask.",
+      "Regulated work carries proof obligations that are cheap to find now and expensive in legal review."
+     ],
+     "tip": "Sketching the solution mid-call ended the questions; the PHI handling and two-state retention rules surfaced two weeks later.",
+     "diagram": "flowchart LR\n  A[Stakeholder statement] --> B[Ask what would break it]\n  B --> C[Must do, must not, cost, prove]\n  C --> D[Translation row with assumption]\n  D --> E[Design record]",
+     "video": null,
+     "source": {
+      "title": "Stakeholder Engagement, Lifecycle & GTM (Architect module 4, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/stakeholder-engagement-lifecycle-gtm"
+     }
+    },
+    {
+     "objective": "Present tradeoffs so stakeholders can decide",
+     "title": "Gain, give up, reversal cost, compliance",
+     "gist": "An approval is only informed if the reversal cost was named; frame options as a package, not a verdict.",
+     "points": [
+      "Ask four questions of every option: what we gain, what we give up, what reversing later costs, what it does to compliance.",
+      "Lead with business outcome, state limits honestly, and give the stakeholder a justification they can repeat.",
+      "Objections are capability, governance or design-choice; answer design choices with the tradeoff and the alternative's cost.",
+      "Demos: pick a recognisable scenario, name one or two limits upfront, prepare data shaped like theirs.",
+      "Partner-track items (demo design, joint scoping) are marked as not tested on the Architect exam."
+     ],
+     "tip": "The CTO approved a per-call price, not a monthly bill or the cost of unwinding full-context design.",
+     "diagram": "flowchart TB\n  A[Option] --> B[Gain]\n  A --> C[Give up]\n  A --> D[Cost to reverse later]\n  A --> E[Compliance effect]\n  B --> F[Decision package]\n  C --> F\n  D --> F\n  E --> F",
+     "video": null,
+     "source": {
+      "title": "Stakeholder Engagement, Lifecycle & GTM (Architect module 4, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/stakeholder-engagement-lifecycle-gtm"
+     }
+    },
+    {
+     "objective": "Wire signals to triggers, owners and checkpoints",
+     "title": "Monitoring is not a feedback loop",
+     "gist": "A loop turns signals into triage, a decision, an action and a review; a governance table maps each signal to a trigger and owner.",
+     "points": [
+      "Loop: signals, triage, decide, act, review; slow drift needs a trigger even when the error rate is flat.",
+      "An SLA names what is measured, what counts as a breach, and what happens; thresholds trace to UX, criticality and eval results.",
+      "Cost is the expectation that breaks most: production volume often runs 10 to 100 times the pilot, so forecast before the first invoice.",
+      "Regulated deployments need scheduled reviews (output audits, residency confirmation) even when nothing fails.",
+      "Build the table before launch."
+     ],
+     "tip": "Eval scores slid for weeks 4 to 7 with no alert and no review until week 12.",
+     "diagram": "flowchart LR\n  A[Signal] --> B[Triage]\n  B --> C[Decide: fix, stakeholder review, none]\n  C --> D[Act]\n  D --> E[Review the response]\n  E --> A",
+     "video": null,
+     "source": {
+      "title": "Stakeholder Engagement, Lifecycle & GTM (Architect module 4, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/stakeholder-engagement-lifecycle-gtm"
+     }
+    },
+    {
+     "objective": "Write outcome documentation and an entry-point map",
+     "title": "Outcome document: before, after, control, reuse",
+     "gist": "Technical metrics show the system runs; the sponsor needs the business before and after, and proof the comparison is fair.",
+     "points": [
+      "Six fields: use case and scope limit, metric before, metric after (same definition), control that makes it auditable, measurement owner, reuse potential.",
+      "Capture the before number at the start; without it there is no story.",
+      "Across several entry points, keep a responsibility map saying which handles which task and why.",
+      "Routes differ in model ids, feature lag and region setup; defaulting to a global endpoint can break residency.",
+      "Foundry's hosting form (on Azure or on Anthropic infrastructure) changes the residency answer; verify per model."
+     ],
+     "tip": "An outcome document of request volume and latency could not answer the CFO's first question.",
+     "diagram": "flowchart TB\n  A[Baseline measured at start] --> B[Deployment with control group]\n  B --> C[After metric, same definition]\n  C --> D[Outcome document, six fields]\n  D --> E[Sponsor case and reusable IP]",
+     "video": null,
+     "source": {
+      "title": "Stakeholder Engagement, Lifecycle & GTM (Architect module 4, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/stakeholder-engagement-lifecycle-gtm"
      }
     }
    ],
@@ -1385,6 +1689,82 @@
      "source": {
       "title": "Chapter 21: Team Enablement and the Debugging Loop",
       "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/21-team-enablement-and-debugging.md"
+     }
+    },
+    {
+     "objective": "Configure Claude tooling for teams",
+     "title": "Shared baseline, champions, batches, spend",
+     "gist": "A team setup is shared defaults, a staged rollout and bounded spend, not a personal setup copied around.",
+     "points": [
+      "Baseline: a shared CLAUDE.md, agreed tools and MCP servers, and a permission posture, reviewed and versioned once.",
+      "Roll out through one champion per team, who proves a real workflow, then seeds batches.",
+      "Set model defaults, allowlists, effort guidance and per-user caps before the first bill.",
+      "Access is not adoption: teams stall at basic chat or adopt unevenly unless enabled past the first step.",
+      "A mass email produces confused first prompts and a retreat to old habits."
+     ],
+     "tip": "Choose enablement by outcome: champion plus batch beats all-hands switch-on.",
+     "diagram": "flowchart LR\n  A[Shared CLAUDE.md, tools, permissions] --> B[Champion per team]\n  B --> C[Prove one real workflow]\n  C --> D[Batch rollout]\n  D --> E[Spend and model guardrails]",
+     "video": null,
+     "source": {
+      "title": "Team Enablement & Operational Productivity (Architect module 5, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/developer-productivity-enablement"
+     }
+    },
+    {
+     "objective": "Pick a distribution channel for team Skills",
+     "title": "Four ways to ship a Skill to a team",
+     "gist": "Choose the channel by who needs the Skill and how much versioning and rollback you need.",
+     "points": [
+      "Org-provisioned Skill reaches everyone but has no version pinning or native rollback; updates are manual re-uploads.",
+      "A plugin assigned to a group or org adds group targeting, install preferences and version-controlled updates from a repo.",
+      "Claude Code project Skills live in .claude/skills/ and roll back with the repository.",
+      "API Skills are called by your own products and support explicit version pinning.",
+      "Server-managed settings are a separate channel, delivered on sign-in and refreshed hourly; they are settings, not Skills."
+     ],
+     "tip": "A skill pushed flat to forty engineers had no way back; shared assets need versions and an owner.",
+     "diagram": "flowchart TB\n  A{Who needs it?} -->|Everyone| B[Org-provisioned Skill]\n  A -->|Specific teams, needs rollback| C[Plugin via group]\n  A -->|One team's repos| D[Project Skill in repo]\n  A -->|Your own product| E[API Skill, pinned version]",
+     "video": null,
+     "source": {
+      "title": "Team Enablement & Operational Productivity (Architect module 5, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/developer-productivity-enablement"
+     }
+    },
+    {
+     "objective": "Keep AI-assisted work trustworthy",
+     "title": "A verification checklist stops judgment erosion",
+     "gist": "Hold generated code to the same standard as any other, and require the person merging to explain it.",
+     "points": [
+      "Weave AI into existing stages: writing, review, debugging; its flags are input, not a verdict.",
+      "Checklist covers correctness, security, maintainability and human understanding.",
+      "Automate what can be: regression tests and eval sets make correctness a gate on every change.",
+      "Failure signs: lumpy adoption and shipping output nobody can explain.",
+      "Diligence is taking responsibility for what you ship with AI."
+     ],
+     "tip": "The merge nobody could explain: green tests, plausible code, and an unvalidated input that leaked data.",
+     "diagram": "flowchart LR\n  A[AI-generated change] --> B[Automated tests and evals]\n  B --> C[Checklist: correct, secure, maintainable]\n  C --> D{Can the merger explain it?}\n  D -->|Yes| E[Ship]\n  D -->|No| F[Hold]",
+     "video": null,
+     "source": {
+      "title": "Team Enablement & Operational Productivity (Architect module 5, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/developer-productivity-enablement"
+     }
+    },
+    {
+     "objective": "Support operations by translating symptoms to causes",
+     "title": "Symptom, cause, first action, then a runbook",
+     "gist": "Teach the team the diagnostic path so they need you for new problems, not familiar ones.",
+     "points": [
+      "Gradual quality drop with no code change: model, prompt or retrieval drift; compare against an eval set.",
+      "Latency spike: context growth, a slow tool or a cache that stopped hitting; use traces to find the slowest span.",
+      "Intermittent tool failures: authorization, rate limits or an unhandled error path.",
+      "Cost rise with flat usage: model tier crept up or caching regressed; check tier and hit rate.",
+      "Leave a runbook and an escalation path so first-line staff can resolve recurring issues."
+     ],
+     "tip": "Fixing it yourself is firefighting; writing the runbook entry is support that reduces load.",
+     "diagram": "flowchart LR\n  A[Symptom] --> B[Likely architecture cause]\n  B --> C[First action]\n  C --> D[Runbook entry]\n  D --> E[Escalation path for new problems]",
+     "video": null,
+     "source": {
+      "title": "Team Enablement & Operational Productivity (Architect module 5, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/developer-productivity-enablement"
      }
     }
    ],

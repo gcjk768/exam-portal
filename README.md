@@ -1,6 +1,6 @@
 # Exam Portal
 
-One website for the quiz bots that live in their own repos: [CCAR-P](https://github.com/gcjk768/claude-certified-architect-professional-portable), [AWS SAP-C03](https://github.com/gcjk768/aws-certified-solutions-architect-professional-portable) and [AWS AIP-C01](https://github.com/gcjk768/aws-certified-generative-ai-developer-professional-portable). Every Telegram function, plus a Study door and a timed Exam mode, on your home LAN.
+One website for the quiz bots that live in their own repos: [CCAR-P](https://github.com/gcjk768/claude-certified-architect-professional-portable), [AWS SAP-C03](https://github.com/gcjk768/aws-certified-solutions-architect-professional-portable) and [AWS AIP-C01](https://github.com/gcjk768/aws-certified-generative-ai-developer-professional-portable). Every Telegram function, plus a Study door and a timed Exam mode, on your home LAN, plus a locked-down public link.
 
 The portal does not copy the bots' logic. It imports each bot's own `bot.py` from its folder and drives it with a recorder in place of the Telegram chat, so the question picker, grading, Claude tutor prompts, diagrams, scoring weights and pass marks are exactly the running bot code. It reads and writes the same `data/state.json`, so a question answered on the web counts in Telegram and the other way round.
 
@@ -48,7 +48,7 @@ and open `http://<host>:3003`. The image is the bots' image (Python, Claude Code
 
 ## Limits
 
-Home LAN only, no login. Diagrams live in the page until you move on (the pending question is restored on reload). The bot and the portal both write `state.json` with load-mutate-save; one user, no file lock.
+Two ways in. Your own link (NAS tailnet IP or LAN) has everything: Claude calls, reset, refresh, report, all question sources. The public link (Tailscale Funnel, or any request for the `.ts.net` name) has no Claude or admin actions, hides paid question sources (`PUBLIC_HIDDEN_SOURCES`, default `Tutorials Dojo`), keeps each visitor's progress in its own file (cookie, `data/public/`), does not write to the owner's vault, and is rate-limited (90 requests a minute per visitor). Diagrams live in the page until you move on (the pending question is restored on reload). The bot and the portal both write `state.json` with load-mutate-save; one owner, no file lock.
 
 ## License
 
