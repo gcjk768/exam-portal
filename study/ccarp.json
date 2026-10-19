@@ -278,6 +278,25 @@
       "title": "Effective context engineering for AI agents",
       "url": "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
      }
+    },
+    {
+     "objective": "Separate entry points, build-time interfaces and delivery routes",
+     "title": "Entry point, interface, delivery route",
+     "gist": "Three different layers, three different stakeholders: choose them in that order and let constraints rule options out first.",
+     "points": [
+      "Entry point is what users touch: Claude.ai, Claude Code, Cowork, or a custom app.",
+      "Build-time interface is what engineers code against: API, SDK, MCP, Agent SDK.",
+      "Delivery route is where traffic ends: Anthropic, Bedrock, Vertex AI or Foundry; chosen by cloud contract and compliance.",
+      "Cloud routes can lag the first-party API on new features by weeks.",
+      "Name the governing constraint (privilege, HIPAA, residency, FedRAMP) before cost or taste."
+     ],
+     "tip": "Claude Code for bank branch staff, or MCP with only one client, is the classic mismatch. Entry point follows the user and the work.",
+     "diagram": "flowchart TB\n  A[Governing constraint] --> B[Entry point for the user]\n  B --> C[Build-time interface for the team]\n  C --> D[Delivery route for cloud contract]\n  D --> E[Name the deciding tradeoff]",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
+     }
     }
    ],
    "summary": {
@@ -448,6 +467,63 @@
      "source": {
       "title": "Chapter 3: Sizing, Scoping, and the Feasibility Verdict",
       "url": "https://github.com/vkorost/claude-certified-architect-professional-guide/blob/main/book/chapters/03-sizing-scoping-feasibility.md"
+     }
+    },
+    {
+     "objective": "Name the seven primitives and what each is for",
+     "title": "Seven primitives, seven jobs",
+     "gist": "Every pattern is an assembly of a few parts; knowing each part's single job stops the word agent meaning five things.",
+     "points": [
+      "Tools act, MCP connects clients to shared tools, subagents isolate or parallelise.",
+      "Hooks guarantee: deterministic code on events that the model cannot skip.",
+      "Skills package a repeatable procedure as a versioned unit.",
+      "Agent teams coordinate peers; dynamic workflows assemble steps at run time.",
+      "Augmented call is model plus tools; workflow is steps in your code; agent picks its own tool sequence."
+     ],
+     "tip": "Use the fewest primitives that meet the need: a team of agents where one tool call would do pays in latency, tokens and surface area.",
+     "diagram": "flowchart TB\n  A[Pattern] --> B[Augmented call: model plus tools]\n  A --> C[Workflow: steps in your code]\n  A --> D[Agent: model picks the steps]\n  D --> E[Subagents isolate or parallelise]\n  D --> F[Hooks guarantee rules]",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
+     }
+    },
+    {
+     "objective": "Match reference architectures and spot retrieval used on live state",
+     "title": "Reference architectures are shapes, not blueprints",
+     "gist": "Adapt the known shape that fits, and never let a cached index answer a question about current state.",
+     "points": [
+      "Five shapes: agent, RAG, document pipeline with evaluator-optimizer, ticket routing, coding agent.",
+      "Add a second pattern only when the two parts break in different ways; otherwise adapt one.",
+      "Each shape needs its own eval set; a healthy top-level score can hide one broken part.",
+      "RAG fits stable text such as manuals and policy. Order status or stock is live state.",
+      "Fix stale answers with a tool call to the system of record, not a better chunker or faster refresh."
+     ],
+     "tip": "Symptom of retrieval on live state: confident answers that contradict the database and no errors. Similarity score is not truth.",
+     "diagram": "flowchart TB\n  A[Question] --> B{Stable knowledge or live state?}\n  B -->|Manuals, policy| C[Retrieve chunks]\n  B -->|Order status, stock| D[Tool call to system of record]\n  C --> E[Grounded answer]\n  D --> E",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
+     }
+    },
+    {
+     "objective": "Catch silent gaps in multi-agent fan-out",
+     "title": "Reconcile dispatched against returned",
+     "gist": "A confident summary over missing units is the worst multi-agent failure; check coverage at synthesis.",
+     "points": [
+      "Subagent failures are usually recoverable: retry, re-route, or record the gap.",
+      "An orchestrator failure is rarely recoverable, so checkpoint its state.",
+      "Rule: results returned must equal units dispatched, else flag before anyone reads the summary.",
+      "Resolve conflicts with an explicit rule or escalate to a human.",
+      "Propagate one trace ID across orchestrator and subagents."
+     ],
+     "tip": "Example: 50 sections dispatched, two silently lost, report said 48 reviewed. Add a count check; do not just add more agents.",
+     "diagram": "flowchart LR\n  A[Orchestrator dispatches N units] --> B[Subagents return results]\n  B --> C{Returned equals N?}\n  C -->|Yes| D[Synthesise report]\n  C -->|No| E[Retry or flag the gap]",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
      }
     }
    ],
@@ -1130,6 +1206,81 @@
      "source": {
       "title": "Prompt caching",
       "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-caching"
+     }
+    },
+    {
+     "objective": "Recognize how Claude behaves and design around it",
+     "title": "Four properties to design around",
+     "gist": "Each strength of the model has a matching limit, and the architect adds the mitigation instead of hoping.",
+     "points": [
+      "Next-token prediction: good on common patterns, shaky on names, dates, citations. Verify or look them up.",
+      "Knowledge: weak on rare or fast-changing facts. Make search, RAG or a tool the source of truth.",
+      "Working memory: anything outside the window does not exist. Load in stages, chunk, summarise across turns.",
+      "Steerability: short, concrete, checkable instructions work. Exact maths or logic belongs to code.",
+      "A clean demo run is not proof of determinism; outputs can drift later."
+     ],
+     "tip": "Match the symptom to the property: stale fact means knowledge, wrong sum means steerability, truncated output means working memory. Re-running a demo five times proves nothing.",
+     "diagram": "flowchart TB\n  A[Failure seen] --> B{Which property?}\n  B -->|Wrong name or date| C[Next-token: verify or look up]\n  B -->|Stale or rare fact| D[Knowledge: retrieval or tool]\n  B -->|Lost early detail| E[Memory: stage the context]\n  B -->|Wrong maths or logic| F[Steerability: code owns it]",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
+     }
+    },
+    {
+     "objective": "Gate every model change with an eval",
+     "title": "Swap models only through an eval gate",
+     "gist": "A model swap is a release: build the test set and the rollback rule first, then compare.",
+     "points": [
+      "Start on Sonnet. Move to Opus or Haiku only when an eval set shows the need or the safety.",
+      "An eval needs a test set that matches real traffic, a grading function and a ship threshold set in advance.",
+      "Score per document type: one average hid two types at 0.71 and 0.74 when the rule was 0.85.",
+      "The salvage was partial: route the weak types to Sonnet, the rest to Haiku.",
+      "No tier decision means the most expensive default: all-Opus gave a 7x cost overrun, 2.3 s latency and no satisfaction gain."
+     ],
+     "tip": "Set the rollback criterion before the data arrives. A rule written after the results is acceptance criteria written after the build.",
+     "diagram": "flowchart LR\n  A[Proposed swap] --> B[Eval set from real traffic]\n  B --> C[Threshold set first]\n  C --> D[Run both models]\n  D --> E{Any type below threshold?}\n  E -->|Yes| F[Route that type to stronger model]\n  E -->|No| G[Ship the swap]",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
+     }
+    },
+    {
+     "objective": "Know the two context-edge errors and what extended thinking costs",
+     "title": "Context edges and extended thinking",
+     "gist": "Too-big requests are rejected up front; too-long generations stop early. Different errors, different fixes.",
+     "points": [
+      "Oversized prompt: HTTP 400 invalid_request_error (tokens) or 413 request_too_large (bytes), rejected before generation.",
+      "Fits but runs out while writing: stop reason model_context_window_exceeded with truncated output.",
+      "Check the usage field on every response and use token counting before sending.",
+      "Extended thinking bills thinking tokens as output and adds latency; adaptive thinking with an effort level is the current control.",
+      "Run evals without thinking first; turn it on only for a measured accuracy gap."
+     ],
+     "tip": "Do not budget the whole window: it is a ceiling, not a target. Thinking is a cost and latency trade, never a free upgrade.",
+     "diagram": "flowchart TB\n  A[Request too big?] -->|Yes| B[Rejected: 400 tokens or 413 bytes]\n  A -->|No| C[Generation runs]\n  C --> D{Hits window ceiling?}\n  D -->|Yes| E[Stop reason context window exceeded, truncated]\n  D -->|No| F[Complete answer]",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
+     }
+    },
+    {
+     "objective": "Order improvement levers before fine-tuning",
+     "title": "Prompt first, fine-tune last",
+     "gist": "Most reliability problems are prompt problems, so climb the cheap levers before changing the model itself.",
+     "points": [
+      "Order: optimise the prompt, add tools or retrieval, add an evaluator-optimizer loop, then fine-tune.",
+      "Fine-tuning earns its place at very high volume, in tight latency budgets, or for a stubborn output format.",
+      "It locks you to one model version and narrows options.",
+      "Access is limited and varies by model and route; confirm with the Anthropic account team."
+     ],
+     "tip": "A stem that jumps straight to fine-tuning for an unreliable prompt is the trap. The answer is the cheapest lever that fixes the symptom.",
+     "diagram": "flowchart LR\n  A[Unreliable output] --> B[Fix the prompt]\n  B --> C[Add tools or retrieval]\n  C --> D[Evaluator-optimizer loop]\n  D --> E[Fine-tune last]",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design/486647/scorm/2gvs1pi0tq0sq"
      }
     }
    ],

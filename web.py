@@ -33,7 +33,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -612,6 +612,15 @@ def exam_or_404(key: str) -> Exam:
     return EXAMS[key]
 
 
+def is_public(req: Request) -> bool:
+    """Tailscale Funnel marks every request that came in from the open internet; LAN and tailnet requests lack it."""
+    return "tailscale-funnel-request" in req.headers
+
+
+async def deny(rec: Recorder) -> None:
+    raise HTTPException(403, "Claude and admin actions are off on the public link. Use the home network or Tailscale.")
+
+
 class Act(BaseModel):
     data: str
 
@@ -638,6 +647,11 @@ class ExamStart(BaseModel):
 class ExamSubmit(BaseModel):
     answers: dict[str, list[str]]
     minutes_used: float = 0
+
+
+@app.get("/api/access")
+def api_access(req: Request):
+    return {"public": is_public(req)}
 
 
 @app.get("/api/exams")
@@ -697,8 +711,10 @@ def api_study(key: str):
 
 
 @app.post("/api/{key}/act")
-async def api_act(key: str, body: Act):
+async def api_act(key: str, body: Act, req: Request):
     e = exam_or_404(key)
+    if is_public(req) and (body.data in ("report", "refresh", "reset") or body.data.startswith("e|")):   # Claude calls + state wipe
+        return stream(e, deny)
     return stream(e, functools.partial(act, e, body.data))
 
 

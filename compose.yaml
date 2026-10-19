@@ -12,10 +12,10 @@ services:
     init: true
     network_mode: bridge          # the NAS has no free subnet pools for another per-stack network
     ports:
-      - "3003:8000"               # home LAN only, no login
+      - "3003:8000"               # LAN + tailnet get everything; `tailscale funnel 3003` = public, Claude/admin actions refused (web.py is_public)
     env_file: web.env
     environment:
-      EXAMS: "ccarp:/exams/ccarp:/vault/ccarp,sapc03:/exams/sapc03:/vault/sapc03,aipc01:/exams/aipc01:/vault/aipc01,cka:/exams/cka:/vault/cka,gitlabci:/exams/gitlabci:/vault/gitlabci,tfassoc:/exams/tfassoc:/vault/tfassoc"
+      EXAMS: "ccarp:/exams/ccarp:/vault/ccarp"
     volumes:
       # each quiz bot's stack: code read-only, its data/ (questions + the shared state.json) read-write
       - "${CCARP_DIR:-/volume1/docker/ccarp-quiz}:/exams/ccarp:ro"

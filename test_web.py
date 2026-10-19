@@ -38,6 +38,13 @@ def events(resp):
     return [json.loads(line) for line in resp.text.splitlines() if line.strip()]
 
 
+# public (Tailscale Funnel) link: no Claude, no reset; local keeps both
+pub = {"Tailscale-Funnel-Request": "?1"}
+assert c.get("/api/access").json() == {"public": False} and c.get("/api/access", headers=pub).json() == {"public": True}
+for d in ("reset", "report", "refresh", "e|x|A"):
+    ev = events(c.post("/api/ccarp/act", json={"data": d}, headers=pub))
+    assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
+
 # exams + home
 ex = c.get("/api/exams").json()
 assert {e["key"] for e in ex} == {"ccarp", "sapc03", "aipc01", "cka"}, ex

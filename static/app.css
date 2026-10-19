@@ -320,3 +320,6 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 .note-toc a.read { color: var(--text); border-color: color-mix(in oklab, var(--accent) 55%, var(--line)); }
 .note-toc a.read::before { content: "✓ "; color: var(--accent); }
 .study-next { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .4rem 0 .8rem; }
+
+/* public (Funnel) link: Claude and admin actions are refused by the server, so hide their buttons */
+[data-public="1"] [data-act="report"], [data-public="1"] [data-act="refresh"], [data-public="1"] .js-reset { display: none; }

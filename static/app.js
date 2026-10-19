@@ -20,6 +20,8 @@
   // ── Exams ─────────────────────────────────────────────────────────────────
   async function init() {
     state.exams = await (await fetch("/api/exams")).json();
+    state.public = (await (await fetch("/api/access")).json()).public;   // public link: no Claude, no reset
+    document.documentElement.dataset.public = state.public ? "1" : "";
     if (!state.exams.some(e => e.key === state.exam)) state.exam = state.exams[0].key;
     renderSwitch();
     setExam(state.exam, false);
@@ -567,7 +569,7 @@
   function actionsFor(rows, card) {
     const box = document.createElement("div"); box.className = "actions";
     for (const row of rows || []) for (const b of row) {
-      if (!b.data || b.data.startsWith("a|") || b.data.startsWith("s|")) continue;   // option buttons are the question card
+      if (!b.data || b.data.startsWith("a|") || b.data.startsWith("s|") || (state.public && b.data.startsWith("e|"))) continue;   // option buttons are the question card
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn"; btn.textContent = b.label;
       btn.onclick = () => { $$(".btn", box).forEach(x => x.disabled = true); act(b.data); };
       box.append(btn);
@@ -829,7 +831,8 @@
       const a = document.createElement("div"); a.className = "actions";
       const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Explain more with a diagram";
       b.onclick = () => { go("quiz"); setTimeout(() => act(`e|${r.id}|${r.picked.join(",")}`), 50); };
-      a.append(b); el.append(a);
+      if (!state.public) a.append(b);
+      el.append(a);
       list.append(el); addTopic(el);
     }
     window.scrollTo({ top: 0 });
