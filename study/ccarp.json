@@ -563,6 +563,44 @@
       "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
       "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
      }
+    },
+    {
+     "objective": "Choose among augmented LLM, workflow and agent with five factors",
+     "title": "Five factors pick the pattern, in order",
+     "gist": "Walk predictability, error cost, observability, latency and cost; the first factor that rules a pattern out decides.",
+     "points": [
+      "Augmented LLM: one bounded call, optionally with tools, retrieval or thinking; control flow never branches on the model.",
+      "Workflow: named steps orchestrated in your code, so you can log, test and guard them; error cost is lowest here.",
+      "Agent: the model picks its own sequence; use it only when the path cannot be listed and a wrong output is recoverable.",
+      "Workflow shapes: chaining (sequential stages), routing (a classifier picks a path), parallelization (independent calls), evaluator-optimizer (draft, grade, revise).",
+      "Cost is driven by accumulated context and call count, so a badly built workflow can cost more than a well-bounded agent."
+     ],
+     "tip": "Prompting before fine-tuning, and the simplest pattern that meets the error tolerance; escalate only when measurement says it falls short.",
+     "diagram": "flowchart TB\n  A{Can you enumerate the steps?} -->|One bounded task| B[Augmented LLM]\n  A -->|Yes, several steps| C[Workflow: chain, route, parallel, evaluator]\n  A -->|No, path emerges| D[Agent with budgets and stop rules]\n  C --> E[Check error cost, observability, latency, cost]\n  D --> E",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design"
+     }
+    },
+    {
+     "objective": "Apply the production-readiness builder to a worked brief",
+     "title": "Make each decision feed the next",
+     "gist": "In the consulting-firm knowledge assistant, sizing, feasibility, integration and the A/B test all trace back to a few numbers.",
+     "points": [
+      "A 12,000-document corpus is about 175 million tokens, far over any window, so retrieval is the architecture, not chunking one long file.",
+      "Code eval for citation schema, model-based eval for draft quality; keep NDA client documents out of the eval set unless approved.",
+      "A flat-average cost model hides the tail: the corpus is 5 to 80 pages, so check sensitivity before trusting the ceiling.",
+      "Load-bearing boundary: retrieval index coverage and freshness, so log retrieval precision as its own metric.",
+      "A/B: 70 percent baseline, +5 points, 80 percent power and 5 percent significance is roughly 1,500 sessions per group, about 4 days at 800 a day."
+     ],
+     "tip": "Strong answers name numbers and connect decisions: sizing sets the cost ceiling, the boundary condition sets observability, the eval sets the A/B metric.",
+     "diagram": "flowchart LR\n  A[Corpus size] --> B[Retrieval layer]\n  B --> C[Boundary: index coverage and freshness]\n  C --> D[Observability metric]\n  D --> E[A/B primary metric and sample size]",
+     "video": null,
+     "source": {
+      "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
+     }
     }
    ],
    "summary": {
@@ -815,6 +853,25 @@
      ],
      "tip": "Map technical metrics to the business KPI at build time, or the first business review cannot be answered.",
      "diagram": "flowchart LR\n  A[Request traces] --> B[Metric aggregation]\n  B --> C[Anomaly alerts]\n  C --> D[Change attribution]\n  D --> E[Failure class]\n  E --> F[Targeted fix]",
+     "video": null,
+     "source": {
+      "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/enterprise-integration-production"
+     }
+    },
+    {
+     "objective": "Choose the grading method for each quality dimension",
+     "title": "Match code, judge or human to each dimension",
+     "gist": "Use code wherever the answer is known, binary or numeric; reserve a judge for interpretation.",
+     "points": [
+      "Field extraction against known values: code-based exact or schema match.",
+      "Latency (p95) and per-claim cost: code, since both are numbers against a ceiling.",
+      "'Never auto-deny' is binary, so code; summary faithfulness needs interpretation, so a calibrated LLM judge.",
+      "No cross-claimant leakage looks high-stakes but is deterministic: scan each summary for identifiers from other claims, in code.",
+      "A judge on extraction, or a function on tone, is the usual mismatch."
+     ],
+     "tip": "Stakes do not decide the method; whether the check needs interpretation does.",
+     "diagram": "flowchart TB\n  A{Known value, binary or numeric?} -->|Yes| B[Code-based eval]\n  A -->|Needs interpretation| C[Calibrated LLM judge]\n  C --> D[Human review for novel or high-risk cases]",
      "video": null,
      "source": {
       "title": "Enterprise Integration & Production (Architect module 2, Skilljar, sign-in needed)",
@@ -1091,6 +1148,25 @@
       "title": "Responsible AI, Safety & Risk for Architects (Architect module 3, Skilljar, sign-in needed)",
       "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/responsible-ai-safety-risk-for-architects"
      }
+    },
+    {
+     "objective": "Assemble a responsible deployment in the right order",
+     "title": "Five decisions that build on each other",
+     "gist": "Each layer sets conditions for the next: a domain rule left in trained behaviour cannot be recovered downstream.",
+     "points": [
+      "1 Boundary: eligibility rules belong to the application layer, since training never saw them.",
+      "2 Runtime controls: input, output and tool-call gates, fail closed so an unscreened denial cannot reach an applicant.",
+      "3 Fairness and transparency: name the injection points that could skew the outcome and build decision logging once for user, regulator and build team.",
+      "4 Review routing: a low-confidence, hard-to-reverse denial goes to pre-action approval, keyed to stakes not volume.",
+      "5 Control register: each FedRAMP obligation gets a control, an owner and an evidence artifact."
+     ],
+     "tip": "In a benefits-eligibility brief, the specific-reason-for-denial rule means decision logging is not optional.",
+     "diagram": "flowchart LR\n  A[Trained vs application boundary] --> B[Runtime gates, fail closed]\n  B --> C[Fairness and decision logging]\n  C --> D[Route by stakes]\n  D --> E[Control register with evidence]",
+     "video": null,
+     "source": {
+      "title": "Responsible AI, Safety & Risk for Architects (Architect module 3, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/responsible-ai-safety-risk-for-architects"
+     }
     }
    ],
    "summary": {
@@ -1324,6 +1400,25 @@
      ],
      "tip": "An outcome document of request volume and latency could not answer the CFO's first question.",
      "diagram": "flowchart TB\n  A[Baseline measured at start] --> B[Deployment with control group]\n  B --> C[After metric, same definition]\n  C --> D[Outcome document, six fields]\n  D --> E[Sponsor case and reusable IP]",
+     "video": null,
+     "source": {
+      "title": "Stakeholder Engagement, Lifecycle & GTM (Architect module 4, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/stakeholder-engagement-lifecycle-gtm"
+     }
+    },
+    {
+     "objective": "Take a regulated multi-platform deployment from discovery to outcome",
+     "title": "Seven decisions in a regulated handoff",
+     "gist": "In the clinical documentation brief, each artifact feeds the next and the final gate depends on enough post-launch data.",
+     "points": [
+      "Discovery: the health-privacy audit trail is the must-prove constraint; write one requirement row for it.",
+      "Tradeoff: trimming logging for latency gains speed but costs the audit trail, and restoring it means redesigning the interaction layer.",
+      "Governance row: a calendar-triggered output audit with an owner, firing regardless of scores.",
+      "Decision log: record in-region execution via Bedrock with an explicit region parameter, and the rejected global endpoint.",
+      "Outcome: time from dictation to clinician-authorised note, before and after; the authorisation log makes it auditable. The gate is not met at week four."
+     ],
+     "tip": "Primary AWS Bedrock with the region set explicitly; direct API only for non-regulated back-end work.",
+     "diagram": "flowchart TB\n  A[Must-prove constraint] --> B[Tradeoff with reversal cost]\n  B --> C[Scheduled audit trigger]\n  C --> D[Decision log: region and rejected option]\n  D --> E[Entry points chosen]\n  E --> F[Outcome document gates expansion]",
      "video": null,
      "source": {
       "title": "Stakeholder Engagement, Lifecycle & GTM (Architect module 4, Skilljar, sign-in needed)",
@@ -1765,6 +1860,25 @@
      "source": {
       "title": "Team Enablement & Operational Productivity (Architect module 5, Skilljar, sign-in needed)",
       "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/developer-productivity-enablement"
+     }
+    },
+    {
+     "objective": "Separate Claude Code shaping layers from governing layers",
+     "title": "Shape what the agent knows, govern what it touches",
+     "gist": "CLAUDE.md, skills, subagents and MCP shape behaviour; hooks, permissions and sandboxing govern it, and only the second group is enforcement.",
+     "points": [
+      "Shaping: CLAUDE.md standing instructions, on-demand skills, subagents for isolated or read-only work, MCP servers for shared tools.",
+      "Governing: hooks are deterministic gates on lifecycle events; permission modes and approval flows; sandboxing at the environment.",
+      "Six permission modes include default, acceptEdits, plan (read-only until a plan is approved), auto (classifier, research preview), dontAsk (locked-down CI) and bypassPermissions (containers only).",
+      "Permissions govern what the agent may touch; hooks govern what must happen around an action.",
+      "Use Claude Code for engineers; for non-engineers or customer products pick another entry point."
+     ],
+     "tip": "Instructions in CLAUDE.md are guidance, not enforcement: a rule that must hold needs a deny rule, a hook or a sandbox.",
+     "diagram": "flowchart LR\n  A[Shaping: CLAUDE.md, skills, subagents, MCP] --> C[Agent behaviour]\n  B[Governing: hooks, permissions, sandbox] --> C\n  C --> D[Only governing layers enforce]",
+     "video": null,
+     "source": {
+      "title": "Claude Platform & Solution Design (Architect module 1, Skilljar, sign-in needed)",
+      "url": "https://anthropic-partners.skilljar.com/path/claude-certified-architect-professional/claude-platform-solution-design"
      }
     }
    ],
