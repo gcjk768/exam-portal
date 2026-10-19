@@ -705,6 +705,16 @@ def api_home(key: str, req: Request):
             "exam_answers": sum(1 for x in state.get("log", []) if x.get("exam"))}
 
 
+@app.get("/api/{key}/question/{qid}")
+def api_question(key: str, qid: str, req: Request):
+    """One question with its answer and explanation (the Previous-question viewer); hidden sources stay hidden on the public link."""
+    e = exam_or_404(key)
+    q = e.questions(is_public(req)).get(qid)
+    if not q:
+        raise HTTPException(404, "unknown question")
+    return {**qview(q), "correct": sorted(q["answer"]), "explanation": q["explanation"]}
+
+
 @app.post("/api/{key}/mode")
 def api_mode(key: str, body: Mode):
     """Hands-on exams: force MCQ or task mode, or go back to auto (MCQ until every MCQ is seen)."""

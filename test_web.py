@@ -48,6 +48,10 @@ for d in ("reset", "report", "refresh", "e|x|A"):
 assert 'data-public="1"' in c.get("/", headers=pub).text and 'data-public="1"' not in c.get("/").text
 assert c.get("/static/app.css").headers["cache-control"] == "no-cache"
 assert c.get("/api/access", headers={"Host": "owner-cck-nas.tailc4f63b.ts.net:10000"}).json() == {"public": True}   # tailnet device opening the public name
+qq = c.get(f"/api/ccarp/question/{web.EXAMS['ccarp'].mod.QUESTIONS and next(iter(web.EXAMS['ccarp'].mod.QUESTIONS))}").json()
+assert qq["correct"] and qq["options"] and "explanation" in qq, qq
+if tdq := [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") == "Tutorials Dojo"]:
+    assert c.get(f"/api/ccarp/question/{tdq[0]}", headers=pub).status_code == 404 and c.get(f"/api/ccarp/question/{tdq[0]}").status_code == 200
 hp = c.get("/api/ccarp/home", headers=pub).json()
 assert hp["score"] == 0 and hp["verdict"] == "" and hp["week"] == {"n": 0, "ok": 0}, hp
 

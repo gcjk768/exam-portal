@@ -89,6 +89,15 @@
         <button type="button" data-mode="tasks">Scenario tasks</button>
       </div>
     </div>
+    <div class="peek" id="peek" hidden>
+      <div class="peek-nav">
+        <button class="btn" type="button" id="peek-older">← Older</button>
+        <span class="muted small" id="peek-pos"></span>
+        <button class="btn" type="button" id="peek-newer">Newer →</button>
+        <button class="btn btn-accent" type="button" id="peek-close">Back to current</button>
+      </div>
+      <div id="peek-card"></div>
+    </div>
     <div class="feed" id="feed" aria-live="polite"></div>
     <div class="working" id="working" hidden>
       <span class="working-bar"></span>
@@ -96,6 +105,7 @@
       <span class="mono" id="working-time">0s</span>
     </div>
     <div class="feed-actions">
+      <button class="btn" type="button" id="btn-prev-q">← Previous question</button>
       <button class="btn btn-accent" type="button" data-act="next">Next question</button>
       <button class="btn" type="button" data-act="study" id="btn-study-feed">Study card</button>
       <button class="btn" type="button" data-act="stats">Stats</button>

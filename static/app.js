@@ -460,6 +460,7 @@
 
   async function run(path, body, label) {
     if (state.busy) return;
+    closePeek();
     setBusy(true, label || (body.data === "study" ? "Writing the study card" : body.data === "report" ? "Preparing the report" : "Working"));
     $(".empty", feed)?.remove();
     state.fresh = body.data === "next" || /^[dq]\|/.test(body.data || "");   // next question: start a clean screen on its first card
@@ -515,6 +516,7 @@
   function kindOf(html) { const k = [...html.trim()][0]; return KIND[k] || (html.startsWith("⚠") ? "err" : "text"); }
 
   function addCard(ev) {
+    if (ev.question) state.curQ = ev.question.id;      // the question on screen (not "previous")
     let el;
     if (ev.question && !ev.question.task) el = questionCard(ev);
     else if (ev.kind === "mermaid") {                        // tutor diagram drawn here, same style + icons as Study
@@ -617,7 +619,51 @@
     return el;
   }
 
+  // Previous-question viewer: the ids you answered (per exam, kept in this browser) and a read-only card for each.
+  const histKey = () => `hist:${state.exam}`;
+  const hist = () => JSON.parse(localStorage.getItem(histKey()) || "[]");
+  function remember(g) {
+    const h = hist().filter(x => x.id !== g.id);
+    h.push({ id: g.id, picked: g.picked });
+    localStorage.setItem(histKey(), JSON.stringify(h.slice(-300)));
+  }
+  const peek = { list: [], i: 0 };
+  async function showPeek() {
+    const x = peek.list[peek.i];
+    $("#peek-pos").textContent = `${peek.list.length - peek.i} back · ${peek.list.length} answered`;
+    $("#peek-older").disabled = peek.i <= 0; $("#peek-newer").disabled = peek.i >= peek.list.length - 1;
+    const box = $("#peek-card"); box.innerHTML = "";
+    const r = await (await api(`/question/${encodeURIComponent(x.id)}`));
+    if (!r.options) { box.innerHTML = `<p class="muted">That question is not available here.</p>`; return; }
+    const el = $("#t-question").content.firstElementChild.cloneNode(true);
+    const right = r.correct.length === x.picked.length && r.correct.every(l => x.picked.includes(l));
+    el.classList.add("card-review", right ? "card-ok" : "card-bad");
+    $(".qid", el).textContent = r.id; $(".dom", el).textContent = r.domain; $(".qtext", el).textContent = r.question;
+    $(".submit-row", el).remove();
+    const v = document.createElement("p"); v.className = `verdict-line ${right ? "ok" : "bad"}`;
+    v.textContent = right ? `Correct, ${r.correct.join(",")}` : `Wrong, you picked ${x.picked.join(",")}, answer ${r.correct.join(",")}`;
+    $(".qtext", el).after(v);
+    for (const o of r.options) {
+      const b = optionButton(o); b.disabled = true;
+      if (r.correct.includes(o.l)) b.classList.add("is-correct"); else if (x.picked.includes(o.l)) b.classList.add("is-wrong");
+      $(".options", el).append(b);
+    }
+    const ex = document.createElement("div"); ex.className = "expl"; ex.textContent = r.explanation; el.append(ex);
+    box.append(el);
+  }
+  function closePeek() { $("#peek").hidden = true; feed.hidden = false; }
+  $("#btn-prev-q").onclick = () => {
+    peek.list = hist().filter(x => x.id !== state.curQ);          // the question on screen is not "previous"
+    if (!peek.list.length) { apply({ op: "error", html: "No earlier answered question yet." }); return; }
+    peek.i = peek.list.length - 1;
+    feed.hidden = true; $("#peek").hidden = false; showPeek(); window.scrollTo({ top: 0 });
+  };
+  $("#peek-older").onclick = () => { if (peek.i > 0) { peek.i--; showPeek(); } };
+  $("#peek-newer").onclick = () => { if (peek.i < peek.list.length - 1) { peek.i++; showPeek(); } };
+  $("#peek-close").onclick = closePeek;
+
   function markGraded(g) {
+    remember(g);
     const el = [...state.cards.values()].reverse().find(c => c.querySelector(".qid")?.textContent === g.id);
     if (!el) return;
     $$(".opt", el).forEach(b => {
