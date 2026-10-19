@@ -45,6 +45,9 @@ for d in ("reset", "report", "refresh", "e|x|A"):
     ev = events(c.post("/api/ccarp/act", json={"data": d}, headers=pub))
     assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
 
+hp = c.get("/api/ccarp/home", headers=pub).json()
+assert hp["score"] == 0 and hp["verdict"] == "" and hp["week"] == {"n": 0, "ok": 0}, hp
+
 # paid Tutorials Dojo questions (ids TD-*) are served on LAN/tailnet only, never on the public link
 tdq = [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") == "Tutorials Dojo"]
 if tdq:

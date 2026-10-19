@@ -689,9 +689,11 @@ def api_home(key: str, req: Request):
         q = e.mod.QUESTIONS[state["pending"]]
         pending = {"html": task_html(q) if e.tasks else e.mod.question_text(q), "question": qview(q)}
     last = state.get("last") or {}
+    if pub:                                                # the owner's score, readiness and week are not for the public link
+        m = {**m, "score": 0, "week_n": 0, "week_ok": 0}
     return {"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,
             "mode": e.mode(state), "progress": e.progress(state) if e.has_tasks else None,
-            "coverage": e.coverage(state, pub), "score": m["score"], "pass": e.mod.PASS, "verdict": e.mod.verdict(m),
+            "coverage": e.coverage(state, pub), "score": m["score"], "pass": e.mod.PASS, "verdict": "" if pub else e.mod.verdict(m),
             "week": {"n": m["week_n"], "ok": m["week_ok"]}, "pending": pending,
             "last": {"id": last.get("id"), "has_teach": bool(last.get("teach"))} if last else None,
             "study_cards": len(getattr(e.mod, "NOTES", {}) or {}),

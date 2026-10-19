@@ -323,3 +323,4 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 
 /* public (Funnel) link: Claude and admin actions are refused by the server, so hide their buttons */
 [data-public="1"] [data-act="report"], [data-public="1"] [data-act="refresh"], [data-public="1"] .js-reset { display: none; }
+[data-public="1"] .hero-ring, [data-public="1"] #home-verdict { display: none; }   /* score ring + readiness come from the owner's shared progress */
