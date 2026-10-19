@@ -47,6 +47,7 @@ for d in ("reset", "report", "refresh", "e|x|A"):
 
 assert 'data-public="1"' in c.get("/", headers=pub).text and 'data-public="1"' not in c.get("/").text
 assert c.get("/static/app.css").headers["cache-control"] == "no-cache"
+assert c.get("/api/access", headers={"Host": "owner-cck-nas.tailc4f63b.ts.net:10000"}).json() == {"public": True}   # tailnet device opening the public name
 hp = c.get("/api/ccarp/home", headers=pub).json()
 assert hp["score"] == 0 and hp["verdict"] == "" and hp["week"] == {"n": 0, "ok": 0}, hp
 

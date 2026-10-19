@@ -624,8 +624,11 @@ def exam_or_404(key: str) -> Exam:
 
 
 def is_public(req: Request) -> bool:
-    """Tailscale Funnel marks every request that came in from the open internet; LAN and tailnet requests lack it."""
-    return "tailscale-funnel-request" in req.headers
+    """Public = came in through Tailscale Funnel (it adds a marker header), or asked for the public ts.net name.
+    The second rule covers your own tailnet devices that open the public URL: Tailscale connects them directly, so
+    there is no Funnel header, but the Host is still the public name. Your private URL is the NAS tailnet IP."""
+    h = req.headers
+    return "tailscale-funnel-request" in h or any(".ts.net" in h.get(k, "").lower() for k in ("host", "x-forwarded-host"))
 
 
 async def deny(rec: Recorder) -> None:
