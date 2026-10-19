@@ -41,6 +41,7 @@ from pydantic import BaseModel
 log = logging.getLogger("portal")
 ROOT = Path(__file__).resolve().parent
 SGT = timezone(timedelta(hours=8))
+PUBLIC_HIDDEN = {"Tutorials Dojo"}   # paid question sources: shown on LAN/tailnet only, never on the public Funnel link
 # key (= the bot's logger name) -> short, full name, real exam length, real exam minutes
 META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
         "sapc03": ("SAP-C03", "AWS Solutions Architect Professional", 75, 180),
@@ -121,20 +122,26 @@ class Exam:
         mcq_left = [i for i, q in self.mod.QUESTIONS.items() if q["letters"] and i not in seen]
         return "mcq" if mcq_left else "tasks"
 
-    def pool(self, state: dict) -> dict:
-        """Questions of the current mode (hands-on exams); everything otherwise."""
-        if not self.has_tasks:
-            return self.mod.QUESTIONS
-        want_tasks = self.mode(state) == "tasks"
-        return {i: q for i, q in self.mod.QUESTIONS.items() if (not q["letters"]) == want_tasks}
+    def questions(self, public: bool = False) -> dict:
+        """The bank; on the public link without the paid sources."""
+        Q = self.mod.QUESTIONS
+        return {i: q for i, q in Q.items() if q.get("source") not in PUBLIC_HIDDEN} if public else Q
 
-    def pick(self, state: dict, domain: str | None = None) -> dict:
+    def pool(self, state: dict, public: bool = False) -> dict:
+        """Questions of the current mode (hands-on exams); everything otherwise."""
+        Q = self.questions(public)
+        if not self.has_tasks:
+            return Q
+        want_tasks = self.mode(state) == "tasks"
+        return {i: q for i, q in Q.items() if (not q["letters"]) == want_tasks}
+
+    def pick(self, state: dict, domain: str | None = None, public: bool = False) -> dict:
         """bot.pick_question restricted to the current pool (same tiers: unseen, then missed, then any).
         With `domain` (Study → "Quiz me on this topic"): only that domain, any mode if the current one has none."""
-        Q = self.pool(state) or self.mod.QUESTIONS
+        Q = self.pool(state, public) or self.questions(public)
         if domain is not None:
             Q = ({i: q for i, q in Q.items() if q["domain"] == domain}
-                 or {i: q for i, q in self.mod.QUESTIONS.items() if q["domain"] == domain})
+                 or {i: q for i, q in self.questions(public).items() if q["domain"] == domain})
             if not Q:
                 raise HTTPException(404, f"no questions in domain {domain}")
         seen = set(state["ok"]) | set(state["bad"])
@@ -150,10 +157,10 @@ class Exam:
                 "mcq": {"total": len(mcq), "seen": sum(i in seen for i in mcq)},
                 "tasks": {"total": len(tasks), "seen": sum(i in seen for i in tasks)}}
 
-    def coverage(self, state: dict) -> dict:
+    def coverage(self, state: dict, public: bool = False) -> dict:
         """Per-domain seen / right-first-time / total, like stats_text but as data."""
-        Q, ok, bad = self.mod.QUESTIONS, state["ok"], state["bad"]
-        seen = set(ok) | set(bad)
+        Q, ok, bad = self.questions(public), state["ok"], state["bad"]
+        seen = (set(ok) | set(bad)) & set(Q)
         first = {i for i in seen if ok.get(i, 0) >= 1 and bad.get(i, 0) == 0}
         doms: dict[str, dict] = {}
         for i, q in Q.items():
@@ -288,11 +295,15 @@ def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = 
 
 # ── Actions (the bot's button vocabulary) ────────────────────────────────────
 
-async def act(exam: Exam, data: str, rec: Recorder) -> None:
+def hidden(exam: Exam, qid: str, public: bool) -> bool:
+    return public and qid not in exam.questions(True)
+
+
+async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> None:
     mod = exam.mod
     state = mod.load_state()
     if data == "next":
-        q = exam.pick(state) if exam.has_tasks else None
+        q = exam.pick(state, public=public) if (exam.has_tasks or public) else None
         if q is not None and not q["letters"]:
             await send_task(exam, rec, state, q)
         elif q is not None:
@@ -317,7 +328,7 @@ async def act(exam: Exam, data: str, rec: Recorder) -> None:
         mod.vault_log("🔄 **reset**", "progress cleared")
         await rec.send_message("🔄 Progress cleared.", reply_markup=mod.NEXT_KB)
     elif data.startswith("d|"):                           # Study → "Quiz me on this topic"
-        q = exam.pick(state, data[2:])
+        q = exam.pick(state, data[2:], public)
         if not q["letters"]:
             await send_task(exam, rec, state, q)
         else:
@@ -325,7 +336,7 @@ async def act(exam: Exam, data: str, rec: Recorder) -> None:
     elif "|" in data:
         kind, qid, *rest = data.split("|")
         q = mod.QUESTIONS.get(qid)
-        if not q:
+        if not q or hidden(exam, qid, public):
             raise HTTPException(404, f"unknown question {qid}")
         if kind == "q":                                   # "Quiz me on this" under a study card
             if not q["letters"]:
@@ -340,9 +351,9 @@ async def act(exam: Exam, data: str, rec: Recorder) -> None:
         raise HTTPException(400, f"unknown action {data}")
 
 
-async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder) -> None:
+async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public: bool = False) -> None:
     q = exam.mod.QUESTIONS.get(qid)
-    if not q:
+    if not q or hidden(exam, qid, public):
         raise HTTPException(404, f"unknown question {qid}")
     letters = set(picked) & set(q["letters"])
     if not letters:
@@ -487,17 +498,17 @@ async def self_mark(exam: Exam, qid: str, result: str, rec: Recorder) -> None:
 
 # ── Exam mode (timed, graded at the end, same state file) ────────────────────
 
-def exam_pick(exam: Exam, n: int) -> list[dict]:
+def exam_pick(exam: Exam, n: int, public: bool = False) -> list[dict]:
     """Unseen questions first (shuffled), then the rest, so a mock exam is mostly new material."""
     state = exam.mod.load_state()
-    Q = exam.pool(state) or exam.mod.QUESTIONS
+    Q = exam.pool(state, public) or exam.questions(public)
     seen = set(state["ok"]) | set(state["bad"])
     unseen, rest = [i for i in Q if i not in seen], [i for i in Q if i in seen]
     random.shuffle(unseen); random.shuffle(rest)
     return [qview(Q[i]) for i in (unseen + rest)[:n]]
 
 
-async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: float) -> dict:
+async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: float, public: bool = False) -> dict:
     """Grade every answered question, write ok/bad/log like grade() does, return the result sheet.
     MCQ exams need no Claude; task exams grade each typed answer with Claude (blank answers score 0 without a call)."""
     mod, Q = exam.mod, exam.mod.QUESTIONS
@@ -506,7 +517,7 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
     weights = getattr(mod, "WEIGHTS", {})
     for qid, picked in answers.items():
         q = Q.get(qid)
-        if not q:
+        if not q or hidden(exam, qid, public):
             continue
         if not q["letters"]:
             text = (picked[0] if picked else "").strip()
@@ -655,36 +666,37 @@ def api_access(req: Request):
 
 
 @app.get("/api/exams")
-def api_exams():
-    out = []
+def api_exams(req: Request):
+    out, pub = [], is_public(req)
     for e in EXAMS.values():
-        c = e.coverage(e.mod.load_state())
+        c = e.coverage(e.mod.load_state(), pub)
         st = e.mod.load_state()
         out.append({"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,
                     "mode": e.mode(st), "progress": e.progress(st) if e.has_tasks else None,
                     "total": c["total"], "seen": c["seen"], "right": c["right"], "pass": e.mod.PASS,
-                    "exam_n": min(e.n_exam, len(e.pool(st)) if e.has_tasks else c["total"]), "exam_minutes": e.minutes})
+                    "exam_n": min(e.n_exam, len(e.pool(st, pub)) if e.has_tasks else c["total"]), "exam_minutes": e.minutes})
     return out
 
 
 @app.get("/api/{key}/home")
-def api_home(key: str):
+def api_home(key: str, req: Request):
     e = exam_or_404(key)
+    pub = is_public(req)
     state = e.mod.load_state()
     m = e.mod.metrics(state, datetime.now(SGT))
     pending = None
-    if state.get("pending") in e.mod.QUESTIONS:            # a question asked (web or Telegram) and not yet answered
+    if state.get("pending") in e.questions(pub):           # a question asked (web or Telegram) and not yet answered
         q = e.mod.QUESTIONS[state["pending"]]
         pending = {"html": task_html(q) if e.tasks else e.mod.question_text(q), "question": qview(q)}
     last = state.get("last") or {}
     return {"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,
             "mode": e.mode(state), "progress": e.progress(state) if e.has_tasks else None,
-            "coverage": e.coverage(state), "score": m["score"], "pass": e.mod.PASS, "verdict": e.mod.verdict(m),
+            "coverage": e.coverage(state, pub), "score": m["score"], "pass": e.mod.PASS, "verdict": e.mod.verdict(m),
             "week": {"n": m["week_n"], "ok": m["week_ok"]}, "pending": pending,
             "last": {"id": last.get("id"), "has_teach": bool(last.get("teach"))} if last else None,
             "study_cards": len(getattr(e.mod, "NOTES", {}) or {}),
             "studied": len(set(state.get("studied", []))),
-            "exam_n": min(e.n_exam, len(e.pool(state)) if e.has_tasks else len(e.mod.QUESTIONS)), "exam_minutes": e.minutes,
+            "exam_n": min(e.n_exam, len(e.pool(state, pub)) if e.has_tasks else len(e.questions(pub))), "exam_minutes": e.minutes,
             "exam_answers": sum(1 for x in state.get("log", []) if x.get("exam"))}
 
 
@@ -705,9 +717,9 @@ def api_mode(key: str, body: Mode):
 
 
 @app.get("/api/{key}/study")
-def api_study(key: str):
+def api_study(key: str, req: Request):
     e = exam_or_404(key)
-    return {"reading": without_dead(e.study), "coverage": e.coverage(e.mod.load_state()), "has_cards": e.has_study}
+    return {"reading": without_dead(e.study), "coverage": e.coverage(e.mod.load_state(), is_public(req)), "has_cards": e.has_study}
 
 
 @app.post("/api/{key}/act")
@@ -715,13 +727,13 @@ async def api_act(key: str, body: Act, req: Request):
     e = exam_or_404(key)
     if is_public(req) and (body.data in ("report", "refresh", "reset") or body.data.startswith("e|")):   # Claude calls + state wipe
         return stream(e, deny)
-    return stream(e, functools.partial(act, e, body.data))
+    return stream(e, functools.partial(act, e, body.data, public=is_public(req)))
 
 
 @app.post("/api/{key}/answer")
-async def api_answer(key: str, body: Answer):
+async def api_answer(key: str, body: Answer, req: Request):
     e = exam_or_404(key)
-    return stream(e, functools.partial(answer, e, body.id, body.picked))
+    return stream(e, functools.partial(answer, e, body.id, body.picked, public=is_public(req)))
 
 
 @app.post("/api/{key}/task")
@@ -735,22 +747,23 @@ async def api_task(key: str, body: TaskAnswer):
 
 
 @app.post("/api/{key}/exam/start")
-def api_exam_start(key: str, body: ExamStart):
+def api_exam_start(key: str, body: ExamStart, req: Request):
     e = exam_or_404(key)
+    pub = is_public(req)
     st = e.mod.load_state()
-    pool = e.pool(st) if e.has_tasks else e.mod.QUESTIONS
+    pool = e.pool(st, pub) if e.has_tasks else e.questions(pub)
     mode_tasks = e.has_tasks and e.mode(st) == "tasks"
     n_exam = e.n_exam if (mode_tasks or not e.has_tasks) else 60          # MCQ phase of a hands-on exam: 60 questions in the real 120 min
     n = max(1, min(body.n or n_exam, len(pool)))
     minutes = e.minutes if n >= n_exam else max(5, round(e.minutes * n / n_exam))   # same pace as the real exam
-    return {"questions": exam_pick(e, n), "minutes": minutes, "n": n, "pass": e.mod.PASS, "tasks": mode_tasks}
+    return {"questions": exam_pick(e, n, pub), "minutes": minutes, "n": n, "pass": e.mod.PASS, "tasks": mode_tasks}
 
 
 @app.post("/api/{key}/exam/submit")
-async def api_exam_submit(key: str, body: ExamSubmit):
+async def api_exam_submit(key: str, body: ExamSubmit, req: Request):
     e = exam_or_404(key)
     async with e.lock:
-        return await exam_submit(e, body.answers, body.minutes_used)
+        return await exam_submit(e, body.answers, body.minutes_used, is_public(req))
 
 
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")

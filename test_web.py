@@ -45,6 +45,20 @@ for d in ("reset", "report", "refresh", "e|x|A"):
     ev = events(c.post("/api/ccarp/act", json={"data": d}, headers=pub))
     assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
 
+# paid Tutorials Dojo questions (ids TD-*) are served on LAN/tailnet only, never on the public link
+tdq = [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") == "Tutorials Dojo"]
+if tdq:
+    import random
+    random.seed(3)
+    for _ in range(25):
+        ev = events(c.post("/api/ccarp/act", json={"data": "next"}, headers=pub))
+        assert not ev[0]["question"]["id"].startswith("TD-"), ev[0]["question"]["id"]
+    assert not any(x["id"].startswith("TD-") for x in c.post("/api/ccarp/exam/start", json={"n": 63}, headers=pub).json()["questions"])
+    assert events(c.post("/api/ccarp/answer", json={"id": tdq[0], "picked": ["A"]}, headers=pub))[-1]["op"] == "error"
+    assert c.get("/api/exams", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(tdq)
+    assert any(x["id"].startswith("TD-") for x in c.post("/api/ccarp/exam/start", json={"n": 1900}).json()["questions"])   # private sees them
+    events(c.post("/api/ccarp/act", json={"data": "reset"}))      # the checks above touched the pending question
+
 # exams + home
 ex = c.get("/api/exams").json()
 assert {e["key"] for e in ex} == {"ccarp", "sapc03", "aipc01", "cka"}, ex
