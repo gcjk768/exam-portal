@@ -128,8 +128,8 @@
     if (target) { target.open = true; drawPending(target); setTimeout(() => target.scrollIntoView({ block: "start" }), 50); }
   }
 
-  // TD = paid Tutorials Dojo bank; a small label marks those questions (CSS draws it, so the id text stays intact)
-  const setQid = (n, id) => { n.textContent = id; n.toggleAttribute("data-td", String(id).startsWith("TD-")); };
+  // a known question source (SOURCE_TAG in web.py, e.g. TD = Tutorials Dojo) gets a small label; CSS draws it, so the id text stays intact
+  const setQid = (n, id, tag) => { n.textContent = id; if (tag) n.dataset.tag = tag; else delete n.dataset.tag; };
   // ── Study notes: gist, a few points, exam tip, diagram, optional video, source (study/<exam>.json domains[].notes) ──
   const rich = (s) => esc(s || "").replace(/`([^`]+)`/g, "<code>$1</code>");
   function summaryBox(s) {
@@ -593,7 +593,7 @@
   function questionCard(ev) {
     const q = ev.question;
     const el = $("#t-question").content.firstElementChild.cloneNode(true);
-    setQid($(".qid", el), q.id);
+    setQid($(".qid", el), q.id, q.tag);
     $(".dom", el).textContent = q.domain;
     $(".qtext", el).textContent = q.question;
     const opts = $(".options", el), picked = new Set();
@@ -641,7 +641,7 @@
     const el = $("#t-question").content.firstElementChild.cloneNode(true);
     const right = r.correct.length === x.picked.length && r.correct.every(l => x.picked.includes(l));
     el.classList.add("card-review", right ? "card-ok" : "card-bad");
-    setQid($(".qid", el), r.id); $(".dom", el).textContent = r.domain; $(".qtext", el).textContent = r.question;
+    setQid($(".qid", el), r.id, r.tag); $(".dom", el).textContent = r.domain; $(".qtext", el).textContent = r.question;
     $(".submit-row", el).remove();
     const v = document.createElement("p"); v.className = `verdict-line ${right ? "ok" : "bad"}`;
     v.textContent = right ? `Correct, ${r.correct.join(",")}` : `Wrong, you picked ${x.picked.join(",")}, answer ${r.correct.join(",")}`;
@@ -692,7 +692,7 @@
   // Task exams: the task text was streamed as a normal card; this adds the answer box under it.
   function addTaskCard(q) {
     const el = $("#t-task").content.firstElementChild.cloneNode(true);
-    setQid($(".qid", el), q.id); $(".dom", el).textContent = q.domain;
+    setQid($(".qid", el), q.id, q.tag); $(".dom", el).textContent = q.domain;
     $(".task-text", el).remove();                                   // the task text is already on the card above
     const ta = $(".answer", el);
     const btns = Object.fromEntries($$("[data-task]", el).map(b => [b.dataset.task, b]));
@@ -805,7 +805,7 @@
     const box = $("#exam-q"); box.innerHTML = "";
     if (q.task) {
       const el = $("#t-task").content.firstElementChild.cloneNode(true);
-      $(".qid", el).textContent = `${EX.cur + 1} of ${EX.run.questions.length}`; $(".dom", el).textContent = q.domain;
+      setQid($(".qid", el), `${EX.cur + 1} of ${EX.run.questions.length}`, q.tag); $(".dom", el).textContent = q.domain;
       $(".task-text", el).textContent = q.question;
       $(".actions", el).remove();
       const ta = $(".answer", el); ta.value = (EX.run.answers[q.id] || [""])[0];
@@ -813,7 +813,7 @@
       box.append(el); return;
     }
     const el = $("#t-question").content.firstElementChild.cloneNode(true);
-    $(".qid", el).textContent = `${EX.cur + 1} of ${EX.run.questions.length}`;
+    setQid($(".qid", el), `${EX.cur + 1} of ${EX.run.questions.length}`, q.tag);
     $(".dom", el).textContent = q.multi ? "Select all that apply" : "";
     $(".qtext", el).textContent = q.question;
     $(".submit-row", el).remove();
@@ -869,7 +869,7 @@
     for (const r of res.results) {
       const el = $("#t-question").content.firstElementChild.cloneNode(true);
       el.classList.add("card-review", r.right ? "card-ok" : "card-bad");
-      setQid($(".qid", el), r.id); $(".dom", el).textContent = r.domain; $(".qtext", el).textContent = r.question;
+      setQid($(".qid", el), r.id, r.tag); $(".dom", el).textContent = r.domain; $(".qtext", el).textContent = r.question;
       $(".submit-row", el).remove();
       const v = document.createElement("p"); v.className = `verdict-line ${r.right ? "ok" : "bad"}`;
       if (r.task) {

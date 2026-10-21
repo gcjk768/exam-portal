@@ -258,8 +258,11 @@ def options_of(q: dict) -> list[dict]:
     return [{"l": line[0], "t": line[3:]} for line in q["options"].splitlines() if line[1:3] == ". "]
 
 
+SOURCE_TAG = {"Tutorials Dojo": "TD"}   # known question sources get a small label on the card; add "source": "tag" to label more
+
+
 def qview(q: dict) -> dict:
-    return {"id": q["id"], "domain": q["domain"], "question": q["question"], "options": options_of(q),
+    return {"id": q["id"], "tag": SOURCE_TAG.get(q.get("source"), ""), "domain": q["domain"], "question": q["question"], "options": options_of(q),
             "multi": len(q["answer"]) > 1, "task": not q["letters"]}
 
 

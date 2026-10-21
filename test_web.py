@@ -98,6 +98,7 @@ if tdq:
     assert c.get("/api/exams?td=k3y-for-test", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"]
     assert c.get("/api/access?td=k3y-for-test", headers=pub).json() == {"public": False}   # key holder = owner: Claude/reset allowed
     assert c.get("/api/access?td=wrong", headers=pub).json() == {"public": True}
+    assert c.get(f"/api/ccarp/question/{tdq[0]}").json()["tag"] == "TD" and c.get("/api/ccarp/question/" + next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") != "Tutorials Dojo")).json()["tag"] == ""
     web.OWNER_KEY = ""
 
 # exams + home
