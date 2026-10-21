@@ -91,6 +91,12 @@ if tdq:
     assert c.get("/api/exams", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(tdq)
     assert any(x["id"].startswith("TD-") for x in c.post("/api/ccarp/exam/start", json={"n": 1900}).json()["questions"])   # private sees them
     events(c.post("/api/ccarp/act", json={"data": "reset"}))      # the checks above touched the pending question
+    # owner unlock: right key (query or cookie) shows the paid bank on the public link, a wrong key does not
+    web.TD_KEY = "k3y-for-test"
+    assert c.get("/api/exams", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(tdq)
+    assert c.get("/api/exams?td=wrong", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(tdq)
+    assert c.get("/api/exams?td=k3y-for-test", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"]
+    web.TD_KEY = ""
 
 # exams + home
 ex = c.get("/api/exams").json()

@@ -42,7 +42,7 @@ h3 { font-size: 1.05rem; color: var(--muted); font-weight: 500; margin: 1.6rem 0
 .small { font-size: .85rem; }
 
 /* Top bar */
-.top { position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem;
+.top { position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 1rem;
   height: 64px; padding: 0 clamp(.8rem, 3vw, 2rem); background: color-mix(in oklab, var(--bg) 80%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .brand { font-family: var(--font-display); font-weight: 700; text-decoration: none; font-size: 1.1rem; letter-spacing: -0.02em; }
 .brand span { color: var(--accent); }
@@ -328,3 +328,4 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 .scope { font-size: .72rem; padding: .15rem .55rem; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); white-space: nowrap; }
 .scope[data-public="1"] { color: var(--muted); border-color: var(--muted); }
 .peek-nav select { max-width: 14rem; }
+.qid[data-td]::after { content: "TD"; margin-left: .45rem; padding: .05rem .4rem; border-radius: 999px; border: 1px solid var(--muted); color: var(--muted); font-size: .65rem; vertical-align: middle; }
