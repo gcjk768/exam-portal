@@ -46,8 +46,7 @@ log = logging.getLogger("portal")
 ROOT = Path(__file__).resolve().parent
 SGT = timezone(timedelta(hours=8))
 VISITOR: ContextVar[str | None] = ContextVar("visitor", default=None)   # public visitor id (cookie); None = the owner
-TD_KEY = os.environ.get("TD_UNLOCK_KEY", "")   # owner-only: open /?td=<key> once on a browser and the paid bank shows on the public link for that browser; empty = off
-TD_OK: ContextVar[bool] = ContextVar("td_ok", default=False)
+OWNER_KEY = os.environ.get("TD_UNLOCK_KEY", "")   # open /?td=<key> once on a browser: the public link then treats it as the owner (Claude, reset, paid bank, own progress); empty = off
 PUBLIC_HIDDEN = {x.strip() for x in os.environ.get("PUBLIC_HIDDEN_SOURCES", "Tutorials Dojo").split(",") if x.strip()}   # paid question sources: shown on LAN/tailnet only, never on the public Funnel link
 # key (= the bot's logger name) -> short, full name, real exam length, real exam minutes
 META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
@@ -166,7 +165,7 @@ class Exam:
     def questions(self, public: bool = False) -> dict:
         """The bank; on the public link without the paid sources."""
         Q = self.mod.QUESTIONS
-        return {i: q for i, q in Q.items() if q.get("source") not in PUBLIC_HIDDEN} if public and not TD_OK.get() else Q
+        return {i: q for i, q in Q.items() if q.get("source") not in PUBLIC_HIDDEN} if public else Q
 
     def pool(self, state: dict, public: bool = False) -> dict:
         """Questions of the current mode (hands-on exams); everything otherwise."""
@@ -684,7 +683,17 @@ def exam_or_404(key: str) -> Exam:
     return EXAMS[key]
 
 
+def owner_key(req: Request) -> str:
+    """The key the request carries (query on first visit, cookie after), if it is the right one."""
+    k = req.query_params.get("td") or req.cookies.get("td", "")
+    return k if OWNER_KEY and secrets.compare_digest(k.encode(), OWNER_KEY.encode()) else ""
+
+
 def is_public(req: Request) -> bool:
+    return funnel(req) and not owner_key(req)
+
+
+def funnel(req: Request) -> bool:
     """Public = came in through Tailscale Funnel (it adds a marker header), or asked for the public ts.net name.
     The second rule covers your own tailnet devices that open the public URL: Tailscale connects them directly, so
     there is no Funnel header, but the Host is still the public name. Your private URL is the NAS tailnet IP."""
@@ -873,12 +882,9 @@ async def visitors(req: Request, call_next):
         if too_many(pid, "visitor") or too_many("x", "all"):
             return JSONResponse({"detail": "Too many requests, slow down."}, status_code=429, headers={"Retry-After": "30"})
         VISITOR.set(pid)
-    key = req.query_params.get("td") or req.cookies.get("td", "")
-    unlock = bool(TD_KEY) and secrets.compare_digest(key.encode(), TD_KEY.encode())
-    TD_OK.set(unlock)
     resp = await call_next(req)
-    if unlock and req.query_params.get("td"):
-        resp.set_cookie("td", key, max_age=90 * 86400, httponly=True, samesite="lax", secure=True)
+    if req.query_params.get("td") and owner_key(req):
+        resp.set_cookie("td", owner_key(req), max_age=90 * 86400, httponly=True, samesite="lax", secure=True)
     if new:
         resp.set_cookie("pid", pid, max_age=90 * 86400, httponly=True, samesite="lax", secure=True)
     if req.url.path.startswith("/static/"):
