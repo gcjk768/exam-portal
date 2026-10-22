@@ -1,0 +1,1490 @@
+{
+ "exam": "Claude Certified Associate - Foundations (CCAO-F)",
+ "intro": "About 60 items in about 120 minutes, pass mark 720/1000 (assumed), USD 99 at Pearson VUE. It tests everyday Claude use: judging outputs, fitting Claude into a workflow, responsible use, prompting, picking a model or capability, Projects and memory, and troubleshooting. Read each domain summary first, then the notes; the cards and the cram sheet are the recall drill.",
+ "start": [
+  {
+   "title": "Timed mock exam (CCAO-F)",
+   "url": "https://claudearchitects.org/mockexams/CCAO-F",
+   "note": "Full-length timed mock with a per-domain breakdown, no account needed.",
+   "kind": "free"
+  },
+  {
+   "title": "Blueprint: domains and objectives",
+   "url": "https://claudearchitects.org/resources#CCAO-F",
+   "note": "The 7 domains with their weights and the objectives this page is built around.",
+   "kind": "free"
+  },
+  {
+   "title": "Anthropic Academy (Partner Academy)",
+   "url": "https://academy.claude.com/",
+   "note": "Official courses; the AI Fluency and Claude 101 material is the exam's backbone.",
+   "kind": "official"
+  },
+  {
+   "title": "AI Fluency: Framework and Foundations",
+   "url": "https://www.anthropic.com/ai-fluency",
+   "note": "Free official course on the 4Ds: Delegation, Description, Discernment, Diligence. Expect questions phrased in its terms.",
+   "kind": "official"
+  },
+  {
+   "title": "Four role-based Claude certifications",
+   "url": "https://claude.com/blog/four-role-based-claude-certifications",
+   "note": "Anthropic's announcement: who each certification is for and how they relate.",
+   "kind": "official"
+  },
+  {
+   "title": "Exam policy (PDF)",
+   "url": "https://claudecode.sg/cca-f/cca-f-exam-policy.pdf",
+   "note": "Registration, retakes, conduct and scoring rules for the Foundations exams.",
+   "kind": "official"
+  }
+ ],
+ "domains": [
+  {
+   "domain": "Output Evaluation and Validation",
+   "weight": 21,
+   "links": [
+    {
+     "title": "Reduce hallucinations",
+     "url": "https://docs.claude.com/en/docs/test-and-evaluate/strengthen-guardrails/reduce-hallucinations",
+     "note": "Allow 'I don't know', quote first, cite each claim or retract it.",
+     "kind": "official"
+    },
+    {
+     "title": "Define success criteria and build evaluations",
+     "url": "https://docs.claude.com/en/docs/test-and-evaluate/define-success",
+     "note": "Specific, measurable criteria; code, model and human grading.",
+     "kind": "official"
+    },
+    {
+     "title": "Increase output consistency",
+     "url": "https://docs.claude.com/en/docs/test-and-evaluate/strengthen-guardrails/increase-consistency",
+     "note": "Exact formats, examples and retrieval for consistent output.",
+     "kind": "official"
+    },
+    {
+     "title": "AI Fluency: Framework and Foundations",
+     "url": "https://www.anthropic.com/ai-fluency",
+     "note": "Discernment and Diligence lessons: how to judge and own AI output.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "Y0KidGr9Z2Y",
+    "title": "Lesson 8: A closer look at Discernment | AI Fluency: Framework & Foundations Course",
+    "channel": "Anthropic",
+    "min": 5
+   },
+   "diagram": "flowchart LR\n  A([Claude draft]) --> B{Every claim traceable?}\n  B -->|No| C[Source it or remove it]\n  B -->|Yes| D{All required parts covered?}\n  D -->|No| E[Fill gaps or justify exclusions]\n  D -->|Yes| F[Apply style guide and format]\n  F --> G([Human sign-off, then release])",
+   "notes": [
+    {
+     "objective": "Verify factual accuracy and detect potential hallucinations in Claude-generated content before distribution or use.",
+     "title": "Trace every claim to a source",
+     "gist": "Confident wording is not evidence; a figure or claim leaves the draft only when you can point to where it came from.",
+     "points": [
+      "Check each specific statistic, date, quote or citation against the source document or a trusted reference; tone and polish prove nothing.",
+      "Vague authority such as 'an established best practice' with no citation: flag it and require a named source or remove it.",
+      "Prompt-side guards: let Claude say it does not know, ask for word-for-word quotes first on long documents (over about 20k tokens), require a supporting quote per claim or a retraction.",
+      "Restrict Claude to the provided documents when the answer must come from them, not from general knowledge.",
+      "Running the same prompt several times and comparing (best-of-N) exposes unstable, likely fabricated details."
+     ],
+     "tip": "Stems say a figure 'will be cited directly' or a claim 'sounds authoritative'. The answer verifies against the source; options that judge by confidence, word count or structure are distractors.",
+     "diagram": "flowchart TB\n  A[Claim in Claude output] --> B{Source supports it?}\n  B -->|Yes| C[Keep and cite]\n  B -->|No| D[Flag: source it or remove it]\n  D --> E[Never publish on tone alone]",
+     "video": {
+      "id": "cfqtFvWOfg0",
+      "title": "Why Large Language Models Hallucinate",
+      "channel": "IBM Technology",
+      "min": 10
+     },
+     "source": {
+      "title": "Reduce hallucinations",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/strengthen-guardrails/reduce-hallucinations"
+     }
+    },
+    {
+     "objective": "Assess structural completeness and requirement alignment in Claude outputs to identify gaps or missing components.",
+     "title": "Check coverage against the requirements",
+     "gist": "Completeness means every required element and every critical source section is covered or deliberately excluded, not that the output looks finished.",
+     "points": [
+      "Build a checklist from the original request and the source's major sections; mark each item covered or excluded with a reason.",
+      "A summary that hits the page count or reads well can still drop a critical requirement; length and compression ratio are not completeness checks.",
+      "Never accept Claude's own assurance that nothing was omitted; verification must be independent of the model.",
+      "Conflicting or incompatible requirements extracted from stakeholders are flagged back to the stakeholders to resolve, never merged or silently dropped.",
+      "A missing point in a three-part answer usually traces to a prompt that did not enumerate the parts explicitly."
+     ],
+     "tip": "'Well-written and spot-checked accurate' is the setup; the answer compares source scope with summary coverage section by section. Claude self-assessment is always the wrong option.",
+     "diagram": "flowchart LR\n  A[Required elements list] --> B[Compare with the output]\n  B --> C{Each item covered or justified?}\n  C -->|No| D[Fill the gap or note the exclusion]\n  C -->|Yes| E[Move to style and format review]",
+     "video": null,
+     "source": {
+      "title": "Define success criteria and build evaluations",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/define-success"
+     }
+    },
+    {
+     "objective": "Evaluate and revise Claude-generated content to align with organizational style guides, terminology standards, and editorial requirements.",
+     "title": "Fix terminology at the source",
+     "gist": "When accurate output uses the wrong house terms, give Claude the style guide and glossary rather than editing every draft by hand.",
+     "points": [
+      "Most direct fix for terminology drift: supply the style guide, glossary or approved-terms list in the prompt or Project instructions and regenerate.",
+      "Examples of approved output steer wording, tone and structure more reliably than abstract instructions.",
+      "Tell Claude what to do, not what to avoid: 'use the glossary terms' beats 'do not use jargon'.",
+      "A voice problem that recurs in every chat belongs in Project custom instructions so each conversation starts correct.",
+      "Editorial constraints (length, headings, citation style) are stated up front, then checked on review."
+     ],
+     "tip": "Options that edit by hand each time, 'accept the minor friction' or tell the team to adopt Claude's style are traps; the answer feeds the standard to Claude once.",
+     "diagram": "flowchart TB\n  A[Output uses off-standard terms] --> B[Add glossary and style guide]\n  B --> C[Add one approved example]\n  C --> D[Regenerate and compare]\n  D --> E[Move rules into Project instructions]",
+     "video": null,
+     "source": {
+      "title": "Increase output consistency",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/strengthen-guardrails/increase-consistency"
+     }
+    },
+    {
+     "objective": "Select appropriate output formats and structures that optimize clarity, scannability, and usability for intended stakeholders.",
+     "title": "Format for the reader",
+     "gist": "Pick the structure the audience will actually scan: lead with the decision, then supporting detail, in the form their workflow consumes.",
+     "points": [
+      "Executives and busy stakeholders: headline conclusion first, short sections, key numbers visible; technical depth moved to an appendix.",
+      "Media or external audiences: core announcement, supporting details and company position immediately clear, in that order.",
+      "Match the medium: tables for comparisons, numbered steps for procedures, prose for narrative judgement; say which in the prompt.",
+      "Ask for an explicit format (headings, template, JSON) so output is consistent across runs; the prompt's own style nudges Claude's style.",
+      "An accurate but highly technical analysis bound for non-technical leaders is rewritten for them, not sent as is."
+     ],
+     "tip": "The stem names the audience and its constraint (non-technical, strict deadline, read on a phone). The right revision restructures for that audience; keeping every term 'for accuracy' is the trap.",
+     "diagram": "flowchart LR\n  A{Who reads it and how?} -->|Executives| B[Decision first, detail after]\n  A -->|Operators| C[Numbered steps and checklists]\n  A -->|Analysts| D[Tables and full data]\n  B --> E[State the format in the prompt]\n  C --> E\n  D --> E",
+     "video": null,
+     "source": {
+      "title": "Prompting best practices",
+      "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+     }
+    },
+    {
+     "objective": "Establish quality assurance protocols by defining evaluation criteria and completing prerequisite activities before validating Claude outputs.",
+     "title": "Define the bar before you grade",
+     "gist": "Quality assurance starts with written, measurable criteria and the reference materials in hand; only then does validating a Claude output mean anything.",
+     "points": [
+      "Good criteria are specific, measurable, achievable and relevant: 'F1 of at least 0.85 on 10,000 held-out posts', not 'classify well'.",
+      "Sequence: define criteria and gather sources, then check coverage and cross-check facts, then style and format, then sign-off and distribution.",
+      "Grading ladder: code checks (exact or string match) are fastest; a model judge with a clear rubric scales; human review is best but slow, so sample it.",
+      "Prefer many automated test cases over a few hand-graded ones, and include edge cases: irrelevant, overlong or ambiguous inputs.",
+      "Reporting a trial to a committee: lead with measured results against the agreed criteria plus the limits found, not anecdotes."
+     ],
+     "tip": "'What is the proper sequence' questions put criteria and prerequisites first and distribution last. Any order that validates before criteria exist is wrong.",
+     "diagram": "flowchart LR\n  A[Write measurable criteria] --> B[Gather sources and references]\n  B --> C[Validate the output against them]\n  C --> D{Meets the bar?}\n  D -->|No| E[Revise prompt or draft]\n  D -->|Yes| F[Approve and distribute]",
+     "video": null,
+     "source": {
+      "title": "Define success criteria and build evaluations",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/define-success"
+     }
+    },
+    {
+     "objective": "Apply the AI Fluency Framework's Discernment and Diligence competencies to systematically review and validate Claude-generated deliverables.",
+     "title": "Discernment judges, Diligence owns",
+     "gist": "Discernment is judging the product, process and performance of Claude's work; Diligence is doing it responsibly, transparently and with accountability for what you release.",
+     "points": [
+      "The AI Fluency Framework has four competencies, the 4Ds: Delegation, Description, Discernment, Diligence.",
+      "Discernment has three lenses: product (is the output correct and fit), process (did Claude reason sensibly), performance (how the interaction went).",
+      "Diligence has three parts: creation (responsible choices while building), transparency (being open that AI was involved and how), deployment (owning the outcome you release).",
+      "Handle feedback systematically: ask reviewers to clarify vague comments, record which feedback drove which change, never apply contradictory feedback at once.",
+      "A claim that AI can fully replace human review of compliance documents is answered with evidence of limits and a human-owned sign-off, even to the budget holder."
+     ],
+     "tip": "'Judging quality' maps to Discernment; 'accountability, transparency, ownership' maps to Diligence. Delegation and Description are the planning and prompting side.",
+     "diagram": "flowchart LR\n  A[Claude output] --> B[Discernment: product, process, performance]\n  B --> C{Good enough?}\n  C -->|No| D[Describe better and retry]\n  C -->|Yes| E[Diligence: transparent, accountable release]",
+     "video": null,
+     "source": {
+      "title": "AI Fluency: Framework and Foundations",
+      "url": "https://www.anthropic.com/ai-fluency"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can tell a polished Claude output from a correct, complete, on-standard one, and run a defined review before anything is distributed.",
+    "must_know": [
+     "Verify every specific claim, figure or citation against the source; confident tone, length and structure prove nothing.",
+     "Unsourced claims such as 'a widely accepted best practice' are flagged: name a source or remove them.",
+     "Completeness is checked by comparing the source's major sections and the original requirements with the output, item by item.",
+     "Conflicting extracted requirements go back to the stakeholders to resolve; never merge or drop them silently.",
+     "Terminology or voice mismatches are fixed by supplying the style guide and glossary (ideally in Project instructions), not by hand edits.",
+     "Define specific, measurable criteria and gather references before validating; then coverage, facts, style, sign-off.",
+     "4Ds: Delegation, Description, Discernment (product, process, performance), Diligence (creation, transparency, deployment)."
+    ],
+    "traps": [
+     "Accepting Claude's self-assessment that nothing was omitted instead of independent verification.",
+     "Judging accuracy by word count, section count, thesis quality or confident phrasing.",
+     "Rewriting terminology by hand every time instead of giving Claude the standard once."
+    ]
+   },
+   "cards": [
+    {
+     "q": "A Claude figure 'per the latest industry report' will be cited in a board deck. What first?",
+     "a": "Trace it to the actual source document or a trusted reference; if it cannot be substantiated, flag it and do not cite it."
+    },
+    {
+     "q": "A report cites 'a widely accepted best practice' with no source. Reviewer action?",
+     "a": "Flag it as unverified and require a specific authoritative source or removal of the statement."
+    },
+    {
+     "q": "How do you verify a 3-page summary of a 45-page manual is complete?",
+     "a": "List the source's major sections and critical requirements; confirm each is covered or deliberately excluded with justification."
+    },
+    {
+     "q": "Extracted requirements contain two incompatible stakeholder requests. Responsible handling?",
+     "a": "Flag the conflict to the stakeholders to resolve; do not merge them, pick one silently or drop them."
+    },
+    {
+     "q": "Accurate output uses terms that clash with the company lexicon. Most direct fix?",
+     "a": "Give Claude the style guide and glossary in the prompt or Project instructions and regenerate; do not hand-edit each draft."
+    },
+    {
+     "q": "What makes a success criterion good in Anthropic's docs?",
+     "a": "Specific, measurable, achievable, relevant: for example F1 of at least 0.85 on a held-out set of 10,000 items."
+    },
+    {
+     "q": "Order the QA steps: cross-check facts, define criteria, gather sources, distribute, check style.",
+     "a": "Define criteria, gather sources, check coverage and cross-check facts, check style and format, then distribute."
+    },
+    {
+     "q": "Which grading method is fastest and most scalable, and which is best but slowest?",
+     "a": "Code-based grading (exact or string match) is fastest; human grading is highest quality but slow and expensive."
+    },
+    {
+     "q": "Name the four AI Fluency competencies.",
+     "a": "Delegation, Description, Discernment, Diligence."
+    },
+    {
+     "q": "What are the three lenses of Discernment?",
+     "a": "Product (is the output correct and fit), process (how Claude got there), performance (how the interaction went)."
+    },
+    {
+     "q": "What are the three parts of Diligence?",
+     "a": "Creation, transparency and deployment diligence: responsible building, openness about AI use, ownership of what you release."
+    },
+    {
+     "q": "Two constructive ways to handle reviewer feedback on a Claude draft?",
+     "a": "Ask reviewers to clarify vague feedback before changing anything, and document which feedback item drove which revision."
+    },
+    {
+     "q": "Trap: which signals wrongly suggest a Claude analysis is accurate?",
+     "a": "Confident tone, section count, word count, a strong thesis or varied sentences. Only source verification tests accuracy."
+    },
+    {
+     "q": "Which prompt-side guards reduce hallucination?",
+     "a": "Let Claude say it does not know, ask for word-for-word quotes first, require a citation per claim or retraction, restrict to provided documents."
+    }
+   ]
+  },
+  {
+   "domain": "Workflow Integration and Solution Design",
+   "weight": 16,
+   "links": [
+    {
+     "title": "AI Fluency: Framework and Foundations",
+     "url": "https://www.anthropic.com/ai-fluency",
+     "note": "Delegation lessons: problem awareness, platform awareness, task delegation.",
+     "kind": "official"
+    },
+    {
+     "title": "Building effective agents",
+     "url": "https://www.anthropic.com/engineering/building-effective-agents",
+     "note": "Start simple, add complexity only when it measurably helps, keep human checkpoints.",
+     "kind": "official"
+    },
+    {
+     "title": "Create and edit files with Claude",
+     "url": "https://support.claude.com/en/articles/12111783-create-and-edit-files-with-claude",
+     "note": "Code execution sandbox and network egress controls: the readiness and security side.",
+     "kind": "official"
+    },
+    {
+     "title": "When should I use web search, extended thinking, and research?",
+     "url": "https://support.claude.com/en/articles/11095361-when-should-i-use-web-search-extended-thinking-and-research",
+     "note": "Which claude.ai capability fits which kind of task.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "EljzyfdYkrc",
+    "title": "Lesson 4: A closer look at Delegation | AI Fluency: Framework & Foundations Course",
+    "channel": "Anthropic",
+    "min": 6
+   },
+   "diagram": "flowchart LR\n  A[Map the current process] --> B[Score stages: volume, judgement, risk]\n  B --> C[Claude drafts and synthesises]\n  C --> D[Humans keep decisions and exceptions]\n  D --> E[Pilot with monitoring]\n  E --> F([Scale on measured results])",
+   "notes": [
+    {
+     "objective": "Identify which tasks and process stages in knowledge work are most suitable for Claude integration based on impact potential and workflow characteristics.",
+     "title": "Pick stages Claude is good at",
+     "gist": "Claude pays off on high-volume, text-heavy work with clear inputs; it is a poor fit where the step is a judgement call someone must own.",
+     "points": [
+      "Strong fits: drafting, summarising, consolidating documents, extracting and structuring information, first-pass classification and routing, converting between formats.",
+      "Weak fits: final decisions on people, money or compliance; live conversations that need relationship context; tasks with no written inputs.",
+      "Rank candidate stages by volume, time spent and how clearly the input and output can be described.",
+      "Anthropic's documented production use cases: ticket routing, customer support agents, content moderation, legal summarisation, commerce agents.",
+      "A generic 'typical improvement roadmap' without the organisation's own data is not a use case; it is a hallucination risk."
+     ],
+     "tip": "Two-answer questions pair one synthesis task with one structuring task as correct, and hide a human-judgement or relationship step among the distractors.",
+     "diagram": "flowchart TB\n  A[Process stage] --> B{Text-heavy, repeatable, clear inputs?}\n  B -->|No| C[Keep manual]\n  B -->|Yes| D{Someone must own the decision?}\n  D -->|No| E[Delegate to Claude]\n  D -->|Yes| F[Claude drafts, human decides]",
+     "video": null,
+     "source": {
+      "title": "Guides to common use cases",
+      "url": "https://docs.claude.com/en/docs/about-claude/use-case-guides/overview"
+     }
+    },
+    {
+     "objective": "Conduct foundational planning activities including process mapping and stakeholder analysis before implementing Claude into operational workflows.",
+     "title": "Map the process before automating",
+     "gist": "Before any Claude step is added, document the current workflow and know who owns, feeds and is affected by each stage.",
+     "points": [
+      "Process map first: inputs, steps, outputs, hand-offs, where time and errors concentrate; this is where delegation points become visible.",
+      "Stakeholder analysis: owners, operators, downstream consumers, compliance; capture their concerns before designing.",
+      "Define the core problem and its constraints before generating solutions; ideation on an undefined problem wastes effort.",
+      "Record the current performance metrics as a baseline so a pilot can be judged against something real.",
+      "Only then write prompts, Project instructions and the pilot plan."
+     ],
+     "tip": "'Which should be completed first' in a solution-design stem is almost always 'define the problem, constraints and current process'; brainstorming, prototyping and evaluation come after.",
+     "diagram": "flowchart LR\n  A[Define problem and constraints] --> B[Map the current process]\n  B --> C[Identify stakeholders and concerns]\n  C --> D[Record baseline metrics]\n  D --> E[Design the Claude-assisted flow]",
+     "video": null,
+     "source": {
+      "title": "Define success criteria and build evaluations",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/define-success"
+     }
+    },
+    {
+     "objective": "Sequence the rollout of Claude integration into critical processes by first assessing stages, then piloting with monitoring, and finally scaling based on results.",
+     "title": "Assess, pilot, then scale",
+     "gist": "Roll Claude into a critical process in three gated stages, and let measured pilot results, not enthusiasm, decide the next step.",
+     "points": [
+      "Stage 1 assess: which tasks Claude handles well and where humans must take over.",
+      "Stage 2 pilot: a small scope (one team, a subset of tickets) with monitoring, review sampling and a rollback path.",
+      "Stage 3 scale: expand only on pilot metrics against the baseline, after refining the workflow from pilot feedback.",
+      "Anthropic's guidance: start with the simplest solution and add complexity only when it demonstrably improves outcomes.",
+      "Keep human checkpoints for high-impact actions during and after the pilot."
+     ],
+     "tip": "Sequence questions list assess, pilot, refine and scale out of order; the answer starts with assessment and ends with scaling.",
+     "diagram": "flowchart LR\n  A[Assess stages and hand-offs] --> B[Pilot small scope with monitoring]\n  B --> C{Metrics beat baseline?}\n  C -->|No| D[Refine prompts and workflow]\n  D --> B\n  C -->|Yes| E[Scale in stages]",
+     "video": null,
+     "source": {
+      "title": "Building effective agents",
+      "url": "https://www.anthropic.com/engineering/building-effective-agents"
+     }
+    },
+    {
+     "objective": "Evaluate and select workflow activities for Claude assistance by analyzing which steps are genuinely well-suited for AI support versus those requiring human judgment.",
+     "title": "Delegation: what Claude does, what you keep",
+     "gist": "The Delegation competency decides which parts of a task go to Claude, based on problem awareness, platform awareness and a clear split of responsibility.",
+     "points": [
+      "Delegation has three parts: problem awareness (what are we really trying to do), platform awareness (what Claude can and cannot do), task delegation (who does which piece).",
+      "Delegate by two factors: how well the task can be specified and checked, and the cost of an error; not by how boring it is or by headcount targets.",
+      "Retain tasks that need accountability, confidential relationships or in-person judgement; Claude can still prepare materials for them.",
+      "Autonomous final approval of expense claims or loan decisions fails Delegation: a qualified human keeps the decision.",
+      "Delegation is not all-or-nothing; a stage can be 'Claude drafts, human approves'."
+     ],
+     "tip": "When the stem says 'AI Fluency Delegation competency', the answer weighs verifiability and error cost and keeps a human on consequential decisions.",
+     "diagram": "flowchart TB\n  A[Task] --> B{Can you specify and check it?}\n  B -->|No| C[Keep human, Claude prepares]\n  B -->|Yes| D{High cost of error?}\n  D -->|Yes| E[Claude drafts, human approves]\n  D -->|No| F[Delegate to Claude]",
+     "video": {
+      "id": "W4Ua6XFfX9w",
+      "title": "Lesson 2B: The 4D Framework | AI Fluency: Framework & Foundations Course",
+      "channel": "Anthropic",
+      "min": 5
+     },
+     "source": {
+      "title": "AI Fluency: Framework and Foundations",
+      "url": "https://www.anthropic.com/ai-fluency"
+     }
+    },
+    {
+     "objective": "Design Claude-assisted workflows by leveraging existing process documentation and performance metrics to identify optimization opportunities and appropriate delegation points.",
+     "title": "Use existing docs and metrics as inputs",
+     "gist": "Give Claude the documented process and its performance data, and ask it to find bottlenecks and candidate delegation points, with each finding traced to a source.",
+     "points": [
+      "Feed documented process steps plus recent metrics (delays, error rates) and ask for a diagnosis with reasoning tied to the data.",
+      "Ask Claude to consolidate transcripts and documents into a process map with links back to the originals, so claims are auditable.",
+      "Improvements that count: fewer manual hand-offs, a reusable Project with instructions and reference documents, a validation step; not cosmetic changes.",
+      "Leadership cannot name the root cause? Have Claude analyse the documented data and surface hypotheses for humans to test, not guess.",
+      "Chained prompts with programmatic checks between steps turn a vague process into inspectable stages."
+     ],
+     "tip": "Options that have Claude invent a roadmap 'from typical strategies' or run the discovery interviews itself are wrong; the right ones ground Claude in the organisation's own documents and numbers.",
+     "diagram": "flowchart LR\n  A[Process docs and metrics] --> B[Claude maps steps and bottlenecks]\n  B --> C[Findings linked to sources]\n  C --> D[Humans choose delegation points]\n  D --> E[Redesigned workflow with checks]",
+     "video": null,
+     "source": {
+      "title": "Building effective agents",
+      "url": "https://www.anthropic.com/engineering/building-effective-agents"
+     }
+    },
+    {
+     "objective": "Prepare organizational change management for Claude integration by developing communication materials that address leadership and departmental stakeholder concerns.",
+     "title": "Communicate scope and limits honestly",
+     "gist": "Change-management materials say exactly what Claude will do, what stays with people and where it can fail; they are written after the process and pilot facts exist.",
+     "points": [
+      "Before writing materials: finish the process assessment and the stakeholder analysis, and have pilot evidence to cite.",
+      "Leaders need: which tasks Claude assists, which decisions remain human, expected gains against the baseline, and the oversight plan.",
+      "Departments need: what changes in their day, who to ask, how errors are caught and escalated.",
+      "Never claim full autonomy, 'always accurate' or 'the system handles everything'; state known limitations plainly.",
+      "Expect the fear of replacement and answer it with the actual delegation split."
+     ],
+     "tip": "Two-answer stems pair 'transparent scope and human control' with 'candid limitations' as correct; vague or overclaiming statements are the distractors.",
+     "diagram": "flowchart LR\n  A[Assessment and pilot facts] --> B[Scope: what Claude does]\n  B --> C[Boundaries: what humans decide]\n  C --> D[Limits and oversight plan]\n  D --> E[Tailor to leaders and departments]",
+     "video": null,
+     "source": {
+      "title": "AI Fluency: Framework and Foundations",
+      "url": "https://www.anthropic.com/ai-fluency"
+     }
+    },
+    {
+     "objective": "Validate Claude integration readiness by confirming prerequisites such as data platform compatibility and security requirements before authorizing implementation.",
+     "title": "Confirm readiness before authorising",
+     "gist": "An integration is authorised only after the data, security and policy prerequisites are confirmed, not after the demo looks good.",
+     "points": [
+      "Data readiness: the data Claude needs exists in a compatible, accessible form; sensitive fields are classified and masked or removed.",
+      "Security: who can access the Project, which connectors and tools are enabled, and whether code execution network egress is on or off.",
+      "Code execution runs in a sandboxed container; with network egress disabled, data cannot leave it even under prompt injection, so cautious rollouts start with egress off.",
+      "Policy: the use case is allowed by the governance framework and the Usage Policy; high-risk decisions keep a qualified human in the loop.",
+      "Agree monitoring, review sampling and a rollback path before go-live."
+     ],
+     "tip": "Readiness questions reward confirming compatibility and security requirements first; 'launch and fix later' or 'the pilot was fine so authorise' are traps.",
+     "diagram": "flowchart TB\n  A{Data accessible and classified?} -->|No| X[Not ready]\n  A -->|Yes| B{Access, connectors, egress set?}\n  B -->|No| X\n  B -->|Yes| C{Policy allows, oversight set?}\n  C -->|No| X\n  C -->|Yes| D([Authorise implementation])",
+     "video": {
+      "id": "_jjSS0qGFbI",
+      "title": "Getting started with connectors in Claude.ai",
+      "channel": "Anthropic",
+      "min": 4
+     },
+     "source": {
+      "title": "Create and edit files with Claude",
+      "url": "https://support.claude.com/en/articles/12111783-create-and-edit-files-with-claude"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can decide where Claude belongs in a business process, plan and pilot it properly, and bring people along without overclaiming.",
+    "must_know": [
+     "Claude fits text-heavy, repeatable, well-specified stages (drafting, summarising, structuring, first-pass classification); humans keep accountable decisions.",
+     "Define the problem and constraints, map the process, analyse stakeholders and record a baseline before designing or prompting.",
+     "Rollout order: assess stages and hand-offs, pilot a small scope with monitoring, refine, then scale on measured results.",
+     "Delegation = problem awareness, platform awareness, task delegation; decide by specifiability and cost of error.",
+     "Ground Claude in the organisation's own process documents and metrics, with findings linked to sources; never a generic roadmap.",
+     "Communications state scope, human control and limitations candidly; never 'fully autonomous' or 'always accurate'.",
+     "Readiness means data compatibility, access and egress controls, and policy approval are confirmed before authorisation."
+    ],
+    "traps": [
+     "Letting Claude run discovery interviews or invent a roadmap instead of synthesising what humans gathered.",
+     "Piloting or writing communications before the process assessment exists.",
+     "Treating a good demo as readiness; skipping data classification and security configuration."
+    ]
+   },
+   "cards": [
+    {
+     "q": "Which workflow stages are genuinely well-suited for Claude support?",
+     "a": "Text-heavy, repeatable stages with clear inputs: drafting, summarising, consolidating documents, extracting and structuring data, first-pass classification."
+    },
+    {
+     "q": "What foundational work precedes a pilot of Claude in customer support?",
+     "a": "Map which support tasks Claude can handle well and define the hand-off points where human agents take over."
+    },
+    {
+     "q": "What is the three-stage rollout order for Claude in a critical process?",
+     "a": "Assess the stages, pilot a small scope with monitoring, then scale based on measured results."
+    },
+    {
+     "q": "Name the three parts of the AI Fluency Delegation competency.",
+     "a": "Problem awareness, platform awareness, task delegation."
+    },
+    {
+     "q": "Which two factors most directly guide delegate-versus-retain decisions under Delegation?",
+     "a": "How well the task can be specified and verified, and the cost of an error; not boredom or headcount."
+    },
+    {
+     "q": "A team gathers interviews and process docs. Best use of Claude in that phase?",
+     "a": "Consolidate transcripts and documents into a process map with links back to the original sources for each step."
+    },
+    {
+     "q": "Two foundational steps before finalising change-management materials for leadership?",
+     "a": "Complete the process assessment and the stakeholder analysis so the materials reflect real scope and concerns."
+    },
+    {
+     "q": "Which two messages about Claude's role are appropriate for stakeholders?",
+     "a": "A transparent explanation of what Claude assists with versus what humans decide, and a candid description of its limitations."
+    },
+    {
+     "q": "What must be confirmed before authorising a Claude integration?",
+     "a": "Data platform compatibility and classification, access and connector settings, network egress, and governance policy approval."
+    },
+    {
+     "q": "Why start a cautious code-execution rollout with network egress off?",
+     "a": "Claude runs in a sandboxed container; with egress disabled, data cannot leave it even under prompt injection."
+    },
+    {
+     "q": "Two practices that make a monthly Code Execution reconciliation trustworthy?",
+     "a": "Fix and version the scripts and inputs, and validate outputs against known totals with logged runs for audit."
+    },
+    {
+     "q": "Anthropic's rule for adding complexity to an LLM workflow?",
+     "a": "Start with the simplest solution; add complexity only when it demonstrably improves measured outcomes."
+    },
+    {
+     "q": "Trap: what should Claude not do in a process-improvement engagement?",
+     "a": "Run the discovery interviews itself or generate a generic roadmap without the organisation's own data."
+    }
+   ]
+  },
+  {
+   "domain": "Governance, Risk, and Responsible Use",
+   "weight": 15,
+   "links": [
+    {
+     "title": "Usage Policy",
+     "url": "https://www.anthropic.com/legal/aup",
+     "note": "Universal standards, privacy rules, high-risk areas with the qualified human-in-the-loop and disclosure requirements.",
+     "kind": "official"
+    },
+    {
+     "title": "Use Claude's chat search and memory",
+     "url": "https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context",
+     "note": "Memory controls, incognito chats, sensitive topics, organisation-level settings.",
+     "kind": "official"
+    },
+    {
+     "title": "Using Claude for legal work",
+     "url": "https://support.claude.com/en/articles/15707726-using-claude-for-legal-work-privilege-confidentiality-and-how-to-think-about-configuration",
+     "note": "How configuration and professional direction keep confidential work protected.",
+     "kind": "official"
+    },
+    {
+     "title": "What certifications has Anthropic obtained?",
+     "url": "https://support.claude.com/en/articles/10015870-what-certifications-has-anthropic-obtained",
+     "note": "HIPAA-ready, ISO 27001, ISO/IEC 42001, SOC 2.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "QbLf2zb3oPc",
+    "title": "Lesson 10: A closer look at Diligence | AI Fluency: Framework & Foundations Course",
+    "channel": "Anthropic",
+    "min": 7
+   },
+   "diagram": "flowchart TB\n  A([Proposed Claude use]) --> B{Allowed by policy?}\n  B -->|No| X[Decline and escalate]\n  B -->|Yes| C{Sensitive data involved?}\n  C -->|Yes| D[Remove or mask before input]\n  C -->|No| E{High-risk outcome?}\n  D --> E\n  E -->|Yes| F[Qualified human decides, disclose AI]\n  E -->|No| G([Proceed with monitoring])",
+   "notes": [
+    {
+     "objective": "Identify and classify sensitive data types that require masking, removal, or careful handling before use with Claude.",
+     "title": "Know what counts as sensitive",
+     "gist": "Before data touches a prompt, classify it: identifiers, credentials and confidential records are handled or removed, public and non-sensitive material can flow.",
+     "points": [
+      "Needs masking or removal: names tied to records, government or legal ID numbers, contact details, financial account data and credentials, health data, biometric data, confidential or proprietary information.",
+      "Fine to use: public regulatory filings, published product specs, role titles from a public directory, aggregated or anonymised figures.",
+      "The Usage Policy forbids misusing or collecting private information such as non-public contact details, health, biometric or confidential data without permission.",
+      "Classification is decided by the data owner or compliance role before the prompt is written, not by Claude at run time.",
+      "Appropriate data for an HR prompt: the task-relevant fields only, such as policy text and anonymised case descriptions."
+     ],
+     "tip": "Options listing public or already-disclosed information are the 'no special handling' distractors; the one with identifiers, credentials or health data is the one that needs protection.",
+     "diagram": "flowchart TB\n  A[Data element] --> B{Identifies a person or confidential?}\n  B -->|No| C[Use as is]\n  B -->|Yes| D{Needed for the task?}\n  D -->|No| E[Remove before the prompt]\n  D -->|Yes| F[Mask or de-identify, minimum needed]",
+     "video": null,
+     "source": {
+      "title": "Usage Policy",
+      "url": "https://www.anthropic.com/legal/aup"
+     }
+    },
+    {
+     "objective": "Evaluate organizational AI governance frameworks to determine whether proposed Claude use cases comply with established policies and restrictions.",
+     "title": "Check the use case against the framework",
+     "gist": "A governance framework says which tools are approved, what data may be used, who approves and who is accountable; a proposed use either fits it or is declined and escalated.",
+     "points": [
+      "A framework defines permitted tools, data boundaries, approval processes and accountability mechanisms for consistent use; it is not a price comparison or a training plan.",
+      "If policy prohibits Claude for active investigations or disciplinary matters, decline that use and point to the policy, even when a manager asks.",
+      "Anthropic's Usage Policy sits on top: universal standards plus requirements for high-risk areas such as legal, medical, finance, credit, insurance, housing, employment and education.",
+      "Outputs are yours to use in products and non-competing tools, but the terms prohibit using them to train models that compete with Anthropic's.",
+      "Commercial plans carry HIPAA-ready configuration (BAA), ISO 27001:2022, ISO/IEC 42001:2023 and SOC 2 Type I and II; documentation is on the Trust Portal."
+     ],
+     "tip": "Stems with a manager, executive or budget owner pushing a prohibited use test whether you follow the framework; the right option declines politely and routes through the proper channel.",
+     "diagram": "flowchart LR\n  A[Proposed use] --> B{Approved tool and data?}\n  B -->|No| X[Decline, cite policy]\n  B -->|Yes| C{Approval and owner named?}\n  C -->|No| D[Route through governance]\n  C -->|Yes| E[Proceed with controls]",
+     "video": null,
+     "source": {
+      "title": "Usage Policy",
+      "url": "https://www.anthropic.com/legal/aup"
+     }
+    },
+    {
+     "objective": "Assess Claude implementation configurations for security, privacy, and responsible use alignment with organizational standards.",
+     "title": "Configure for privacy before sharing data",
+     "gist": "Protect sensitive conversations with the controls Claude already has: memory off or incognito, private Projects, restricted egress and vetted Skills.",
+     "points": [
+      "Proprietary data in a one-off discussion: use an incognito chat (not saved to history or memory) or turn memory off for that chat before the first message.",
+      "Memory is per Project; turn off 'Use account memory' to keep a Project's memory fully separate; sensitive topics are not stored unless you opt in.",
+      "Team and Enterprise owners control whether memory, project sharing, public projects, code execution and network egress are available; HIPAA and custom-retention organisations do not get memory.",
+      "Keep client Projects private ('Only people invited'), one Project per client, and review Skills from unfamiliar sources before enabling: read bundled files, scripts and any network calls.",
+      "Legal and confidential work: commercial terms with no-training commitments, a professional visibly directing the work, and configuration reviewed with your own counsel."
+     ],
+     "tip": "Two-answer privacy questions pair incognito with per-chat memory off; options that 'assume brief mentions are not retained' or enable memory for continuity are wrong.",
+     "diagram": "flowchart TB\n  A[Sensitive session] --> B{One-off discussion?}\n  B -->|Yes| C[Incognito chat or memory off first]\n  B -->|No| D[Private Project, no account memory]\n  C --> E[Review org controls: sharing, egress]\n  D --> E",
+     "video": null,
+     "source": {
+      "title": "Use Claude's chat search and memory to build on previous context",
+      "url": "https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context"
+     }
+    },
+    {
+     "objective": "Apply data privacy protection measures including de-identification and removal of personally identifiable information from datasets before Claude processing.",
+     "title": "De-identify before the prompt",
+     "gist": "Strip or mask personal data before it is sent; an instruction to 'ignore the names' still puts the data into the system.",
+     "points": [
+      "Remove fields the task does not need (ID numbers, addresses) before submitting; a technical-issue summary needs the issue text, not the customer's identity.",
+      "Swapping one identifier for a less sensitive one is still PII; use pseudonyms or tokens, not substitutions.",
+      "Interview transcripts: de-identify names, phone numbers and emails, then analyse; the insights survive without the identities.",
+      "Prompt instructions to exclude data from the output do not stop the data entering context and logs.",
+      "Privacy preservation can be a measured criterion, e.g. zero responses containing PHI across a 500-query test set."
+     ],
+     "tip": "The correct option removes or masks data before submission; 'include everything and tell Claude to exclude it' is the classic trap.",
+     "diagram": "flowchart LR\n  A[Raw dataset] --> B[Classify sensitive fields]\n  B --> C[Remove what the task does not need]\n  C --> D[Mask or pseudonymise the rest]\n  D --> E[Send to Claude]",
+     "video": null,
+     "source": {
+      "title": "Define success criteria and build evaluations",
+      "url": "https://docs.claude.com/en/docs/test-and-evaluate/define-success"
+     }
+    },
+    {
+     "objective": "Determine appropriate levels of human oversight and decision-making authority when integrating Claude into business processes that affect compliance, HR, or financial outcomes.",
+     "title": "High-risk decisions keep a qualified human",
+     "gist": "Where an output affects someone's finances, employment, health, housing or legal rights, a qualified person reviews and owns the decision, and the person affected is told AI was involved.",
+     "points": [
+      "Usage Policy high-risk areas: legal, medical, finance, credit, insurance, housing, employment, education and credentials, healthcare access, public benefits, legal adjudication.",
+      "Requirement: a qualified human meaningfully reviews the recommendation, with authority to change it, before it is delivered or acted on, and remains responsible.",
+      "Disclosure: the affected individual must be told AI was used; naming Claude or Anthropic is not required.",
+      "Exclusions: internal drafting, research or summaries that are not the final recommendation; wholly favourable decisions such as paying a claim may skip prior review where law allows.",
+      "So autonomous loan decisions, expense approvals or compliance verdicts are configured as 'Claude recommends, human decides'."
+     ],
+     "tip": "Any option that lets Claude 'autonomously render binding decisions' on loans, HR or compliance is wrong; pick the one that adds qualified human review and transparency.",
+     "diagram": "flowchart TB\n  A[Claude recommendation] --> B{High-risk area?}\n  B -->|No| C[Normal review]\n  B -->|Yes| D[Qualified human reviews, can change]\n  D --> E[Human owns the decision]\n  E --> F[Tell the affected person AI was used]",
+     "video": {
+      "id": "LyfG7SGRiZA",
+      "title": "Protecting Data in AI: Strategies for Security & Governance",
+      "channel": "IBM Technology",
+      "min": 15
+     },
+     "source": {
+      "title": "Usage Policy",
+      "url": "https://www.anthropic.com/legal/aup"
+     }
+    },
+    {
+     "objective": "Communicate AI model capabilities and limitations to stakeholders to establish realistic expectations about Claude's role in organizational workflows.",
+     "title": "Set expectations with limits stated",
+     "gist": "Stakeholders get a plain statement of what Claude does well, where it fails and who checks it, so trust is calibrated rather than blind.",
+     "points": [
+      "The limitation to lead with for production systems: Claude can produce fluent, confident output that is wrong, so verification stays in the process.",
+      "Claude can handle equations and calculations, but complex or mission-critical calculations should be verified with specialised software or by hand.",
+      "Answer 'AI can replace human judgement' with evidence of error modes and the human sign-off design, even when the speaker controls the budget.",
+      "Communicate scope (assists with X), boundaries (humans decide Y) and known failure areas; avoid 'always accurate' or 'handles everything'.",
+      "Diligence includes transparency: being open about where and how AI was used in a deliverable."
+     ],
+     "tip": "Correct options are specific and honest about both capability and limits; distractors overclaim autonomy or accuracy, or stay vague.",
+     "diagram": "flowchart LR\n  A[Stakeholder briefing] --> B[What Claude will do]\n  B --> C[What stays human]\n  C --> D[Known failure modes and checks]\n  D --> E[Realistic expectations]",
+     "video": null,
+     "source": {
+      "title": "How does Claude handle mathematical equations and calculations?",
+      "url": "https://support.claude.com/en/articles/10366421-how-does-claude-handle-mathematical-equations-and-calculations"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can keep sensitive data out of prompts, apply your organisation's and Anthropic's rules, keep humans accountable for high-stakes outcomes, and describe Claude honestly.",
+    "must_know": [
+     "Sensitive: identifiers, credentials, contact, financial, health, biometric and confidential data. Public filings and published specs are not.",
+     "Remove or mask sensitive fields before submission; instructions to leave them out of the output are not protection.",
+     "A governance framework sets permitted tools, data boundaries, approvals and accountability; prohibited uses are declined even for senior requesters.",
+     "Usage Policy high-risk areas (legal, medical, finance, credit, insurance, housing, employment, education and more) need a qualified human reviewer with authority to change the decision, plus disclosure to the affected person.",
+     "Privacy controls: incognito chats, memory off per chat before the first message, private Projects, per-Project memory, organisation-level toggles.",
+     "Outputs may power your products but may not train competing models; Anthropic holds HIPAA-ready (BAA), ISO 27001, ISO/IEC 42001 and SOC 2.",
+     "Tell stakeholders the scope, the human boundaries and the failure modes; never 'fully autonomous' or 'always accurate'."
+    ],
+    "traps": [
+     "Including the full record and asking Claude to leave identifiers out of the summary.",
+     "Letting Claude autonomously approve loans, expenses or compliance outcomes 'for efficiency'.",
+     "Assuming brief mentions of sensitive material are not retained by memory."
+    ]
+   },
+   "cards": [
+    {
+     "q": "Which data types need masking or removal before use with Claude?",
+     "a": "Personal identifiers, ID numbers, contact details, financial account data and credentials, health and biometric data, confidential or proprietary information."
+    },
+    {
+     "q": "A ticket holds an ID number, address and a technical issue; you need an issue summary. Best practice?",
+     "a": "Strip the ID number and address before submitting; send only what the summary needs."
+    },
+    {
+     "q": "Why is 'include everything but tell Claude to exclude the names' wrong?",
+     "a": "The data still enters the system and context; protection means removing or masking it before submission."
+    },
+    {
+     "q": "What does an organisational AI governance framework establish?",
+     "a": "Permitted tools, what data may be used, required approval processes, and accountability mechanisms for consistent use."
+    },
+    {
+     "q": "Policy forbids Claude for active investigations; a manager wants an investigation summary. Response?",
+     "a": "Decline that use, cite the policy, and route the request through the proper governance channel."
+    },
+    {
+     "q": "Which areas does the Usage Policy treat as high-risk?",
+     "a": "Legal, medical, finance, credit, insurance, housing, employment, education and credentials, healthcare access, public benefits, legal adjudication."
+    },
+    {
+     "q": "What two controls does the Usage Policy require for a high-risk AI recommendation?",
+     "a": "A qualified human reviews it with authority to change it before use, and the affected person is told AI was involved."
+    },
+    {
+     "q": "A bank wants Claude to approve or deny loans with no human review. Responsible course?",
+     "a": "Keep a qualified human decision-maker: Claude recommends and explains, the human decides, with disclosure to applicants."
+    },
+    {
+     "q": "Two privacy measures before discussing proprietary results with Claude?",
+     "a": "Use an incognito chat, or turn memory off for that chat before the first message."
+    },
+    {
+     "q": "How is a Project's memory kept fully separate from other work?",
+     "a": "Each Project has its own memory; turn off 'Use account memory' on the Project page to keep it isolated."
+    },
+    {
+     "q": "Can you use Claude's outputs to train your own models?",
+     "a": "Yes for non-competing tools and your own products; training models that compete with Anthropic's is prohibited."
+    },
+    {
+     "q": "Which capability constraint should a team stress before a financial verification deployment?",
+     "a": "Claude can produce fluent, confident but incorrect output, so verification and human review must stay in the process."
+    },
+    {
+     "q": "Which compliance credentials does Anthropic hold for commercial products?",
+     "a": "HIPAA-ready configuration with BAA, ISO 27001:2022, ISO/IEC 42001:2023, SOC 2 Type I and Type II."
+    },
+    {
+     "q": "Trap: which stakeholder statements about Claude are inappropriate?",
+     "a": "That it works fully autonomously without oversight, is always accurate with no review, or 'handles everything' with no stated scope."
+    }
+   ]
+  },
+  {
+   "domain": "Prompting and Task Execution",
+   "weight": 14,
+   "links": [
+    {
+     "title": "Prompting best practices",
+     "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-prompting-best-practices",
+     "note": "Clear and direct, context, examples, XML tags, role, long-context tips, chaining.",
+     "kind": "official"
+    },
+    {
+     "title": "Prompt engineering overview",
+     "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview",
+     "note": "Success criteria and a way to test come before tuning a prompt.",
+     "kind": "official"
+    },
+    {
+     "title": "AI Fluency: Framework and Foundations",
+     "url": "https://www.anthropic.com/ai-fluency",
+     "note": "Description lessons: product, process and performance description.",
+     "kind": "official"
+    },
+    {
+     "title": "Usage limit best practices",
+     "url": "https://support.claude.com/en/articles/9797557-usage-limit-best-practices",
+     "note": "Plan conversations, batch questions, refer back, use memory and Projects.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "2YCaBqP8muw",
+    "title": "Lesson 7: Effective prompting techniques (Deep Dive) | AI Fluency: Framework & Foundations Course",
+    "channel": "Anthropic",
+    "min": 12
+   },
+   "diagram": "flowchart LR\n  A([Vague request]) --> B[Clarify the real need]\n  B --> C{Several distinct deliverables?}\n  C -->|Yes| D[Split into scoped subtasks]\n  C -->|No| E[Task, context, constraints, example]\n  D --> E\n  E --> F[Review output, refine one element]",
+   "notes": [
+    {
+     "objective": "Clarify vague or underspecified requests through follow-up questioning to uncover actual user needs before sending prompts to Claude.",
+     "title": "Clarify the need before prompting",
+     "gist": "'Analyse our market position' is not a task; ask what decision it serves, what evidence counts and what the deliverable looks like before writing the prompt.",
+     "points": [
+      "Follow-up questions: purpose and decision, audience, scope (which competitors, which period), required evidence and format, deadline.",
+      "The real need is often narrower and factual, e.g. a sourced table of competitor prices with confidence levels, which calls for a research-style prompt with citations.",
+      "Description competency: describe the product (what you want), the process (how to approach it) and the performance (how to behave, e.g. ask when unsure).",
+      "Prerequisites before asking for messaging or content: the audience and the goal must be fixed and reference material gathered.",
+      "Anthropic's test: show the prompt to a colleague with no context; if they would be confused, Claude will be too."
+     ],
+     "tip": "When the stem reveals 'the actual need emerged' after conversation, the answer is the prompt that encodes that specific need (sources, confidence, format), not a generic analysis prompt.",
+     "diagram": "flowchart LR\n  A[Vague request] --> B[Ask: decision, audience, scope, evidence]\n  B --> C[Restate the real need]\n  C --> D[Write the specific prompt]\n  D --> E[Colleague test]",
+     "video": {
+      "id": "DmgujoZ1mmk",
+      "title": "Lesson 6: A closer look at Description | AI Fluency: Framework & Foundations Course",
+      "channel": "Anthropic",
+      "min": 4
+     },
+     "source": {
+      "title": "Prompting best practices",
+      "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+     }
+    },
+    {
+     "objective": "Revise prompts to include sufficient context, constraints, and examples that enable Claude to produce complete, accurate responses across all requested elements.",
+     "title": "Task, context, constraints, example",
+     "gist": "A strong business prompt states the task precisely, gives the context Claude lacks, sets constraints and shows an example of the output you want.",
+     "points": [
+      "Core components: an unambiguous task statement plus background (audience, objective, constraints); not product inventories, tone gimmicks or personal anecdotes.",
+      "Treat Claude as a brilliant new employee with no knowledge of your norms; explain why the task matters so it can generalise.",
+      "Examples (few-shot) are the most reliable way to set format, tone and structure; make them relevant, diverse and wrapped in example tags.",
+      "Structure with XML-style tags (instructions, context, input) and numbered steps where order matters; long documents at the top, the question at the end.",
+      "An audience line that does the work: 'for sales professionals with limited technical background, two pages maximum, end with three talking points'."
+     ],
+     "tip": "Given materials, a brand-voice sample and a target audience, the best option uses all three: attach the exemplar, name the audience, state the constraints. 'Maximum length' or 'preserve all jargon' are traps.",
+     "diagram": "flowchart TB\n  A[Task statement] --> E[Prompt]\n  B[Context: audience, goal, why] --> E\n  C[Constraints: length, format, scope] --> E\n  D[Example of good output] --> E\n  E --> F[Complete, on-target response]",
+     "video": null,
+     "source": {
+      "title": "Prompting best practices",
+      "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+     }
+    },
+    {
+     "objective": "Select and apply prompting methodologies (such as chain-of-thought, structured formats, or role-based prompting) that align with specific task characteristics and desired output types.",
+     "title": "Match the technique to the task",
+     "gist": "Role prompts set perspective, structured formats force consistency, step-by-step thinking helps reasoning and examples lock style; pick by what the task needs.",
+     "points": [
+      "Role (a persona in the system prompt) when tone and perspective matter, e.g. 'senior compliance analyst'; even one sentence changes behaviour.",
+      "Structured output (template, JSON, XML, headings) when the result feeds a process or must be compared across runs.",
+      "Step-by-step reasoning or extended thinking for maths, multi-step logic and trade-off analysis; ask Claude to self-check against the criteria before finishing.",
+      "Examples for voice and layout; tell Claude what to do rather than what not to do.",
+      "In claude.ai: web search for quick current facts, extended thinking for hard reasoning without the web, Research for multi-source reports with citations (five or more tool calls, 1 to 3 minutes)."
+     ],
+     "tip": "Map the stem's need to the technique: 'consistent structure' means a format template, 'nuanced reasoning' means thinking or chain-of-thought, 'specific perspective' means a role. 'Answer as a poem' is a distractor.",
+     "diagram": "flowchart TB\n  A{What does the task need?} -->|Perspective and tone| B[Role prompt]\n  A -->|Consistent structure| C[Template or JSON format]\n  A -->|Hard reasoning| D[Step-by-step thinking]\n  A -->|Specific style| E[Examples]",
+     "video": null,
+     "source": {
+      "title": "When should I use web search, extended thinking, and research?",
+      "url": "https://support.claude.com/en/articles/11095361-when-should-i-use-web-search-extended-thinking-and-research"
+     }
+    },
+    {
+     "objective": "Decompose complex, ambiguous requests into appropriately-scoped subtasks that balance granularity with coherence in Claude's responses.",
+     "title": "Decompose when deliverables differ",
+     "gist": "Split a request when it needs several distinct outputs or stages; keep it whole when it is one cohesive document from one set of inputs.",
+     "points": [
+      "Signal to decompose: multiple distinct deliverables (segmentation analysis, campaign roadmap, success metrics) that can be refined independently.",
+      "Signal to keep whole: a single cohesive document, narrow scope, a standard template, or a request the team already handles in one prompt.",
+      "Chain prompts so each step's output feeds the next; you can inspect intermediate results and gate them. Common pattern: draft, review against criteria, refine.",
+      "Too fine a split loses shared context; too coarse hides where it went wrong. Subtasks are coherent units with clear inputs and outputs.",
+      "A twelve-rule instruction block that is randomly half-followed is a decomposition problem, not a wording problem."
+     ],
+     "tip": "'What most strongly suggests decomposition' is answered by 'several distinct deliverables'; familiarity, narrow scope or a single document point the other way.",
+     "diagram": "flowchart TB\n  A[Complex request] --> B{Several distinct deliverables?}\n  B -->|No| C[One well-structured prompt]\n  B -->|Yes| D[Subtask per deliverable]\n  D --> E[Chain: output feeds next step]\n  E --> F[Check each step, then combine]",
+     "video": null,
+     "source": {
+      "title": "Prompting best practices",
+      "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+     }
+    },
+    {
+     "objective": "Identify and apply iterative prompt refinement techniques to improve output quality when initial responses are partially correct or incomplete.",
+     "title": "Refine one thing at a time",
+     "gist": "When output is partly right, diagnose which prompt element caused the gap, change that element and re-test against the same criteria.",
+     "points": [
+      "Two of three requested points delivered: the prompt did not enumerate the required elements explicitly; list them and ask for each by name.",
+      "Change one variable per iteration and keep the version history; bundled edits hide what worked.",
+      "Use the output as input: ask Claude to verify or expand specific statements, or to review its draft against the criteria and revise.",
+      "Fresh, specific feedback ('section 3 lacks the cost comparison') beats repeating the whole prompt louder or expressing frustration.",
+      "Prerequisite for any refinement: success criteria and a way to test them; otherwise you cannot tell whether the change helped."
+     ],
+     "tip": "The best iterative option isolates the missing element and adds a precise instruction; 'regenerate and hope', 'rewrite from scratch' and 'make many edits at once' are distractors.",
+     "diagram": "flowchart LR\n  A[Partially correct output] --> B[Name the missing or wrong element]\n  B --> C[Change that part of the prompt]\n  C --> D[Re-run against the criteria]\n  D --> E{Fixed?}\n  E -->|No| B\n  E -->|Yes| F[Lock the prompt version]",
+     "video": null,
+     "source": {
+      "title": "Prompt engineering overview",
+      "url": "https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview"
+     }
+    },
+    {
+     "objective": "Maintain conversation productivity and clarity across extended multi-turn interactions by using organizational techniques such as summarization or context management.",
+     "title": "Keep long conversations productive",
+     "gist": "In a multi-week thread, recap decisions at breakpoints, restate scope when the phase changes, and migrate to a fresh chat or Project before the thread drowns.",
+     "points": [
+      "At natural breakpoints, write a concise recap of decisions, trade-offs and open questions; it compresses working memory without losing what matters.",
+      "When pivoting to a new phase, restate its scope, success criteria and constraints so Claude is re-anchored.",
+      "Moving to a fresh chat: extract goals, decisions and remaining tasks first; then pick the materials to carry forward; put them in Project knowledge or attachments; start the new chat with the summary; verify.",
+      "Chat interfaces manage context first-in, first-out as it grows, and usage rises with conversation length; plan messages, batch related questions, refer back instead of repeating.",
+      "Memory and chat search let Claude pull prior context across sessions; Projects keep instructions and files persistent."
+     ],
+     "tip": "Two-answer stems pair 'recap at breakpoints' with 'restate scope on pivots'. A new thread for every phase, rapid topic switching and 'never condense' are the distractors.",
+     "diagram": "flowchart LR\n  A[Long conversation] --> B[Recap at breakpoints]\n  B --> C[Restate scope on each pivot]\n  C --> D{Thread hard to navigate?}\n  D -->|Yes| E[Extract goals, start a fresh chat]\n  D -->|No| B",
+     "video": null,
+     "source": {
+      "title": "Usage limit best practices",
+      "url": "https://support.claude.com/en/articles/9797557-usage-limit-best-practices"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can turn a vague request into a precise, well-structured prompt, pick the right technique, iterate deliberately and keep long conversations usable.",
+    "must_know": [
+     "Clarify first: decision, audience, scope, evidence and format; the real need is often narrower and factual.",
+     "Strong prompt = unambiguous task + context (audience, goal, why) + constraints + an example; run the colleague test.",
+     "Technique by need: role for perspective, template or JSON for consistency, step-by-step thinking for reasoning, examples for style.",
+     "claude.ai capabilities: web search for quick facts, extended thinking for hard reasoning, Research for cited multi-source reports.",
+     "Decompose when there are several distinct deliverables; keep a single cohesive document whole; chain prompts so each step can be checked.",
+     "Refine one element at a time against fixed criteria; a missing point means the prompt did not enumerate it.",
+     "Long threads: recap at breakpoints, restate scope on pivots, migrate to a fresh chat or Project with a summary."
+    ],
+    "traps": [
+     "Prompting a generic analysis when the clarified need was sourced facts with confidence levels.",
+     "Adding tone instructions, full product inventories or anecdotes instead of task, context and constraints.",
+     "Starting a new thread for every phase or refusing to condense history."
+    ]
+   },
+   "cards": [
+    {
+     "q": "A request says 'analyse our market position'. What do you do before prompting?",
+     "a": "Ask what decision it serves, the audience, scope, evidence and format; then write a prompt for that specific need."
+    },
+    {
+     "q": "The clarified need is sourced competitor prices with confidence levels. Which prompt approach?",
+     "a": "A research-style prompt asking for factual, cited data per point with a confidence rating, in a fixed table format."
+    },
+    {
+     "q": "Which two components belong in every strong business prompt?",
+     "a": "A specific, unambiguous task description and the context: audience, objective and constraints."
+    },
+    {
+     "q": "What is Anthropic's colleague test for a prompt?",
+     "a": "Show it to a colleague with minimal context; if they would be confused, Claude will be too."
+    },
+    {
+     "q": "Which technique fits 'consistent structure', 'nuanced reasoning' and 'specific perspective'?",
+     "a": "Template or structured format; step-by-step thinking; role prompt."
+    },
+    {
+     "q": "When do you use web search, extended thinking or Research in claude.ai?",
+     "a": "Web search: quick current facts. Extended thinking: hard reasoning without the web. Research: multi-source cited reports, five or more tool calls."
+    },
+    {
+     "q": "What most strongly signals a request should be decomposed?",
+     "a": "It requires several distinct deliverables, each of which can be refined independently."
+    },
+    {
+     "q": "Claude answered two of three requested points. Which prompt part needs revision?",
+     "a": "The task specification: enumerate each required element explicitly and ask for all of them by name."
+    },
+    {
+     "q": "Rule for iterating a prompt that is partly right?",
+     "a": "Change one element at a time, keep version history, re-test against the same criteria."
+    },
+    {
+     "q": "Two strategies that keep a multi-week planning conversation productive?",
+     "a": "Recap decisions, trade-offs and open questions at breakpoints; restate scope, criteria and constraints when pivoting phases."
+    },
+    {
+     "q": "First step when migrating a cluttered research chat to a fresh one?",
+     "a": "Extract the project goals, critical decisions and remaining tasks; then select materials, organise them, start the new chat, verify."
+    },
+    {
+     "q": "Three parts of the AI Fluency Description competency?",
+     "a": "Product description (what you want), process description (how to approach it), performance description (how Claude should behave)."
+    },
+    {
+     "q": "Trap: which additions do not improve a campaign-brief prompt?",
+     "a": "Casual tone instructions, an inventory of every product line, or a personal anecdote to build rapport."
+    },
+    {
+     "q": "Where do long documents go in a prompt, and what grounds the answer?",
+     "a": "At the top, above the question and instructions; ask Claude to quote relevant passages first."
+    }
+   ]
+  },
+  {
+   "domain": "Product and Model Selection",
+   "weight": 12,
+   "links": [
+    {
+     "title": "Choosing the right model",
+     "url": "https://docs.claude.com/en/docs/about-claude/models/choosing-a-model",
+     "note": "Criteria, efficiency-first versus capability-first, the selection matrix, when to upgrade.",
+     "kind": "official"
+    },
+    {
+     "title": "Models overview",
+     "url": "https://docs.claude.com/en/docs/about-claude/models/overview",
+     "note": "The current lineup compared by speed, price and intended workloads.",
+     "kind": "official"
+    },
+    {
+     "title": "Pricing",
+     "url": "https://docs.claude.com/en/docs/about-claude/pricing",
+     "note": "Per-token prices, the 50 percent batch discount, cache read rates.",
+     "kind": "official"
+    },
+    {
+     "title": "Create and edit files with Claude",
+     "url": "https://support.claude.com/en/articles/12111783-create-and-edit-files-with-claude",
+     "note": "Code execution for deterministic analysis and Excel, Word, PowerPoint, PDF output.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "W5cga7xipRI",
+    "title": "Lesson 3B: Capabilities & limitations | AI Fluency: Framework & Foundations Course",
+    "channel": "Anthropic",
+    "min": 7
+   },
+   "diagram": "flowchart TB\n  A([Task]) --> B{Deep reasoning or long agentic work?}\n  B -->|Yes| C[Opus tier]\n  B -->|No| D{High volume, simple, latency critical?}\n  D -->|Yes| E[Haiku tier]\n  D -->|No| F[Sonnet tier: balance]\n  C --> G[Validate on a sample batch]\n  E --> G\n  F --> G",
+   "notes": [
+    {
+     "objective": "Characterize the three Claude model tiers accurately in terms of their capabilities, performance characteristics, and appropriate use cases.",
+     "title": "Three tiers, three jobs",
+     "gist": "Haiku is fastest and cheapest for high-volume simple work, Sonnet balances speed and intelligence for everyday tasks, Opus is the most capable for complex reasoning and long autonomous work.",
+     "points": [
+      "Haiku: lowest latency and price; classification, extraction, routing, real-time and high-volume processing, subagent tasks.",
+      "Sonnet: the best combination of speed and intelligence; code generation, data analysis, content creation, everyday agent work.",
+      "Opus: most capable, slower and dearest; complex reasoning, scientific and mathematical analysis, multi-hour agentic coding, accuracy over cost.",
+      "Capability and resource consumption rise together: a more capable tier costs more per token and responds more slowly. The current docs add Claude Fable above Opus for the most demanding work; exam questions use the three classic tiers.",
+      "All current models accept text and images, use tools and share a 1M-token context window; they differ in intelligence, speed and price, not in basic features."
+     ],
+     "tip": "'Sophisticated analysis across interconnected variables' points to Opus; 'thousands of templated emails, minimise latency and cost' points to Haiku. 'All models are identical' is always false.",
+     "diagram": "flowchart LR\n  A[Haiku: fastest, cheapest] --> D[Simple high-volume tasks]\n  B[Sonnet: balanced] --> E[Everyday analysis and content]\n  C[Opus: most capable] --> F[Deep reasoning, long autonomy]",
+     "video": {
+      "id": "8nA5tXVxdXU",
+      "title": "Claude Models Explained: When to Use Haiku, Sonnet & Opus",
+      "channel": "Pixel Prophets",
+      "min": 6
+     },
+     "source": {
+      "title": "Models overview",
+      "url": "https://docs.claude.com/en/docs/about-claude/models/overview"
+     }
+    },
+    {
+     "objective": "Select the appropriate Claude model tier based on task complexity, reasoning requirements, and processing volume; match model selection to operational requirements including response latency, throughput, and reasoning complexity for specific workflows.",
+     "title": "Choose by complexity, volume and latency",
+     "gist": "Start from the task's reasoning depth, its volume and its latency budget; then pick the cheapest tier that meets the quality bar and validate on real samples.",
+     "points": [
+      "Two sanctioned starting strategies: efficiency-first (start Haiku, upgrade only for capability gaps) for prototypes, tight latency and cost-sensitive volume; capability-first (start Opus, optimise down later) for complex reasoning and accuracy-critical work.",
+      "Criteria to establish first: required capabilities, speed, cost and the effort level, which trades intelligence for latency and cost within one model.",
+      "A high volume of straightforward, templated messages: a Haiku-class model, validated by reviewing a representative batch before full rollout.",
+      "Routing pattern: send easy, common inputs to a small model and hard or unusual ones to a stronger model.",
+      "Asynchronous bulk jobs can use batch processing at a 50 percent discount; repeated prompt prefixes benefit from caching."
+     ],
+     "tip": "The answer names the tier and a validation step ('review a sample batch'). Picking the top tier 'because it is public-facing', rotating tiers weekly or copying last project's choice are traps.",
+     "diagram": "flowchart TB\n  A{Reasoning depth needed?} -->|High| B[Opus, then optimise down]\n  A -->|Low or medium| C{High volume, tight latency?}\n  C -->|Yes| D[Haiku, upgrade only on gaps]\n  C -->|No| E[Sonnet]\n  B --> F[Validate on real samples]\n  D --> F\n  E --> F",
+     "video": {
+      "id": "pYax2rupKEY",
+      "title": "How to Choose Large Language Models: A Developer's Guide to LLMs",
+      "channel": "IBM Technology",
+      "min": 7
+     },
+     "source": {
+      "title": "Choosing the right model",
+      "url": "https://docs.claude.com/en/docs/about-claude/models/choosing-a-model"
+     }
+    },
+    {
+     "objective": "Evaluate model-to-task alignment decisions to determine whether selected models match specific capability and performance requirements.",
+     "title": "Judge alignment by the task",
+     "gist": "A model choice is justified when its capability profile matches the task's requirements; mismatches waste money (too big) or fail quality (too small).",
+     "points": [
+      "Well-justified: Haiku for high-volume routing and extraction; Sonnet for everyday drafting and analysis; Opus for multi-step research or complex modelling.",
+      "Over-provisioned: Opus for templated confirmations or simple tagging; cost and latency with no quality gain.",
+      "Under-provisioned: Haiku for nuanced legal reasoning or long multi-document synthesis; expect misses and rework.",
+      "Review each decision against the stated requirements: accuracy bar, edge-case handling, latency and throughput, budget.",
+      "Switching models means re-testing prompts; a prompt tuned for one tier is not automatically right for another."
+     ],
+     "tip": "In 'which two selections are well-justified' questions, find the pairs where the stated workload matches the tier's sweet spot and reject any choice justified by prestige or habit.",
+     "diagram": "flowchart LR\n  A[Task requirements] --> B[Compare with tier profile]\n  B --> C{Match?}\n  C -->|Too much model| D[Downgrade, cut cost and latency]\n  C -->|Too little model| E[Upgrade for quality]\n  C -->|Fits| F[Approve with evidence]",
+     "video": null,
+     "source": {
+      "title": "Choosing the right model",
+      "url": "https://docs.claude.com/en/docs/about-claude/models/choosing-a-model"
+     }
+    },
+    {
+     "objective": "Determine prerequisite activities and foundational work required before benchmarking and evaluating Claude models for critical applications.",
+     "title": "Before you benchmark",
+     "gist": "Benchmarking is only meaningful after you have written performance targets, picked candidates against them and built a representative test set.",
+     "points": [
+      "Set targets first: output quality bar, acceptable latency, expected volume, budget.",
+      "Shortlist candidate models whose documented capabilities fit those targets.",
+      "Build benchmark tests specific to your use case from real prompts and data; a good evaluation set is the most important step.",
+      "Then compare accuracy, response quality and edge-case handling across models, and weigh performance against cost.",
+      "Approvals, production migration and re-validation on each model release come after testing, not before."
+     ],
+     "tip": "'Which two must happen BEFORE pilot tests' is answered by targets plus a candidate shortlist; deployment, approvals and ongoing re-validation are later steps.",
+     "diagram": "flowchart LR\n  A[Define quality, latency, volume targets] --> B[Shortlist candidate models]\n  B --> C[Build a representative eval set]\n  C --> D[Run candidates on real samples]\n  D --> E[Weigh performance against cost]",
+     "video": null,
+     "source": {
+      "title": "Choosing the right model",
+      "url": "https://docs.claude.com/en/docs/about-claude/models/choosing-a-model"
+     }
+    },
+    {
+     "objective": "Identify use cases that align with Claude's core capabilities and strengths for organizational deployment.",
+     "title": "Use cases that fit Claude's strengths",
+     "gist": "Claude excels at reasoning over text and images, drafting, analysis and tool use; production guides exist for routing, support, moderation, legal summarisation and commerce agents.",
+     "points": [
+      "Anthropic's documented use cases: ticket routing and classification, customer support agents, content moderation, legal document summarisation, commerce agents.",
+      "Strong fits in everyday work: summarising, drafting to a brief, structured extraction, comparing documents, explaining and translating between audiences.",
+      "Not a fit on its own: live facts without web search or Research, exact deterministic numbers without code execution, decisions that need accountability.",
+      "Claude can handle maths, but complex or mission-critical calculations should be verified with specialised software or manually.",
+      "Current models take text and images, support tool use and multilingual work; vision suits screenshots, charts and scanned documents."
+     ],
+     "tip": "Pick use cases where the input is text or images, the output is language or judgement, and a human owns the consequence. Beware options that treat Claude as a database or a calculator of record.",
+     "diagram": "flowchart TB\n  A{Input is text or images?} -->|No| X[Different tool]\n  A -->|Yes| B{Output is language or judgement?}\n  B -->|No| X\n  B -->|Yes| C{Needs live data or exact maths?}\n  C -->|Yes| D[Add search, Research or code execution]\n  C -->|No| E[Core Claude use case]",
+     "video": null,
+     "source": {
+      "title": "Guides to common use cases",
+      "url": "https://docs.claude.com/en/docs/about-claude/use-case-guides/overview"
+     }
+    },
+    {
+     "objective": "Match model selection to operational requirements including response latency, throughput, and reasoning complexity for specific workflows, choosing the claude.ai capability that fits the job.",
+     "title": "Pick the right claude.ai capability",
+     "gist": "Beyond the model tier, claude.ai offers capabilities for specific jobs: Research for sourced reports, code execution for verifiable numbers and files, artifacts for interactive output, Projects for persistent context.",
+     "points": [
+      "Research: searches and synthesises many current sources with citations; use for market landscapes, competitor comparisons, updating stale documents.",
+      "Code execution and file creation: runs code in a sandbox against uploaded data for reproducible calculations, charts and Excel, Word, PowerPoint and PDF output; 30 MB per file.",
+      "Artifacts display and let you edit substantial content (apps, documents, diagrams); they do not compute.",
+      "Web search for one or two quick facts; extended thinking for hard reasoning without the web.",
+      "Projects hold instructions and knowledge across chats; Skills package repeatable procedures; connectors reach external tools."
+     ],
+     "tip": "'Verifiable numerical results from a spreadsheet' is code execution; 'current landscape with traceable citations' is Research; 'interactive view of results' is an artifact. Extrapolating from old data is always wrong.",
+     "diagram": "flowchart TB\n  A{What do you need?} -->|Sourced current report| B[Research]\n  A -->|Exact numbers, files| C[Code execution]\n  A -->|Editable interactive output| D[Artifact]\n  A -->|One quick fact| E[Web search]\n  A -->|Hard reasoning| F[Extended thinking]",
+     "video": null,
+     "source": {
+      "title": "Create and edit files with Claude",
+      "url": "https://support.claude.com/en/articles/12111783-create-and-edit-files-with-claude"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can characterise Haiku, Sonnet and Opus, match a model and a claude.ai capability to a task's reasoning, volume and latency needs, and prepare properly before benchmarking.",
+    "must_know": [
+     "Haiku: fastest, cheapest, high-volume simple tasks. Sonnet: balanced everyday work. Opus: deepest reasoning and long autonomous work; capability and cost rise together.",
+     "Efficiency-first: start Haiku, upgrade on gaps. Capability-first: start Opus, optimise down. Validate on a representative batch either way.",
+     "Before benchmarking: define quality, latency and volume targets, shortlist candidates, build a use-case eval set from real data.",
+     "Routing sends easy inputs to a small model and hard ones to a strong model; batch processing is 50 percent cheaper for asynchronous bulk work.",
+     "Research for cited multi-source reports; code execution for reproducible numbers and files; artifacts for interactive output; web search for quick facts.",
+     "Documented use cases: ticket routing, support agents, content moderation, legal summarisation, commerce agents.",
+     "Complex or mission-critical calculations are verified outside Claude."
+    ],
+    "traps": [
+     "Choosing the top tier for simple public-facing templates 'to be safe', or rotating tiers to balance cost.",
+     "Treating approvals or production migration as prerequisites to testing.",
+     "Using plain chat or extrapolation when the task needs current sourced data or deterministic computation."
+    ]
+   },
+   "cards": [
+    {
+     "q": "Characterise the three Claude tiers in one line each.",
+     "a": "Haiku: fastest and cheapest for simple high-volume work. Sonnet: balanced speed and intelligence. Opus: most capable for complex reasoning and long autonomy."
+    },
+    {
+     "q": "Which tier for a forecasting problem with interconnected variables and deep analysis?",
+     "a": "Opus, the most capable tier, built for demanding reasoning."
+    },
+    {
+     "q": "Thousands of templated confirmation emails per week, latency and cost critical. Choice and validation?",
+     "a": "A Haiku-class model, validated by reviewing a representative batch of outputs before full rollout."
+    },
+    {
+     "q": "What is the relationship between model capability and resource consumption?",
+     "a": "They rise together: more capable tiers cost more per token and respond more slowly."
+    },
+    {
+     "q": "Describe efficiency-first versus capability-first model selection.",
+     "a": "Efficiency-first starts with Haiku and upgrades only for gaps; capability-first starts with Opus and optimises down once it works."
+    },
+    {
+     "q": "Two prerequisites before running candidate models on real workload samples?",
+     "a": "Establish performance targets (quality, latency, volume) and shortlist candidates aligned with those targets."
+    },
+    {
+     "q": "What is the most important step when deciding whether to change models?",
+     "a": "Create a benchmark eval set specific to your use case, then test with your actual prompts and data."
+    },
+    {
+     "q": "What is the routing pattern for cost optimisation?",
+     "a": "Send easy, common inputs to a smaller model and hard or unusual inputs to a more capable one."
+    },
+    {
+     "q": "A market landscape with recent announcements, prices and regulations, all cited. Which capability?",
+     "a": "Research: it searches, aggregates and cites multiple current sources into a comprehensive report."
+    },
+    {
+     "q": "Verifiable numerical results from a multi-sheet financial model. Which capability?",
+     "a": "Code execution: it runs calculations in a sandbox against the uploaded spreadsheet for reproducible outputs."
+    },
+    {
+     "q": "What do artifacts do, and what do they not do?",
+     "a": "They display and let you edit substantial or interactive content; they do not perform computation."
+    },
+    {
+     "q": "Which use cases does Anthropic document production guides for?",
+     "a": "Ticket routing, customer support agents, content moderation, legal summarisation and commerce agents."
+    },
+    {
+     "q": "What does the batch API offer and when is it appropriate?",
+     "a": "A 50 percent discount on input and output tokens for asynchronous bulk jobs where latency does not matter."
+    },
+    {
+     "q": "How should mission-critical calculations from Claude be handled?",
+     "a": "Verify them with specialised software or manual methods; Claude can compute but is not the system of record."
+    }
+   ]
+  },
+  {
+   "domain": "Configuration and Knowledge Management",
+   "weight": 12,
+   "links": [
+    {
+     "title": "What are projects?",
+     "url": "https://support.claude.com/en/articles/9517075-what-are-projects",
+     "note": "Knowledge base, project instructions, RAG mode, sharing on Team and Enterprise.",
+     "kind": "official"
+    },
+    {
+     "title": "Manage project visibility and sharing",
+     "url": "https://support.claude.com/en/articles/9519189-project-visibility-and-sharing",
+     "note": "Private versus public projects, invitations, groups, what stays private.",
+     "kind": "official"
+    },
+    {
+     "title": "What are skills?",
+     "url": "https://support.claude.com/en/articles/12512176-what-are-skills",
+     "note": "Skills compared with Projects, custom instructions and MCP connectors.",
+     "kind": "official"
+    },
+    {
+     "title": "Use Claude's chat search and memory",
+     "url": "https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context",
+     "note": "Project memory, account memory, how to view, edit and switch it off.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "GJ5jTgcbRHA",
+    "title": "Getting started with projects in Claude.ai",
+    "channel": "Anthropic",
+    "min": 7
+   },
+   "diagram": "flowchart LR\n  A([New Project]) --> B[Custom instructions: role, standards, format]\n  B --> C[Add reference documents, clear names]\n  C --> D[Set visibility: private or organisation]\n  D --> E[Enable Skills for repeatable procedures]\n  E --> F([Chats inherit instructions and memory])",
+   "notes": [
+    {
+     "objective": "Establish system-level instructions as the foundational step before implementing document-review workflows and other Project processes.",
+     "title": "Instructions first, workflows second",
+     "gist": "The first action in a new Project is writing the system-level custom instructions; every document-review or analysis workflow then inherits them.",
+     "points": [
+      "Order: define the Project's purpose and custom instructions, then add knowledge, then run workflows; never the reverse.",
+      "Custom instructions apply to every chat in the Project, so tone fixes and recurring corrections belong there, not in the first message of each chat.",
+      "A Project that handles several data-processing workflows gets the shared system-level rules first, then per-workflow prompts.",
+      "Revisit configuration regularly: policies, terminology and reference materials change even while output still looks fine.",
+      "Research before engaging Claude: define the question, scope and success criteria, then gather sources into the Project."
+     ],
+     "tip": "'What should be your first action' in Project setup is 'establish the custom instructions'; uploading documents or starting chats comes after.",
+     "diagram": "flowchart LR\n  A[Define purpose] --> B[Write custom instructions]\n  B --> C[Add knowledge documents]\n  C --> D[Run the document-review workflow]\n  D --> E[Refresh the configuration periodically]",
+     "video": null,
+     "source": {
+      "title": "What are projects?",
+      "url": "https://support.claude.com/en/articles/9517075-what-are-projects"
+     }
+    },
+    {
+     "objective": "Configure custom instructions to establish tone, style, and output requirements for Project-specific use cases.",
+     "title": "What goes in custom instructions",
+     "gist": "Good Project instructions define Claude's role, the organisation's standards and the required output structure, so every deliverable matches without repetition.",
+     "points": [
+      "Three elements: the role or function (e.g. certification curriculum specialist), the mandated standards (framework, style guide, terminology) and the prescribed output format (templates, rubric layout).",
+      "Tone and voice: state the brand voice explicitly; an overly formal default is fixed once here, for every chat.",
+      "Leaving format 'to Claude's judgement' or relying on per-chat prompts loses consistency; omitting the role loses perspective.",
+      "Keep instructions to the minimal set that fully defines expected behaviour; add an example of approved output where format matters.",
+      "Instructions, documents and Skills are selected per business requirement; not every Project needs all three."
+     ],
+     "tip": "The complete option names role, standards and format together; options that drop one element or defer it to individual chats are incomplete.",
+     "diagram": "flowchart TB\n  A[Role or function] --> D[Custom instructions]\n  B[Standards and terminology] --> D\n  C[Output format and template] --> D\n  D --> E[Consistent deliverables in every chat]",
+     "video": null,
+     "source": {
+      "title": "What are projects?",
+      "url": "https://support.claude.com/en/articles/9517075-what-are-projects"
+     }
+    },
+    {
+     "objective": "Organize and structure reference documents within Projects to enable effective source attribution and information retrieval.",
+     "title": "Organise knowledge for retrieval and attribution",
+     "gist": "Upload the documents Claude should cite, name them clearly, group related material and reference them by name so answers trace back to sources.",
+     "points": [
+      "Project knowledge is used across all chats in the Project; add the core working documents up front.",
+      "Use clear, descriptive filenames, group related content in one Project, and reference specific documents by name in prompts.",
+      "When knowledge approaches the context limit, the Project switches automatically to RAG mode: a project knowledge search tool retrieves the relevant parts, capacity grows up to 10x, quality is maintained.",
+      "Cached Project content counts less against usage limits when reused; caches expire after inactivity.",
+      "Ask for answers with citations to the source document and section so reviewers can verify attribution."
+     ],
+     "tip": "Questions about 'source attribution' and 'retrieval' reward named, well-organised documents in Project knowledge; pasting documents into each chat or relying on memory is wrong.",
+     "diagram": "flowchart LR\n  A[Collect reference documents] --> B[Descriptive filenames]\n  B --> C[Upload to Project knowledge]\n  C --> D{Over the context limit?}\n  D -->|Yes| E[RAG search tool retrieves parts]\n  D -->|No| F[Full documents in context]",
+     "video": null,
+     "source": {
+      "title": "Retrieval augmented generation (RAG) for projects",
+      "url": "https://support.claude.com/en/articles/11473015-retrieval-augmented-generation-rag-for-projects"
+     }
+    },
+    {
+     "objective": "Design Projects with appropriate access controls and isolation mechanisms to protect client data and maintain security boundaries across multiple deployments.",
+     "title": "Isolate clients with separate private Projects",
+     "gist": "One private Project per client or deployment keeps data, instructions and memory apart; sharing is explicit, and admins can restrict it.",
+     "points": [
+      "Create a separate Project per client with its own knowledge, instructions and memory; never mix two clients' documents in one Project.",
+      "Visibility: 'Only people invited' (private) versus everyone in the organisation (public); chats stay private even in a public Project unless shared.",
+      "Access is granted per user or, on Enterprise, per group; removing a member revokes access; archiving does not change permissions.",
+      "Owners can turn off project sharing or public projects for the organisation, and on Enterprise per role.",
+      "Each Project's memory is separate; turn off 'Use account memory' to stop cross-Project context leaking."
+     ],
+     "tip": "The isolation answer is 'separate Projects, private visibility, explicit invitations'; one shared Project with instructions to keep clients apart is the trap.",
+     "diagram": "flowchart TB\n  A[Client A Project, private] --> C[Invited members only]\n  B[Client B Project, private] --> D[Different members]\n  C --> E[Own knowledge, instructions, memory]\n  D --> E\n  E --> F[Admin controls the sharing policy]",
+     "video": null,
+     "source": {
+      "title": "Manage project visibility and sharing",
+      "url": "https://support.claude.com/en/articles/9519189-project-visibility-and-sharing"
+     }
+    },
+    {
+     "objective": "Integrate Skills with Projects to enhance workflow effectiveness and support ongoing operational processes.",
+     "title": "Skills bring procedures, Projects bring context",
+     "gist": "Skills are folders of instructions and scripts that Claude loads when relevant; pair them with a Project's static knowledge and instructions to run repeatable workflows.",
+     "points": [
+      "Skills teach repeatable procedures (brand-formatted documents, an analysis method); Projects provide always-loaded background knowledge; custom instructions apply broadly; MCP connectors reach external data.",
+      "Progressive disclosure: Claude loads only the Skills relevant to the task, protecting the context window.",
+      "Anthropic Skills (Excel, Word, PowerPoint, PDF) run automatically when code execution and file creation is on; custom Skills are uploaded under Customize, Skills.",
+      "Before enabling a Skill from an unfamiliar vendor: read the bundled files and scripts, check dependencies and any external network calls; the main risks are prompt injection and data exfiltration.",
+      "Team and Enterprise owners can provision Skills organisation-wide, require review before publishing and turn on security scanning."
+     ],
+     "tip": "'How should Skills be integrated' answers describe Skills as task-specific procedures complementing Project instructions and documents; trust questions want 'review the contents and verify the source' before activation.",
+     "diagram": "flowchart LR\n  A[Project: instructions and documents] --> C[Workflow run]\n  B[Skill: procedure and scripts] --> C\n  C --> D[Claude loads the Skill when relevant]\n  D --> E[Consistent, repeatable output]",
+     "video": {
+      "id": "fOxC44g8vig",
+      "title": "Claude Agent Skills Explained",
+      "channel": "Anthropic",
+      "min": 3
+     },
+     "source": {
+      "title": "What are skills?",
+      "url": "https://support.claude.com/en/articles/12512176-what-are-skills"
+     }
+    },
+    {
+     "objective": "Select and configure appropriate Project components, including custom instructions, documents, and Skills, to address specific business requirements.",
+     "title": "Pick components by requirement",
+     "gist": "Match each business need to the component that solves it: instructions for behaviour, documents for facts, Skills for procedures, memory for continuity, connectors for live systems.",
+     "points": [
+      "Consistent tone and format: custom instructions. Facts and sources: Project documents. A repeatable multi-step procedure: a Skill.",
+      "Continuity across chats without re-explaining: Project memory and chat search. Live external data: a connector (MCP), not a static upload.",
+      "A shared team repository of brand guidelines and templates used for months: a shared Project, not an artifact or per-chat uploads.",
+      "A technical documentation Project includes the style guide and product reference documents; unrelated material is left out to keep context focused.",
+      "Reassess the set when requirements change; add a component only when a need is real."
+     ],
+     "tip": "Distractors confuse artifacts (editable output) with knowledge management, or connectors (reactive retrieval) with a persistent knowledge base.",
+     "diagram": "flowchart TB\n  A{Need?} -->|Behaviour, tone, format| B[Custom instructions]\n  A -->|Facts and sources| C[Project documents]\n  A -->|Repeatable procedure| D[Skill]\n  A -->|Continuity across chats| E[Project memory]\n  A -->|Live external data| F[Connector]",
+     "video": null,
+     "source": {
+      "title": "What are skills?",
+      "url": "https://support.claude.com/en/articles/12512176-what-are-skills"
+     }
+    },
+    {
+     "objective": "Utilize Project Memory to maintain context and configuration across multiple conversations without requiring reconfiguration.",
+     "title": "Project memory keeps context between chats",
+     "gist": "Memory saves topics from your chats so new conversations start informed; each Project keeps its own memory, and you can review, edit, back up and switch it off.",
+     "points": [
+      "Claude saves memory as individual topics as you chat; you can say 'remember this'; Settings, Memory lists everything and lets you edit or delete topics.",
+      "Each Project has its own memory, used alongside account memory but never another Project's; disable 'Use account memory' for full separation.",
+      "Maintain memory deliberately: back up before edits, review entries systematically, correct or remove obsolete ones, add missing context; do not wipe or disable it wholesale.",
+      "Chat search lets Claude pull relevant details from past conversations on paid plans; incognito chats and memory-off chats are excluded.",
+      "Sensitive topics are not stored unless you opt in; organisation owners can enable or disable memory for Team and Enterprise."
+     ],
+     "tip": "Memory maintenance questions want 'back up, then curate'; clearing everything, leaving it untouched or turning memory off are the distractors. Continuity across sessions without re-explaining is memory plus Projects.",
+     "diagram": "flowchart LR\n  A[Chat in a Project] --> B[Memory topics saved to the Project]\n  B --> C[Next chat starts with context]\n  C --> D[Review, edit, back up topics]\n  D --> E[Account memory optional per Project]",
+     "video": null,
+     "source": {
+      "title": "Use Claude's chat search and memory to build on previous context",
+      "url": "https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can set up a Project properly: instructions first, documents organised for attribution, isolation per client, Skills for procedures, memory for continuity.",
+    "must_know": [
+     "First action in a new Project: write the system-level custom instructions; then documents, then workflows.",
+     "Complete custom instructions state role, organisational standards and output format together.",
+     "Organise knowledge with descriptive filenames, grouped by topic, referenced by name; RAG mode activates automatically near the context limit with up to 10x capacity.",
+     "Isolation: one private Project per client, explicit invitations, separate memory; owners can restrict sharing.",
+     "Skills = repeatable procedures loaded when relevant; Projects = always-loaded knowledge; custom instructions = broad behaviour; MCP = external data.",
+     "Vet an unfamiliar Skill by reading its files, scripts, dependencies and network calls before enabling.",
+     "Memory: per-Project topics editable in Settings; maintain by backing up then curating; incognito and memory-off chats are excluded."
+    ],
+    "traps": [
+     "Mixing clients in one Project with an instruction to keep them apart.",
+     "Fixing tone in the first message of every chat instead of in Project instructions.",
+     "Clearing or disabling memory instead of curating it, or treating an artifact as a knowledge base."
+    ]
+   },
+   "cards": [
+    {
+     "q": "First action when setting up a new Project for routine analytical tasks?",
+     "a": "Establish the system-level custom instructions; then add knowledge documents and start the workflows."
+    },
+    {
+     "q": "Three elements of complete Project custom instructions for documentation work?",
+     "a": "Claude's role, the organisation's standards and terminology, and the prescribed output format or template."
+    },
+    {
+     "q": "Claude is too formal in every new Project chat. Best fix?",
+     "a": "Put the desired tone in the Project's custom instructions so every chat starts with the right voice."
+    },
+    {
+     "q": "How do you organise Project knowledge for retrieval and attribution?",
+     "a": "Descriptive filenames, related documents grouped in one Project, references to documents by name, answers with citations."
+    },
+    {
+     "q": "What happens when Project knowledge exceeds the context limit?",
+     "a": "RAG mode turns on automatically: a project knowledge search tool retrieves relevant parts, capacity grows up to 10x, quality holds."
+    },
+    {
+     "q": "Two clients with distinct security needs. How do you isolate them?",
+     "a": "Separate private Projects, each with its own knowledge, instructions, memory and explicitly invited members."
+    },
+    {
+     "q": "Private versus public Project visibility?",
+     "a": "Private: only invited people. Public: everyone in the organisation can find it and start chats, but chats stay private unless shared."
+    },
+    {
+     "q": "How do Skills differ from Projects and custom instructions?",
+     "a": "Skills are task-specific procedures loaded when relevant; Projects give always-loaded knowledge; custom instructions apply broadly to all chats."
+    },
+    {
+     "q": "Two checks before enabling a Skill from an unfamiliar vendor?",
+     "a": "Read the bundled files, scripts and dependencies, and check for instructions that reach external network sources; confirm the source is trusted."
+    },
+    {
+     "q": "What are the main risks of Skills?",
+     "a": "Prompt injection that makes Claude take unintended actions, and data exfiltration via malicious code or injected instructions."
+    },
+    {
+     "q": "Two priorities in a Memory maintenance review?",
+     "a": "Back up existing memories before editing, then systematically correct or remove obsolete entries and add missing context."
+    },
+    {
+     "q": "How is a Project's memory related to account memory?",
+     "a": "Each Project has its own memory used alongside account memory, never another Project's; turn off 'Use account memory' to isolate it."
+    },
+    {
+     "q": "Which capability minimises re-introducing context when switching between AI platforms?",
+     "a": "Claude memory and chat search within Projects: context persists across sessions, so it need not be re-explained."
+    },
+    {
+     "q": "Why revisit a Project configuration that still produces good output?",
+     "a": "Policies, terminology and reference materials evolve; refresh instructions and documents periodically, not only on quality drops."
+    },
+    {
+     "q": "Trap: which components get confused with a knowledge base?",
+     "a": "Artifacts (editable output content) and connectors (reactive retrieval); a persistent shared knowledge base is a Project."
+    }
+   ]
+  }
+ ]
+}
