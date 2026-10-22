@@ -67,17 +67,19 @@ if tdq := [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("sour
 hp = c.get("/api/ccarp/home", headers=pub).json()
 assert hp["score"] == 0 and hp["verdict"] == "" and hp["week"] == {"n": 0, "ok": 0}, hp
 
-# public visitors keep their own progress (cookie pid), the owner's state.json and vault are untouched
+# public visitors are graded but nothing is recorded: the owner's state.json, schedule and vault are untouched
 mod = web.EXAMS["ccarp"].mod
 owner_before = json.dumps(mod.load_state(), sort_keys=True)
 pc = {"Cookie": "pid=" + "ab" * 16}
 for _ in range(3):
     ev = events(c.post("/api/ccarp/act", json={"data": "next"}, headers={**pub, **pc}))
     qv = ev[0]["question"]
-    events(c.post("/api/ccarp/answer", json={"id": qv["id"], "picked": ["A"]}, headers={**pub, **pc}))
+    ev = events(c.post("/api/ccarp/answer", json={"id": qv["id"], "picked": ["A"]}, headers={**pub, **pc}))
+    assert ev[0]["graded"]["correct"] and "back in" not in ev[1]["html"], ev[1]["html"]       # graded, not scheduled
 assert json.dumps(mod.load_state(), sort_keys=True) == owner_before                      # owner untouched
 pst = c.get("/api/ccarp/home", headers={**pub, **pc}).json()
-assert pst["coverage"]["seen"] >= 1, pst["coverage"]                                        # visitor has their own progress
+assert pst["coverage"]["seen"] == 0 and pst["plan"]["due"] == 0, pst["coverage"]           # nothing kept for the visitor
+assert not (Path(mod.STATE_PATH).parent / "public").exists()
 assert c.get("/api/ccarp/home").json()["coverage"]["seen"] == json.loads(owner_before).get("ok", {}).__len__() + len(json.loads(owner_before).get("bad", {}))
 assert events(c.post("/api/ccarp/act", json={"data": "reset"}, headers={**pub, **pc}))[0]["html"].startswith("🔄")   # public reset = own progress only
 assert json.dumps(mod.load_state(), sort_keys=True) == owner_before

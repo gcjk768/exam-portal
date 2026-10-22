@@ -47,7 +47,7 @@ import plan   # scheduler + study plan maths (pure functions over state.json)
 log = logging.getLogger("portal")
 ROOT = Path(__file__).resolve().parent
 SGT = timezone(timedelta(hours=8))
-VISITOR: ContextVar[str | None] = ContextVar("visitor", default=None)   # public visitor id (cookie); None = the owner
+VISITOR: ContextVar[str | None] = ContextVar("visitor", default=None)   # public visitor id (cookie, rate limit only); None = the owner
 OWNER_KEY = os.environ.get("TD_UNLOCK_KEY", "")   # open /?td=<key> once on a browser: the public link then treats it as the owner (Claude, reset, paid bank, own progress); empty = off
 PUBLIC_HIDDEN = {x.strip() for x in os.environ.get("PUBLIC_HIDDEN_SOURCES", "Tutorials Dojo").split(",") if x.strip()}   # paid question sources: shown on LAN/tailnet only, never on the public Funnel link
 # key (= the bot's logger name) -> short, full name, real exam length, real exam minutes
@@ -116,31 +116,11 @@ class Exam:
 
     @staticmethod
     def _own_state(mod) -> None:
-        """Public visitors get their own progress file (data/public/<cookie>.json); the bot code is unchanged."""
+        """Public visitors are graded but nothing is recorded (the owner, 2026-10-23): they read an empty state and their
+        writes are dropped, so the owner's state.json, schedule and vault never see them. The bot code is unchanged."""
         load, save = mod.load_state, mod.save_state
-
-        def where() -> Path | None:
-            v = VISITOR.get()
-            return mod.STATE_PATH.parent / "public" / f"{v}.json" if v else None
-
-        def load_state() -> dict:
-            p = where()
-            if p is None:
-                return load()
-            try:
-                return json.loads(p.read_text(encoding="utf-8"))
-            except Exception:
-                return {"ok": {}, "bad": {}}
-
-        def save_state(state: dict) -> None:
-            p = where()
-            if p is None:
-                return save(state)
-            p.parent.mkdir(exist_ok=True)
-            tmp = p.with_suffix(".tmp")
-            tmp.write_text(json.dumps(state, indent=1), encoding="utf-8")
-            os.replace(tmp, p)
-        mod.load_state, mod.save_state = load_state, save_state
+        mod.load_state = lambda: {"ok": {}, "bad": {}} if VISITOR.get() else load()
+        mod.save_state = lambda state: None if VISITOR.get() else save(state)
 
     @staticmethod
     def _load(name: str, path: Path):
@@ -462,7 +442,8 @@ async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public:
     head = (f"{mod.TITLE['ok']} <b>CORRECT</b> · {html.escape(q['correct'])}" if right else
             f"{mod.TITLE['bad']} <b>WRONG</b> · you picked <code>{html.escape(','.join(sorted(letters)))}</code>, "
             f"answer <code>{html.escape(q['correct'])}</code>")
-    head += f" · {'guessed, ' if guess and right else ''}back in {when(mins)}"
+    if not public:                                        # visitors are not scheduled: nothing comes back
+        head += f" · {'guessed, ' if guess and right else ''}back in {when(mins)}"
     await rec.send_message(f"{head}\n\n{html.escape(q['explanation'])}", reply_markup=mod.after_kb(q, letters))
 
 
@@ -788,10 +769,6 @@ async def check_videos(first_delay: int = 60) -> None:
 async def lifespan(_: FastAPI):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     EXAMS.update(load_exams())
-    for e in EXAMS.values():                      # public visitors' progress files older than 90 days
-        for f in (e.mod.STATE_PATH.parent / "public").glob("*.json"):
-            if time.time() - f.stat().st_mtime > 90 * 86400:
-                f.unlink(missing_ok=True)
     task = asyncio.create_task(check_videos())
     yield
     task.cancel()
@@ -1073,7 +1050,7 @@ def too_many(key: str, name: str) -> bool:
 
 @app.middleware("http")
 async def visitors(req: Request, call_next):
-    """Public requests: own progress via a cookie, and a rate limit. Static files always revalidate after a deploy."""
+    """Public requests: a cookie for the per-visitor rate limit (nothing else is kept). Static files always revalidate after a deploy."""
     pub = is_public(req) and not req.url.path.startswith("/static/")
     pid, new = req.cookies.get("pid", ""), False
     if pub:
