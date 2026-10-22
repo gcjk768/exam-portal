@@ -122,6 +122,10 @@ assert c.get("/api/sapc03/home", headers=pub).status_code == 404 and c.get("/api
 assert c.get("/api/ccarp/home", headers=pub).status_code == 200
 web.PRIVATE_EXAMS = {"ccarp"}
 assert c.get("/api/sapc03/home").status_code == 404
+web.OWNER_KEY = "k3y-for-test"                                     # the owner key on the public name keeps the public list (the host decides)
+assert [e["key"] for e in c.get("/api/exams?td=k3y-for-test", headers=pub).json()] == ["ccarp"]
+assert c.get("/api/access?td=k3y-for-test", headers=pub).json() == {"public": False}
+web.OWNER_KEY = ""
 web.PUBLIC_EXAMS, web.PRIVATE_EXAMS = set(), set()
 
 # exams + home
