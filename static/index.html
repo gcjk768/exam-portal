@@ -5,14 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
 <title>Exam Portal</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="#home" data-view="home">Exam<span>Portal</span></a>
+  <a class="brand" href="#home" data-view="home"><i class="ph ph-seal-check brand-mark" aria-hidden="true"></i><b>Exam<span>Portal</span></b></a>
   <span class="scope" id="scope" hidden></span>
   <nav class="exams" id="exam-switch" aria-label="Exam"></nav>
   <nav class="views" aria-label="Section">
@@ -32,16 +34,34 @@
         <p class="exam-name" id="home-name"></p>
         <h1 id="home-title"></h1>
         <p class="verdict" id="home-verdict"></p>
+        <div class="plan" id="plan" hidden>
+          <dl class="plan-stats">
+            <div><dt>Due now</dt><dd id="ps-due">0</dd></div>
+            <div><dt>New today</dt><dd id="ps-new">20</dd></div>
+            <div><dt>Done today</dt><dd id="ps-done">0</dd></div>
+            <div><dt>Days left</dt><dd id="ps-days">none</dd></div>
+          </dl>
+          <p class="plan-line" id="plan-line"></p>
+          <p class="plan-focus" id="plan-focus"></p>
+          <div class="plan-controls">
+            <label><i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Exam date</span><input type="date" id="plan-date"></label>
+            <label><i class="ph ph-gauge" aria-hidden="true"></i><span>New a day</span><input type="number" id="plan-pace" min="1" max="200" step="5"></label>
+            <button class="btn btn-accent" type="button" id="plan-go"><i class="ph ph-play" aria-hidden="true"></i>Start today's session</button>
+          </div>
+        </div>
         <div class="doors">
           <a class="door" href="#study" data-view="study">
+            <i class="ph ph-book-open-text door-i" aria-hidden="true"></i>
             <span class="door-k">Study</span>
             <span class="door-d" id="door-study">Reading list by domain and study cards</span>
           </a>
           <a class="door door-accent" href="#quiz" data-view="quiz" id="door-quiz">
+            <i class="ph ph-lightning door-i" aria-hidden="true"></i>
             <span class="door-k">Quiz</span>
             <span class="door-d" id="door-quiz-d">A random question, unseen first</span>
           </a>
           <a class="door" href="#exam" data-view="exam">
+            <i class="ph ph-timer door-i" aria-hidden="true"></i>
             <span class="door-k">Exam</span>
             <span class="door-d" id="door-exam-d">Timed mock exam, scored at the end</span>
           </a>
@@ -70,8 +90,25 @@
     <div class="study-head">
       <h2>Study</h2>
       <p id="study-intro" class="muted"></p>
-      <button class="btn btn-accent" id="btn-card" type="button">Study card</button>
+      <div class="study-tools">
+        <button class="btn btn-accent" id="btn-card" type="button"><i class="ph ph-sparkle" aria-hidden="true"></i>Study card</button>
+        <a class="btn" href="#cram" data-view="cram" id="btn-cram"><i class="ph ph-list-checks" aria-hidden="true"></i>Cram sheet</a>
+      </div>
     </div>
+    <section class="deck" id="deck" hidden aria-label="Flashcards">
+      <div class="deck-head"><strong id="deck-title"></strong><span class="muted small" id="deck-pos"></span><button class="btn btn-ghost" type="button" id="deck-close"><i class="ph ph-x" aria-hidden="true"></i>Close</button></div>
+      <button type="button" class="flash" id="flash" aria-live="polite" data-side="front">
+        <span class="flash-inner">
+          <span class="side front"><span class="side-label">Question</span><span class="side-text" id="flash-front"></span></span>
+          <span class="side back"><span class="side-label">Answer</span><span class="side-text" id="flash-back"></span></span>
+        </span>
+      </button>
+      <div class="deck-actions">
+        <button class="btn btn-danger" type="button" id="deck-again"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>Again</button>
+        <button class="btn btn-accent" type="button" id="deck-ok"><i class="ph ph-check" aria-hidden="true"></i>Got it</button>
+        <span class="kbd-hint"><kbd>Space</kbd> flip <kbd>←</kbd> again <kbd>→</kbd> got it <kbd>Esc</kbd> close</span>
+      </div>
+    </section>
     <h3>Start here</h3>
     <ul class="links start" id="study-start"></ul>
     <h3 id="study-playbook-h" hidden>Which command?</h3>
@@ -94,13 +131,14 @@
       <div class="peek-nav">
         <label class="small"><input type="checkbox" id="peek-wrong"> Wrong only</label>
         <select id="peek-dom" aria-label="Domain"><option value="">All domains</option></select>
-        <button class="btn" type="button" id="peek-older">← Older</button>
+        <button class="btn" type="button" id="peek-older"><i class="ph ph-caret-left" aria-hidden="true"></i>Older</button>
         <span class="muted small" id="peek-pos"></span>
-        <button class="btn" type="button" id="peek-newer">Newer →</button>
+        <button class="btn" type="button" id="peek-newer">Newer<i class="ph ph-caret-right" aria-hidden="true"></i></button>
         <button class="btn btn-accent" type="button" id="peek-close">Back to current</button>
       </div>
       <div id="peek-card"></div>
     </div>
+    <div class="quiz-bar" id="quiz-bar" hidden><i class="ph ph-arrows-clockwise" aria-hidden="true"></i><span id="quiz-bar-text"></span></div>
     <div class="feed" id="feed" aria-live="polite"></div>
     <div class="working" id="working" hidden>
       <span class="working-bar"></span>
@@ -108,14 +146,15 @@
       <span class="mono" id="working-time">0s</span>
     </div>
     <div class="feed-actions">
-      <button class="btn" type="button" id="btn-prev-q">← Previous question</button>
-      <button class="btn btn-accent" type="button" data-act="next">Next question</button>
-      <button class="btn" type="button" data-act="weak" title="Quiz me on my weakest topic">🎯 Weak topic</button>
-      <button class="btn" type="button" data-act="study" id="btn-study-feed">Study card</button>
-      <button class="btn" type="button" data-act="stats">Stats</button>
-      <button class="btn" type="button" data-act="report">Report</button>
-      <button class="btn btn-danger js-reset" type="button">Reset progress</button>
+      <button class="btn" type="button" id="btn-prev-q"><i class="ph ph-arrow-left" aria-hidden="true"></i><span class="lbl">Previous</span></button>
+      <button class="btn btn-accent" type="button" data-act="next"><i class="ph ph-arrow-right" aria-hidden="true"></i><span class="lbl">Next question</span></button>
+      <button class="btn" type="button" data-act="weak" title="Quiz me on my weakest topic"><i class="ph ph-target" aria-hidden="true"></i><span class="lbl">Weak topic</span></button>
+      <button class="btn" type="button" data-act="study" id="btn-study-feed"><i class="ph ph-sparkle" aria-hidden="true"></i><span class="lbl">Study card</span></button>
+      <button class="btn" type="button" data-act="stats"><i class="ph ph-chart-bar" aria-hidden="true"></i><span class="lbl">Stats</span></button>
+      <button class="btn" type="button" data-act="report"><i class="ph ph-file-text" aria-hidden="true"></i><span class="lbl">Report</span></button>
+      <button class="btn btn-danger js-reset" type="button"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i><span class="lbl">Reset progress</span></button>
     </div>
+    <p class="kbd-hint quiz-hint"><kbd>A</kbd> to <kbd>H</kbd> answer <kbd>Enter</kbd> next question <kbd>?</kbd> guessing</p>
   </section>
 
   <!-- Exam mode -->
@@ -130,27 +169,37 @@
       <div class="exam-bar">
         <span class="mono" id="exam-clock">00:00</span>
         <span id="exam-progress"></span>
-        <button class="btn btn-accent" type="button" id="exam-submit">Submit exam</button>
+        <button class="btn btn-accent" type="button" id="exam-submit"><i class="ph ph-paper-plane-right" aria-hidden="true"></i><span class="lbl">Submit exam</span></button>
       </div>
       <nav class="qnav" id="exam-nav" aria-label="Questions"></nav>
       <div id="exam-q"></div>
       <div class="row exam-move">
-        <button class="btn" type="button" id="exam-prev">Previous</button>
-        <button class="btn" type="button" id="exam-next">Next</button>
+        <button class="btn" type="button" id="exam-prev"><i class="ph ph-arrow-left" aria-hidden="true"></i>Previous</button>
+        <button class="btn" type="button" id="exam-next">Next<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
       </div>
     </div>
     <div id="exam-result" hidden>
       <div class="result-head">
         <div class="score-strip"><strong id="res-score">0</strong><span id="res-verdict"></span></div>
         <div class="row">
-          <button class="btn" type="button" id="res-again">New exam</button>
-          <a class="btn" href="#stats" data-view="stats">Stats</a>
+          <button class="btn" type="button" id="res-again"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>New exam</button>
+          <a class="btn" href="#stats" data-view="stats"><i class="ph ph-chart-bar" aria-hidden="true"></i>Stats</a>
         </div>
       </div>
       <div class="bars" id="res-domains"></div>
       <h3>Review</h3>
       <div class="feed" id="res-list"></div>
     </div>
+  </section>
+
+  <!-- Cram sheet: one printable page per exam from the study summaries and tips -->
+  <section id="view-cram" class="view cram" hidden>
+    <div class="cram-actions row">
+      <h2 id="cram-title">Cram sheet</h2>
+      <button class="btn btn-accent" type="button" id="cram-print"><i class="ph ph-printer" aria-hidden="true"></i>Print</button>
+      <a class="btn" href="#study" data-view="study"><i class="ph ph-arrow-left" aria-hidden="true"></i>Back to Study</a>
+    </div>
+    <div id="cram-body"></div>
   </section>
 
   <!-- Stats -->
@@ -161,8 +210,8 @@
     <div class="danger">
       <h3>Bank</h3>
       <div class="row">
-        <button class="btn" type="button" data-act="refresh">Refresh bank</button>
-        <button class="btn btn-danger js-reset" type="button">Reset progress</button>
+        <button class="btn" type="button" data-act="refresh"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i>Refresh bank</button>
+        <button class="btn btn-danger js-reset" type="button"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i><span class="lbl">Reset progress</span></button>
       </div>
       <p class="muted small">Refresh reloads the question bank. Reset clears every answer for this exam, in Telegram too.</p>
     </div>
@@ -179,8 +228,9 @@
   <article class="card card-q">
     <header class="card-h"><span class="mono qid"></span><span class="dom"></span></header>
     <p class="qtext"></p>
+    <div class="guess-row"><button type="button" class="guess" aria-pressed="false" title="Mark this answer as a guess (key ?)"><i class="ph ph-dice-three" aria-hidden="true"></i>Guessing</button><span class="muted small">a guessed answer comes back in 10 minutes, right or wrong</span></div>
     <div class="options"></div>
-    <div class="submit-row" hidden><button class="btn btn-accent" type="button">Submit</button><span class="muted small">Pick all that apply</span></div>
+    <div class="submit-row" hidden><button class="btn btn-accent" type="button"><i class="ph ph-check" aria-hidden="true"></i>Submit</button><span class="muted small">Pick all that apply</span></div>
   </article>
 </template>
 
@@ -190,10 +240,10 @@
     <p class="task-text"></p>
     <textarea class="answer" spellcheck="false" placeholder="Type the commands or YAML you would run, one per line. Aliases like k=kubectl are fine."></textarea>
     <div class="actions">
-      <button class="btn btn-accent" type="button" data-task="check">Check with Claude</button>
-      <button class="btn" type="button" data-task="reveal">Reveal solution</button>
-      <button class="btn" type="button" data-task="ok" hidden>I got it</button>
-      <button class="btn" type="button" data-task="bad" hidden>I missed it</button>
+      <button class="btn btn-accent" type="button" data-task="check"><i class="ph ph-sparkle" aria-hidden="true"></i>Check with Claude</button>
+      <button class="btn" type="button" data-task="reveal"><i class="ph ph-eye" aria-hidden="true"></i>Reveal solution</button>
+      <button class="btn" type="button" data-task="ok" hidden><i class="ph ph-check" aria-hidden="true"></i>I got it</button>
+      <button class="btn" type="button" data-task="bad" hidden><i class="ph ph-x" aria-hidden="true"></i>I missed it</button>
     </div>
   </article>
 </template>

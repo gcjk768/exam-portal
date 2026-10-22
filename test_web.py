@@ -27,11 +27,22 @@ for key, src in (("ccarp", ROOT.parent / "CCAR-P"), ("sapc03", ROOT.parent / "AW
 os.environ["EXAMS"] = ",".join(specs)
 
 import web  # noqa: E402
-
-web.EXAMS.update(web.load_exams())
 from fastapi.testclient import TestClient  # noqa: E402
 
 c = TestClient(web.app)
+c.__enter__()        # runs the lifespan (loads EXAMS from the env) and keeps one event loop for the whole file, so background tasks (decoder prefetch) finish
+
+# no real Claude anywhere: every question shown prefetches the decoder through the bot's run_claude
+dec_calls = []
+
+
+async def fake_decoder(system, prompt, schema=None):
+    dec_calls.append(prompt)
+    return {"structured_output": {"clues": ["two seconds"], "options": [{"letter": "A", "why": "fast first"}], "principle": "Route by confidence.", "source": None}}
+
+
+for _e in web.EXAMS.values():
+    _e.mod.run_claude = fake_decoder
 
 
 def events(resp):
@@ -50,6 +61,7 @@ assert c.get("/static/app.css").headers["cache-control"] == "no-cache"
 assert c.get("/api/access", headers={"Host": "owner-cck-nas.tailc4f63b.ts.net:10000"}).json() == {"public": True}   # tailnet device opening the public name
 qq = c.get(f"/api/ccarp/question/{web.EXAMS['ccarp'].mod.QUESTIONS and next(iter(web.EXAMS['ccarp'].mod.QUESTIONS))}").json()
 assert qq["correct"] and qq["options"] and "explanation" in qq, qq
+hid = [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if web.hidden_source(q.get("source"))]   # paid sources: TD + the Udemy mock sets
 if tdq := [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") == "Tutorials Dojo"]:
     assert c.get(f"/api/ccarp/question/{tdq[0]}", headers=pub).status_code == 404 and c.get(f"/api/ccarp/question/{tdq[0]}").status_code == 200
 hp = c.get("/api/ccarp/home", headers=pub).json()
@@ -88,13 +100,13 @@ if tdq:
         assert not ev[0]["question"]["id"].startswith("TD-"), ev[0]["question"]["id"]
     assert not any(x["id"].startswith("TD-") for x in c.post("/api/ccarp/exam/start", json={"n": 63}, headers=pub).json()["questions"])
     assert events(c.post("/api/ccarp/answer", json={"id": tdq[0], "picked": ["A"]}, headers=pub))[-1]["op"] == "error"
-    assert c.get("/api/exams", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(tdq)
+    assert c.get("/api/exams", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(hid)
     assert any(x["id"].startswith("TD-") for x in c.post("/api/ccarp/exam/start", json={"n": 1900}).json()["questions"])   # private sees them
     events(c.post("/api/ccarp/act", json={"data": "reset"}))      # the checks above touched the pending question
     # owner unlock: right key (query or cookie) shows the paid bank on the public link, a wrong key does not
     web.OWNER_KEY = "k3y-for-test"
-    assert c.get("/api/exams", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(tdq)
-    assert c.get("/api/exams?td=wrong", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(tdq)
+    assert c.get("/api/exams", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(hid)
+    assert c.get("/api/exams?td=wrong", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(hid)
     assert c.get("/api/exams?td=k3y-for-test", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"]
     assert c.get("/api/access?td=k3y-for-test", headers=pub).json() == {"public": False}   # key holder = owner: Claude/reset allowed
     assert c.get("/api/access?td=wrong", headers=pub).json() == {"public": True}
@@ -103,10 +115,10 @@ if tdq:
 
 # exams + home
 ex = c.get("/api/exams").json()
-assert {e["key"] for e in ex} == {"ccarp", "sapc03", "aipc01", "cka"}, ex
+assert {"ccarp", "sapc03", "aipc01", "cka"} <= {e["key"] for e in ex}, ex
 assert all(e["total"] > 50 for e in ex) and next(e for e in ex if e["key"] == "cka")["tasks"] is True
 home = c.get("/api/ccarp/home").json()
-assert home["pending"] is None and home["coverage"]["seen"] == 0 and home["pass"] == 720
+assert home["pending"]["question"]["id"] and home["coverage"]["seen"] == 0 and home["pass"] == 720   # the reset above asked question 1
 assert c.get("/api/sapc03/home").json()["has_study"] is True
 assert c.get("/api/nope/home").status_code == 404
 
@@ -152,8 +164,64 @@ assert calls and any("Because X." in e.get("html", "") for e in ev) and any(e.ge
 assert "PROGRESS" in events(c.post("/api/ccarp/act", json={"data": "stats"}))[0]["html"]
 assert events(c.post("/api/ccarp/answer", json={"id": qid, "picked": ["Z"]}))[0]["op"] == "error"
 assert events(c.post("/api/ccarp/act", json={"data": "bogus"}))[0]["op"] == "error"
+ev = events(c.post("/api/ccarp/act", json={"data": "reset"}))
+assert ev[0]["html"].startswith("🔄") and ev[1].get("question"), ev          # reset goes straight into question 1
+st = mod.load_state()
+assert st["ok"] == {} and st["bad"] == {} and st["pending"] == ev[1]["question"]["id"], st
+
+# scheduler: every graded path writes srs; a guessed right answer comes back in 10 min; the next question is the due one
+ev = events(c.post("/api/ccarp/act", json={"data": "next"}))
+qid = ev[0]["question"]["id"]; q = mod.QUESTIONS[qid]
+ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": sorted(q["answer"]), "guess": True}))
+assert ev[0]["graded"]["right"] is True and ev[0]["graded"]["due_min"] == 10 and ev[0]["graded"]["guess"] is True, ev[0]
+st = mod.load_state(); assert st["srs"][qid][1] == 0 and st["log"][-1]["guess"] is True and st["ok"][qid] == 1
+st["srs"][qid][0] = "2000-01-01T00:00"; mod.save_state(st)                                  # make it overdue
+assert events(c.post("/api/ccarp/act", json={"data": "next"}))[0]["question"]["id"] == qid    # due beats unseen
+ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": sorted(q["answer"])}))
+assert ev[0]["graded"]["due_min"] == 1440 and ev[1]["html"].startswith("🟢") and "1 day" in ev[1]["html"], ev[1]["html"]
+# plan endpoint
+p = c.get("/api/ccarp/plan").json(); assert p["due"] == 0 and p["today"]["done"] >= 2 and p["days_left"] is None and p["focus"], p
+assert c.post("/api/ccarp/plan", json={"exam_date": "2099-01-01", "pace": 30}).json()["today"]["pace"] == 30
+assert c.get("/api/ccarp/plan").json()["days_left"] > 1000 and mod.load_state()["exam_date"] == "2099-01-01"
+assert c.post("/api/ccarp/plan", json={"exam_date": "not a date"}).status_code == 400
+assert c.post("/api/ccarp/plan", json={"exam_date": None}).json()["days_left"] is None
+assert c.get("/api/ccarp/home").json()["plan"]["new_left"] > 0
+
+# decoder: prefetched when a question is shown, cached as a file, served to everyone, never started on the public link
+dec_dir = Path(mod.STATE_PATH).parent / "decode"
+for f in dec_dir.glob("*.json"):
+    f.unlink()
+dec_calls.clear()
+ev = events(c.post("/api/ccarp/act", json={"data": "next"}))
+qid = ev[0]["question"]["id"]
+import time as _t  # noqa: E402
+for _ in range(50):
+    r = c.get(f"/api/ccarp/decode/{qid}")
+    if r.status_code == 200:
+        break
+    _t.sleep(0.1)
+assert r.status_code == 200 and r.json()["clues"] == ["two seconds"] and (dec_dir / f"{qid}.json").exists(), r.text
+assert len(dec_calls) == 1 and qid in dec_calls[0], len(dec_calls)
+assert c.get(f"/api/ccarp/decode/{qid}", headers=pub).status_code == 200                     # cached: public may read it
+other = next(i for i in mod.QUESTIONS if i != qid and not web.hidden_source(mod.QUESTIONS[i].get("source")) and not (dec_dir / f"{i}.json").exists())
+assert c.get(f"/api/ccarp/decode/{other}", headers=pub).status_code == 404 and len(dec_calls) == 1   # public never starts one
+assert c.get(f"/api/ccarp/decode/{other}?cached=1").status_code == 404 and len(dec_calls) == 1       # review cards: cached only
+r = c.get(f"/api/ccarp/decode/{other}"); assert r.status_code in (200, 202)                          # owner: starts it
+assert c.get("/api/ccarp/decode/nope").status_code == 404
+
+# paid mock sets (Udemy via Microsoft Forms, rows MF*) are hidden on the public link and tagged on the card
+if mfq := [i for i, q in mod.QUESTIONS.items() if q.get("source", "").startswith("Microsoft Forms mock")]:
+    assert web.hidden_source(mod.QUESTIONS[mfq[0]]["source"]) and c.get(f"/api/ccarp/question/{mfq[0]}", headers=pub).status_code == 404
+    assert c.get(f"/api/ccarp/question/{mfq[0]}").json()["tag"] == "UD"
+
+# flashcards: keys are served with the study JSON; Again / Got it schedule them like questions
+cd = c.get("/api/ccarp/study").json()["reading"]["domains"][0]["cards"][0]
+assert cd["key"].startswith("c:") and len(cd["key"]) == 10, cd
+assert c.post("/api/ccarp/card", json={"key": cd["key"], "ok": False}).json()["due_min"] == 10
+assert c.post("/api/ccarp/card", json={"key": cd["key"], "ok": True}).json()["due_min"] == 1440
+assert c.post("/api/ccarp/card", json={"key": "c:nope", "ok": True}).status_code == 404
+assert cd["key"] in c.get("/api/ccarp/plan").json()["cards"]["seen"]
 events(c.post("/api/ccarp/act", json={"data": "reset"}))
-assert mod.load_state() == {"ok": {}, "bad": {}}
 
 # study JSON + vault line
 study = c.get("/api/ccarp/study").json()
@@ -195,7 +263,13 @@ for sj in (ROOT / "study").glob("*.json"):
             assert n["title"] and n["gist"] and 2 <= len(n["points"]) <= 6 and n["tip"], (sj.name, n.get("title"))
             assert n["diagram"].startswith("flowchart") and n["source"]["url"].startswith("http"), (sj.name, n["title"])
             assert n.get("video") is None or re.fullmatch(r"[\w-]{11}", n["video"]["id"]), (sj.name, n["title"])
+        cards = d.get("cards") or []                 # flashcards: 8-20 short recall prompts per domain
+        assert 8 <= len(cards) <= 20, (sj.name, d["domain"], "cards", len(cards))
+        for cd in cards:
+            assert cd["q"] and cd["a"] and len(cd["q"].split()) <= 25 and len(cd["a"].split()) <= 30, (sj.name, cd)
 for key, e in web.EXAMS.items():
+    if not e.study:                              # an exam whose study JSON is not written yet
+        continue
     ds = e.study["domains"]
     found = sum(any(d["domain"] == q["domain"] for d in ds)
                 or any(k in (q["question"] + " " + q["options"]).lower() for d in ds for k in d.get("keys", ()))
@@ -258,5 +332,6 @@ res = c.post("/api/cka/exam/submit", json={"answers": {ex["questions"][0]["id"]:
 assert res["tasks"] is True and res["n"] == 2 and res["results"][0]["score"] == 85 and res["results"][1]["verdict"] == "blank"
 assert c.post("/api/ccarp/task", json={"id": "x", "answer": "y"}).status_code == 400
 
+c.__exit__(None, None, None)
 shutil.rmtree(tmp, ignore_errors=True)
 print("ok: all web tests passed")

@@ -276,7 +276,69 @@
      "Reading current logs of a crash-looping container instead of `--previous`.",
      "Working in the default namespace when the broken pod lives elsewhere."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which part of `kubectl describe pod` output do you read first, before changing anything?",
+     "a": "The Events at the bottom. Read them before you change anything."
+    },
+    {
+     "q": "Which `kubectl logs` flag shows why a crashed container died?",
+     "a": "`--previous`. It shows the output of the crashed instance, not the fresh one."
+    },
+    {
+     "q": "A node is NotReady. Which two commands, run on that node, point you to the cause?",
+     "a": "`systemctl status kubelet`, then `journalctl -u kubelet` for the real error."
+    },
+    {
+     "q": "Where do you fix a broken kube-apiserver or kube-scheduler on a kubeadm cluster?",
+     "a": "Edit its static pod file in `/etc/kubernetes/manifests`, not the live object. Kubelet recreates the pod when the file changes."
+    },
+    {
+     "q": "What does `kubectl top` need in order to work, and what does it show?",
+     "a": "It needs metrics-server. It shows current CPU and memory only, not history or alerts."
+    },
+    {
+     "q": "A Service shows no endpoints. What does that tell you?",
+     "a": "Its selector does not match the pod labels."
+    },
+    {
+     "q": "At what size does kubelet rotate container logs by default, and which log file does `kubectl logs` return?",
+     "a": "10Mi (`containerLogMaxSize`). `kubectl logs` returns only the newest file, so older rotated output is not shown."
+    },
+    {
+     "q": "Trap: you start the kubelet on a NotReady node but do not enable it. What goes wrong later?",
+     "a": "It is down again after a reboot. Use `systemctl enable --now kubelet` to start it now and on every boot."
+    },
+    {
+     "q": "Trap: a crash-looping pod has several containers. Which two mistakes make `kubectl logs` show the wrong output?",
+     "a": "Reading current logs instead of `--previous`, and forgetting `-c <container>` to pick the right container."
+    },
+    {
+     "q": "Trap: the task names a broken pod, but `kubectl get pods` does not list it. What did you leave out?",
+     "a": "The namespace. You are in `default` while the broken pod lives elsewhere; add `-n <ns>`."
+    },
+    {
+     "q": "What does a Pending pod mean, and what can cause it?",
+     "a": "No node fits it: CPU or memory, taints, nodeSelector, or an unbound PVC."
+    },
+    {
+     "q": "What is the default cap on the CrashLoopBackOff restart delay?",
+     "a": "5 minutes. The delay grows exponentially and resets after a stable run."
+    },
+    {
+     "q": "A pod's image has no shell. Which command attaches a temporary debug container to it?",
+     "a": "`kubectl debug -it <p> --image=busybox:1.28 --target=<container>` adds an ephemeral container."
+    },
+    {
+     "q": "API server down, kubectl fails. Which commands on the node list containers and read one container's logs?",
+     "a": "`crictl ps -a` lists containers; `crictl logs <id>` reads one container's logs."
+    },
+    {
+     "q": "Which symptom points at a down scheduler, and which at a down controller-manager?",
+     "a": "Scheduler down: new pods stay Pending. Controller-manager down: lost pods are not replaced."
+    }
+   ]
   },
   {
    "domain": "Cluster Architecture, Installation & Configuration",
@@ -520,7 +582,69 @@
      "Forgetting to drain, restart kubelet or uncordon during an upgrade.",
      "Applying a kustomize folder with `-f` instead of `-k`."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "In what order, and how many minor versions at a time, do you upgrade a kubeadm cluster?",
+     "a": "One minor version at a time. Control plane first, then workers; kubeadm before kubelet and kubectl."
+    },
+    {
+     "q": "Which kubeadm command upgrades the first control plane node, and which upgrades every other node?",
+     "a": "`kubeadm upgrade apply v1.x.y` on the first control plane; `kubeadm upgrade node` on every other node."
+    },
+    {
+     "q": "What does `etcdctl snapshot save` need besides the file path, and where do you find the cert paths?",
+     "a": "`--endpoints` plus `--cacert`, `--cert` and `--key`. Take the cert paths from `/etc/kubernetes/manifests/etcd.yaml`."
+    },
+    {
+     "q": "After an etcd snapshot restore, what must you change so the restored data is actually used?",
+     "a": "Restore into a new data dir, then point the `etcd-data` hostPath in `etcd.yaml` at that directory."
+    },
+    {
+     "q": "A RoleBinding references a ClusterRole. How far do the granted permissions reach?",
+     "a": "Only inside the RoleBinding's one namespace."
+    },
+    {
+     "q": "Which command verifies what a user or ServiceAccount is allowed to do?",
+     "a": "`kubectl auth can-i <verb> <resource> --as=<user> -n <ns>`"
+    },
+    {
+     "q": "How many control plane nodes does a highly available kubeadm cluster need at minimum?",
+     "a": "At least three, behind one load-balanced endpoint."
+    },
+    {
+     "q": "Trap: a task limits a ServiceAccount to one namespace. Why is a ClusterRoleBinding wrong?",
+     "a": "It grants access in every namespace. Use a RoleBinding in that namespace instead."
+    },
+    {
+     "q": "Trap: which steps do people forget around a node upgrade?",
+     "a": "Draining the node first, restarting kubelet after `systemctl daemon-reload`, and uncordoning the node at the end."
+    },
+    {
+     "q": "Trap: how do you apply a folder holding a `kustomization.yaml`, and which wrong flag do people use?",
+     "a": "`kubectl apply -k <dir>`. Using `-f` on a kustomize folder is the mistake."
+    },
+    {
+     "q": "You lost the `kubeadm join` line. Which command prints a fresh one?",
+     "a": "`kubeadm token create --print-join-command`"
+    },
+    {
+     "q": "Which tool saves an etcd snapshot, and which restores it and checks its status?",
+     "a": "`etcdctl` saves (it talks to etcd); `etcdutl` restores and checks status (it works on files)."
+    },
+    {
+     "q": "Swap is on and kubelet fails to start. Which two actions fix it?",
+     "a": "Run `swapoff -a` and remove the swap entry from `/etc/fstab`."
+    },
+    {
+     "q": "Which `kubeadm init` flag must you set for HA, since a single-node cluster cannot be converted later?",
+     "a": "`--control-plane-endpoint`"
+    },
+    {
+     "q": "Which two Helm commands add a repo and install a chart as a named release in a namespace?",
+     "a": "`helm repo add <name> <url>`, then `helm install <release> <name>/<chart> -n <ns>`."
+    }
+   ]
   },
   {
    "domain": "Services & Networking",
@@ -740,7 +864,69 @@
      "A stray dash in a NetworkPolicy `from` list that widens access.",
      "Ingress, Route or policy created in a different namespace from its target."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What is the default NodePort range?",
+     "a": "30000-32767. ClusterIP is the default Service type, and LoadBalancer builds on NodePort."
+    },
+    {
+     "q": "Which command shows whether a Service has endpoints, and what does an empty ENDPOINTS column mean?",
+     "a": "`kubectl get svc,ep -n <ns>`. Empty ENDPOINTS means the selector does not match the pod labels."
+    },
+    {
+     "q": "What must the cluster provide for NetworkPolicies to take effect, and how do several policies combine?",
+     "a": "A CNI that enforces them. Policies are additive allow lists: the union of what each allows, with no deny rules."
+    },
+    {
+     "q": "In a NetworkPolicy `from` list, when are `namespaceSelector` and `podSelector` ANDed, and when ORed?",
+     "a": "AND when both sit in one list item. OR when they are separate items, each starting with `-`."
+    },
+    {
+     "q": "Which field must every Ingress path set, and which values can it take?",
+     "a": "`pathType`: `Exact`, `Prefix` or `ImplementationSpecific`. Ingress also needs a running controller and an `ingressClassName`."
+    },
+    {
+     "q": "In Gateway API, which fields attach an HTTPRoute to a Gateway and forward traffic to Services?",
+     "a": "`parentRefs` attaches it to the Gateway; `backendRefs` points at the Services. The chain is GatewayClass, Gateway with listeners, HTTPRoute."
+    },
+    {
+     "q": "What is a Service's FQDN, and when does its short name work?",
+     "a": "`<svc>.<ns>.svc.cluster.local`. The short name resolves only from pods in the same namespace."
+    },
+    {
+     "q": "Trap: after you apply an egress deny policy, name lookups fail. What did you forget to allow?",
+     "a": "DNS: port 53, UDP and TCP, to kube-dns."
+    },
+    {
+     "q": "Trap: what does one stray `-` in a NetworkPolicy `from` list do?",
+     "a": "It turns AND into OR, adds a second source and opens a whole namespace."
+    },
+    {
+     "q": "Trap: which namespace mistake breaks an Ingress, HTTPRoute or NetworkPolicy even when its YAML is right?",
+     "a": "Creating it in a different namespace from its target Service, Gateway or pods."
+    },
+    {
+     "q": "Can `kubectl expose` set a specific nodePort, such as 30080?",
+     "a": "No. Edit the Service afterwards to set the nodePort, and match `targetPort` to the container port."
+    },
+    {
+     "q": "What are the three parts of a default deny ingress NetworkPolicy?",
+     "a": "`podSelector: {}`, `policyTypes: [Ingress]`, and no ingress rules."
+    },
+    {
+     "q": "Which label lets a `namespaceSelector` select a namespace by name?",
+     "a": "`kubernetes.io/metadata.name: <ns>`"
+    },
+    {
+     "q": "Which namespaces can a Gateway accept Routes from by default?",
+     "a": "Its own namespace only, unless `allowedRoutes` says otherwise."
+    },
+    {
+     "q": "Where is the CoreDNS configuration stored, and what is its Service still called?",
+     "a": "The Corefile in the `coredns` ConfigMap in `kube-system`. The Service is still named `kube-dns`."
+    }
+   ]
   },
   {
    "domain": "Workloads & Scheduling",
@@ -960,7 +1146,69 @@
      "Expecting a toleration alone to place a pod on one specific node.",
      "HPA target stuck at unknown because the pods have no CPU requests."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which Deployment changes create a new revision, and which command rolls back to a chosen one?",
+     "a": "Only pod template changes (`.spec.template`); scaling does not. Roll back with `kubectl rollout undo deploy/<d> --to-revision=N`."
+    },
+    {
+     "q": "What are the default rolling update values for `maxUnavailable` and `maxSurge`?",
+     "a": "25% for both `maxUnavailable` and `maxSurge`."
+    },
+    {
+     "q": "After a ConfigMap changes, which consumption methods refresh in a running pod, and which do not?",
+     "a": "Mounted files refresh. Env vars do not, and neither do `subPath` mounts; those need a pod restart."
+    },
+    {
+     "q": "What does an HPA need to work, and how long does scale-down wait by default?",
+     "a": "metrics-server and CPU requests on the pods. Scale-down waits 5 minutes by default."
+    },
+    {
+     "q": "Which resource setting drives scheduling, and what happens when a container exceeds its CPU limit versus its memory limit?",
+     "a": "Requests drive scheduling. Over the CPU limit: throttled. Over the memory limit: OOM killed."
+    },
+    {
+     "q": "How do node affinity, taints and tolerations each affect where a pod lands?",
+     "a": "Affinity attracts pods to nodes, taints repel them, and tolerations only permit a pod onto a tainted node."
+    },
+    {
+     "q": "What is the difference between a `NoExecute` taint and a `NoSchedule` taint?",
+     "a": "`NoExecute` also evicts running pods; `NoSchedule` only blocks new pods."
+    },
+    {
+     "q": "Trap: where must `nodeSelector`, `tolerations`, affinity and probes go in a Deployment?",
+     "a": "Inside the pod template: `spec.template.spec`. Putting them outside it is the mistake."
+    },
+    {
+     "q": "Trap: you add a toleration for a node's taint. Does the pod then land on that node?",
+     "a": "No. A toleration alone may still land elsewhere. Add a nodeSelector or affinity, and match key, value and effect exactly."
+    },
+    {
+     "q": "Trap: an HPA target is stuck at unknown. What are the pods missing?",
+     "a": "CPU requests. Without them utilization is undefined; also check that metrics-server is running."
+    },
+    {
+     "q": "What happens when a liveness probe fails, and what when a readiness probe fails?",
+     "a": "Liveness fails: the container is restarted. Readiness fails: the pod IP is removed from the Service endpoints."
+    },
+    {
+     "q": "Which command taints node `n1` with `gpu=true:NoSchedule`, and how do you remove the taint?",
+     "a": "`kubectl taint node n1 gpu=true:NoSchedule`; add a trailing `-` to remove it."
+    },
+    {
+     "q": "Which command creates an HPA for Deployment `web` with 2 to 8 replicas at 70% CPU?",
+     "a": "`kubectl autoscale deploy web --min=2 --max=8 --cpu=70%`; older kubectl uses `--cpu-percent=70`."
+    },
+    {
+     "q": "Trap: a ResourceQuota on CPU or memory exists in the namespace. What happens to pods that omit requests or limits?",
+     "a": "The quota rejects them. Read the quota first."
+    },
+    {
+     "q": "In node affinity, how are several `nodeSelectorTerms` combined, and how are expressions inside one term combined?",
+     "a": "Several terms are ORed; expressions inside one term are ANDed."
+    }
+   ]
   },
   {
    "domain": "Storage",
@@ -1107,7 +1355,69 @@
      "Treating a WaitForFirstConsumer PVC in Pending as broken.",
      "Expecting a Released PV to bind again without clearing its `claimRef`."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What three things must match for a PVC to bind a PV?",
+     "a": "Enough size, a matching access mode, and the same `storageClassName`."
+    },
+    {
+     "q": "A PVC with no matching PV stays Pending. Which command shows why?",
+     "a": "`kubectl describe pvc <pvc> -n <ns>`. Its Events say why it is not binding."
+    },
+    {
+     "q": "What do the access modes RWO, RWOP and RWX each allow?",
+     "a": "RWO: read-write by one node. RWOP: exactly one pod in the whole cluster. RWX: read-write on many nodes."
+    },
+    {
+     "q": "What happens to the PV and its data after its claim is deleted under `Retain` versus `Delete`?",
+     "a": "`Retain`: the PV becomes Released and keeps its data. `Delete`: removes the PV object and the backing storage."
+    },
+    {
+     "q": "What are the default `reclaimPolicy` and `volumeBindingMode` of a StorageClass?",
+     "a": "`reclaimPolicy` defaults to `Delete`; `volumeBindingMode` defaults to `Immediate`."
+    },
+    {
+     "q": "What does the `WaitForFirstConsumer` volume binding mode do?",
+     "a": "It delays binding until a pod uses the PVC, waiting for that pod and its node."
+    },
+    {
+     "q": "When is `emptyDir` data deleted, and does a container crash delete it?",
+     "a": "It is deleted when the pod leaves its node. It survives container crashes."
+    },
+    {
+     "q": "Trap: a static PV has no class and the PVC sets none. What silently happens to the PVC?",
+     "a": "It gets the default StorageClass. Set `storageClassName: \"\"` on the PVC to avoid that."
+    },
+    {
+     "q": "Trap: a PVC using `WaitForFirstConsumer` sits in Pending. Is it broken?",
+     "a": "No. It is waiting for a pod to use it, and for that pod's node."
+    },
+    {
+     "q": "Trap: a PV is Released after its PVC was deleted. What must you clear before a new claim can bind?",
+     "a": "The PV's old `claimRef`. A Released PV will not bind a new claim until it is cleared."
+    },
+    {
+     "q": "Which pod fields reference a PVC and mount it?",
+     "a": "`volumes[].persistentVolumeClaim.claimName` plus a matching `volumeMounts` entry."
+    },
+    {
+     "q": "Which StorageClass field must be true before a PVC can be grown?",
+     "a": "`allowVolumeExpansion: true`"
+    },
+    {
+     "q": "Which annotation makes a StorageClass the default class?",
+     "a": "`storageclass.kubernetes.io/is-default-class: \"true\"`. PVCs without a class use it."
+    },
+    {
+     "q": "Which access mode does hostPath support, and which access mode does NFS support?",
+     "a": "hostPath is RWO only; NFS supports RWX."
+    },
+    {
+     "q": "How do you change a PV's reclaim policy?",
+     "a": "Use `kubectl patch pv` on the `persistentVolumeReclaimPolicy` field."
+    }
+   ]
   }
  ],
  "playbook": [

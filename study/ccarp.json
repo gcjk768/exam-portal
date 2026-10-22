@@ -334,7 +334,69 @@
      "More chunks, bigger chunks or more overlap instead of better chunks that carry their governing clause.",
      "Trusting a prompt saying current user only, or redacting output, instead of scoping the credential."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Past roughly how many tools does deferring definitions with tool search pay off?",
+     "a": "About ten. Below that, plain tool calling is fine; past it, defer large catalogues with tool search and keep only tools real work needs."
+    },
+    {
+     "q": "What are the three layers that enforce access below the model?",
+     "a": "A scoped credential, a minimal tool surface, and human approval for writes."
+    },
+    {
+     "q": "Most failures return HTTP 200. What do you read, and what must every log record carry?",
+     "a": "Read `stop_reason`. Log every session lightly, and tag every record with a version ID and a correlation ID."
+    },
+    {
+     "q": "When should you skip RAG and put the whole corpus in the prompt?",
+     "a": "Under about 200,000 tokens, roughly 500 pages: put the whole corpus in the prompt, no RAG."
+    },
+    {
+     "q": "How much do contextual embeddings plus BM25 cut failed retrievals, and how much with reranking added?",
+     "a": "Contextual embeddings plus BM25 cut failed retrievals 49%; adding reranking cut them 67%."
+    },
+    {
+     "q": "Which retrieval fits exact IDs, which fits fuzzy questions, and which fits live facts?",
+     "a": "Exact IDs: keyword lookup (BM25 or keyed). Fuzzy questions: semantic search. Live facts: a call to the system of record."
+    },
+    {
+     "q": "Which integration fits one app, which fits many clients on a live system, and which fits know-how only?",
+     "a": "One app: a direct API tool. Many clients on a live system: MCP. Know-how only: a Skill."
+    },
+    {
+     "q": "Trap: an agent holds a risky tool its job never needs. Which tempting fixes are wrong?",
+     "a": "Adding logging, confirmations or a bigger model. The right fix is to remove the tool."
+    },
+    {
+     "q": "Trap: retrieved text lacks the governing clause or exception. Which tempting fixes are wrong?",
+     "a": "More chunks, bigger chunks or more overlap. The fix is better chunks that carry their governing clause."
+    },
+    {
+     "q": "Trap: the prompt says 'current user only' but retrieval can reach all users' data. What is the real fix?",
+     "a": "Scope the credential. Trusting a 'current user only' prompt, or redacting output, is the trap."
+    },
+    {
+     "q": "Which MCP transport suits a local server on one machine, and which suits remote, multi-client servers?",
+     "a": "`stdio` for a local server on one machine; Streamable HTTP for remote, multi-client servers."
+    },
+    {
+     "q": "How much document context does contextual retrieval prepend to each chunk before indexing?",
+     "a": "50 to 100 tokens of document context, prepended to each chunk before it is indexed."
+    },
+    {
+     "q": "How did a big table pasted into the prompt score versus code execution on the file?",
+     "a": "Pasted into the prompt: 6 of 25 right. Code execution on the file: 25 of 25."
+    },
+    {
+     "q": "What must an MCP server do with tokens not issued for it, and what is explicitly forbidden?",
+     "a": "Reject them. Token passthrough is explicitly forbidden."
+    },
+    {
+     "q": "How do Skills load context in stages, and roughly how many tokens does each stage use?",
+     "a": "About 100 tokens of metadata, then under 5k tokens of instructions, then files only when read."
+    }
+   ]
   },
   {
    "domain": "Solution Design & Architecture",
@@ -619,7 +681,69 @@
      "Choosing an agent for flexibility, or splitting agents by team or department, when the process is fixed.",
      "Calling feedback a phase-two item, or treating a dashboard nobody watches as a feedback loop."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "In the split of work, what does Claude own, what does code own, and what do humans own?",
+     "a": "Claude: judgement over unstructured text. Code: facts, maths and lookups. Humans: accountable decisions."
+    },
+    {
+     "q": "Why convert accuracy rates into error counts? Example: 99.7% accuracy on 14,000 claims a month.",
+     "a": "A high rate still leaves real errors at volume: 99.7% of 14,000 claims is still 41 errors a month."
+    },
+    {
+     "q": "What four stages must every design include, and who must the feedback loop reach?",
+     "a": "Input, processing, output and a feedback loop that reaches a named person."
+    },
+    {
+     "q": "When is a workflow the right pattern, and when should you use an agent?",
+     "a": "Known, drawable path: a workflow. Use an agent only when the next step depends on the previous result."
+    },
+    {
+     "q": "When is splitting work into multiple agents justified?",
+     "a": "Only for conflicting setups (irreconcilable specialisation) or truly independent parallel work."
+    },
+    {
+     "q": "A model skips sections of a long document. What restructuring makes coverage structural?",
+     "a": "Decompose into explicit per-category steps, such as one pass per clause type, with programmatic gates between them."
+    },
+    {
+     "q": "How do you tell efficiency from productivity, and how do you treat a committed SLA?",
+     "a": "Per item is efficiency; per person is productivity. Treat a committed SLA as a pass-fail gate that eliminates options first."
+    },
+    {
+     "q": "Trap: a model skips sections or hides where it failed. Which tempting fixes are wrong?",
+     "a": "A bigger model, longer prompt or lower temperature. They change effort, not the task, which needs decomposing into explicit steps."
+    },
+    {
+     "q": "Trap: which wrong reasons lead people to pick an agent, or split agents, when the process is fixed?",
+     "a": "Choosing an agent for flexibility, or splitting agents by team or department. A fixed process calls for a workflow."
+    },
+    {
+     "q": "Trap: which two answers wrongly treat feedback as handled in a design?",
+     "a": "Calling feedback a phase-two item, or treating a dashboard nobody watches as a loop. A signal must reach a named person on schedule."
+    },
+    {
+     "q": "What did Anthropic's research find for multi-agent versus single-agent Opus 4, and at what token cost?",
+     "a": "Multi-agent beat single-agent Opus 4 by 90.2%, but used about 15x chat tokens."
+    },
+    {
+     "q": "What rule catches silent gaps after a multi-agent fan-out?",
+     "a": "Results returned must equal units dispatched; otherwise flag the gap before anyone reads the summary."
+    },
+    {
+     "q": "Roughly how many sessions per group does an A/B test need at a 70% baseline, +5 points, 80% power, 5% significance?",
+     "a": "Roughly 1,500 sessions per group, about 4 days at 800 sessions a day."
+    },
+    {
+     "q": "Name the four workflow shapes and what each does.",
+     "a": "Chaining (sequential stages), routing (a classifier picks a path), parallelization (independent calls), evaluator-optimizer (draft, grade, revise)."
+    },
+    {
+     "q": "A client needs the identical answer every time. What does that require?",
+     "a": "A deterministic component; improving prompts cannot guarantee identical answers."
+    }
+   ]
   },
   {
    "domain": "Evaluation, Testing & Optimization",
@@ -895,7 +1019,69 @@
      "Trimming context or downsizing the model despite an accuracy commitment, when caching or batching would do.",
      "Setting up dashboards or alert thresholds first, before defining reliability targets and signals."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What three things must a success criterion pin down, and when must it be set?",
+     "a": "A threshold, a sample size and the instrument that judges it, all set before results exist."
+    },
+    {
+     "q": "What is the grading ladder order for evals?",
+     "a": "Code checks first; a rubric-based model judge, validated against human labels, next; humans last."
+    },
+    {
+     "q": "Where should eval set items come from, and what source is never acceptable?",
+     "a": "Real user traffic plus hostile cases; never the system's own output."
+    },
+    {
+     "q": "What are the core rules for a clean A/B test?",
+     "a": "One change per arm; question and sample size locked up front; validate offline before live exposure."
+    },
+    {
+     "q": "Confident wrong answers appear right after a data refresh. Which layer do they point to?",
+     "a": "Retrieval, returning stale chunks. Diagnose with the content of failing requests, not counters."
+    },
+    {
+     "q": "Which cost levers leave the model's input unchanged, and what discount does the Batch API give?",
+     "a": "Caching and batching. The Batch API is 50% off."
+    },
+    {
+     "q": "Does streaming cut real latency? What does?",
+     "a": "No, streaming only improves perceived speed. Real cuts: a faster model, fewer tokens, or a `max_tokens` cap."
+    },
+    {
+     "q": "Trap: which mistakes make a declared A/B winner invalid?",
+     "a": "Declaring a winner after peeking or on a small sample, or bundling prompt and model changes in one arm."
+    },
+    {
+     "q": "Trap: with an accuracy commitment in place, which cost cuts are wrong when caching or batching would do?",
+     "a": "Trimming context or downsizing the model. Caching and batching cut cost without changing what the model reads."
+    },
+    {
+     "q": "Trap: asked what to set up first for observability, which answers are wrong?",
+     "a": "Dashboards, alert thresholds and runbooks. They only consume data; first define reliability targets and signals."
+    },
+    {
+     "q": "What are the prompt-cache multipliers for reads, 5-minute writes and 1-hour writes?",
+     "a": "Cache read 0.1x input; 5-minute write 1.25x; 1-hour write 2x."
+    },
+    {
+     "q": "At what thresholds should cost and latency alerts fire?",
+     "a": "Cost above about 150 percent of the 7-day average, and p95 latency over the SLA."
+    },
+    {
+     "q": "What is shadow testing, and when do you use it?",
+     "a": "Run the new version on copied live traffic, serve the old answer, and score offline. Use it when one bad output is too risky."
+    },
+    {
+     "q": "What decides the grading method for a quality dimension: the stakes, or whether the check needs interpretation?",
+     "a": "Whether it needs interpretation. Known, binary or numeric answers get code checks; interpretation gets a calibrated LLM judge."
+    },
+    {
+     "q": "Which latency percentile should you design to, and why?",
+     "a": "p95, not the median: SLA breaches live in the slow 5 percent."
+    }
+   ]
   },
   {
    "domain": "Governance, Safety & Risk Management",
@@ -1185,7 +1371,69 @@
      "Routing review by transaction size or a fixed sample percentage, or reporting after the fact instead of preventing.",
      "Treating ZDR or a region setting as compliance, or a model card as user transparency."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which controls count as real guardrails because they sit outside the model?",
+     "a": "Input screening, untrusted content in `tool_result` blocks, least privilege and sandboxing."
+    },
+    {
+     "q": "What does a hard 'never' rule need in order to hold?",
+     "a": "A gate on what is drafted or sent, like deny rules."
+    },
+    {
+     "q": "What test identifies an LLM-specific risk, and which risks qualify?",
+     "a": "Strip the model out: if the failure vanishes it is LLM-specific. Examples: hallucination, inconsistent answers, refusals, injection, prompt leaks."
+    },
+    {
+     "q": "Which three questions route human review by harm, and when are the triggers written?",
+     "a": "Can it be undone, does it repeat, who bears the cost. Write the triggers in advance."
+    },
+    {
+     "q": "What does PHI require, and what does GDPR start with?",
+     "a": "PHI needs a signed BAA plus HIPAA readiness, not ZDR. GDPR starts with lawful basis."
+    },
+    {
+     "q": "Which cloud routes carry Claude for FedRAMP High?",
+     "a": "Claude via Amazon Bedrock GovCloud or Vertex AI."
+    },
+    {
+     "q": "What cost multiplier applies when you set `inference_geo` to `us`?",
+     "a": "1.1x for US-only inference."
+    },
+    {
+     "q": "How is fairness measured, and what must users be told?",
+     "a": "Measure per-group outcomes and error rates, not just approval rates. Tell users it is an AI and give a human route."
+    },
+    {
+     "q": "Trap: which tempting answers are wrong as a defence against prompt injection?",
+     "a": "A bigger model, lower temperature, audit logs or a system-prompt instruction alone. Pick controls that survive another layer failing."
+    },
+    {
+     "q": "Trap: which human-review routing answers are wrong?",
+     "a": "Routing by transaction size, sampling a fixed percentage, or reporting after the fact instead of preventing. Route by harm instead."
+    },
+    {
+     "q": "Trap: which items are wrongly treated as compliance or user transparency?",
+     "a": "ZDR or a region setting treated as compliance, and a model card treated as user transparency."
+    },
+    {
+     "q": "Should operator-built guardrails fail open or fail closed, and why?",
+     "a": "Closed. Failing open silently removes protection while the path still looks guarded."
+    },
+    {
+     "q": "What does the API return for an ineligible feature once HIPAA readiness is on, and does ZDR block such features?",
+     "a": "HTTP 400. ZDR does not block ineligible features such as Batch."
+    },
+    {
+     "q": "Why does pinning EU residency on the direct API need a cloud route?",
+     "a": "`inference_geo` accepts only `us` and `global`. Also check that logs and caches stay in region."
+    },
+    {
+     "q": "Where do unequal outcomes enter a system you control? Name the four injection points.",
+     "a": "The retrieval corpus, prompt framing, few-shot examples and downstream routing."
+    }
+   ]
   },
   {
    "domain": "Stakeholder Communication & Lifecycle Management",
@@ -1442,7 +1690,69 @@
      "Tuning temperature or model tier to fix an expectation problem, or just sending reports more often.",
      "Triggering changes on a schedule, a vendor release or one complaint instead of a refreshed eval."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What four things must be agreed in writing before discovery is done?",
+     "a": "A measured baseline, a dated target, binding constraints and a named owner."
+    },
+    {
+     "q": "Which questions and words surface hidden constraints during discovery?",
+     "a": "Ask about exceptions and workarounds, not just the happy path. Probe words like just, only and simply by asking what happens when they fail."
+    },
+    {
+     "q": "In what order do you brief a mixed audience on an architectural decision?",
+     "a": "Top-down: decision and business impact first, then the reasoning, plus the rejected alternatives."
+    },
+    {
+     "q": "Evidence contradicts the sponsor's assumption. What do you do?",
+     "a": "Show it to the decision owner and let them decide. You owe the owner information, not agreement."
+    },
+    {
+     "q": "What makes a good SLA for an AI system?",
+     "a": "A quality number measured on an agreed eval set, plus what is owed if it is missed."
+    },
+    {
+     "q": "Which five things must a handoff transfer?",
+     "a": "Contracts, decision records, a runnable eval set, runbooks and known limitations."
+    },
+    {
+     "q": "What should gate a change to a deployed system, and how much notice do pinned models get before retiring?",
+     "a": "A refreshed eval set gates changes. Pinned models retire with at least 60 days notice."
+    },
+    {
+     "q": "Trap: which activities are wrongly counted as discovery, and how should a late constraint be read?",
+     "a": "Prototypes, prompt drafts, model picks and screen designs are build work. A late constraint is an elicitation defect, not a difficult client."
+    },
+    {
+     "q": "Trap: stakeholder expectations do not match the system. Which tempting fixes are wrong?",
+     "a": "Tuning temperature or model tier, or just sending reports more often. Fix what the report measures and what the stakeholder expects."
+    },
+    {
+     "q": "Trap: which triggers for changing a deployed system are wrong?",
+     "a": "A schedule, a vendor release or a single complaint. Gate change on a refreshed evaluation set instead."
+    },
+    {
+     "q": "How large does production volume often run relative to the pilot?",
+     "a": "10 to 100 times the pilot, so forecast cost before the first invoice."
+    },
+    {
+     "q": "What are the four buckets for translating a stakeholder's stated preference into requirements?",
+     "a": "What the system must do, what it must not do, what it must cost, and what it must prove."
+    },
+    {
+     "q": "Which four questions should you ask of every option when presenting trade-offs?",
+     "a": "What we gain, what we give up, what reversing later costs, and what it does to compliance."
+    },
+    {
+     "q": "What six fields does an outcome document hold?",
+     "a": "Use case and scope limit, metric before, metric after (same definition), the control that makes it auditable, measurement owner, reuse potential."
+    },
+    {
+     "q": "Which fields belong in an architecture decision record (ADR)?",
+     "a": "Context, decision, alternatives considered, consequences, date and authors; one decision per record."
+    }
+   ]
   },
   {
    "domain": "Claude Models, Prompting & Context Engineering",
@@ -1699,7 +2009,69 @@
      "Repeating a rule, CAPS emphasis or lower temperature when the fix is deleting the conflicting rule.",
      "Reordering content or buying a bigger window when the real cause is too much volume in context."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "How do you choose a model tier, and which tier suits classification, extraction and routing?",
+     "a": "Pick the cheapest tier that clears a measured eval bar. Haiku suits classification, extraction and routing."
+    },
+    {
+     "q": "What three habits make a system prompt durable?",
+     "a": "Structure it with tags, explain why each rule matters, and keep the static part byte-stable."
+    },
+    {
+     "q": "Which technique fixes inconsistent output format, and which fixes weak multi-step reasoning?",
+     "a": "Inconsistent format: a few varied examples. Weak multi-step reasoning: thinking or higher `effort`."
+    },
+    {
+     "q": "Do tool definitions and cached prefixes count toward the context window?",
+     "a": "Yes. Everything sent counts, including tool definitions, and cached prefixes still occupy the window."
+    },
+    {
+     "q": "Recall drops as context grows. What are the fixes for long runs?",
+     "a": "Cut volume rather than reorder it. On long runs use compaction, context editing or subagents."
+    },
+    {
+     "q": "What is the prompt cache order, and what does a change at one level do?",
+     "a": "Tools, then system, then messages. A change invalidates that level and everything after it."
+    },
+    {
+     "q": "Where does the cache breakpoint go, and what kills cache hits?",
+     "a": "On the last block that is identical across requests. A timestamp or ID placed before it kills every hit."
+    },
+    {
+     "q": "Trap: a question stresses that the system is important. Which model choice is wrong?",
+     "a": "Picking the biggest model because the system is important. The right answer cites measured evals and task difficulty."
+    },
+    {
+     "q": "Trap: Claude ignores a rule in the system prompt. Which tempting fixes are wrong?",
+     "a": "Repeating the rule, CAPS emphasis or lower temperature. Fix its placement and separation, or delete the conflicting rule."
+    },
+    {
+     "q": "Trap: cost and mid-document recall both degrade. Which fixes are wrong?",
+     "a": "Reordering content or buying a bigger window. The cause is volume, so retrieve or trim per request."
+    },
+    {
+     "q": "What are the prompt-cache price multipliers for 5-minute writes, 1-hour writes and reads?",
+     "a": "5-minute write 1.25x, 1-hour write 2x, read 0.1x base input (0.05x on Opus and Sonnet 5.5)."
+    },
+    {
+     "q": "Which errors mark a prompt that is too big, versus a generation that runs out of window?",
+     "a": "Too big: HTTP 400 `invalid_request_error` (tokens) or 413 `request_too_large` (bytes), before generation. Runs out while writing: `model_context_window_exceeded`."
+    },
+    {
+     "q": "In what order should you climb the improvement levers before fine-tuning?",
+     "a": "Optimise the prompt, add tools or retrieval, add an evaluator-optimizer loop, then fine-tune."
+    },
+    {
+     "q": "Which model should you start on, and when do you move to Opus or Haiku?",
+     "a": "Start on Sonnet. Move to Opus or Haiku only when an eval set shows the need or the safety."
+    },
+    {
+     "q": "What are the per-MTok input and output prices for Fable, Opus, Sonnet and Haiku?",
+     "a": "Fable $10/$50, Opus $4/$20, Sonnet $2/$10, Haiku from $0.10/$0.50."
+    }
+   ]
   },
   {
    "domain": "Developer Productivity & Operational Enablement",
@@ -1898,7 +2270,69 @@
      "Changing settings, widening access or restarting before observing, destroying the evidence you needed.",
      "Granting the review bot merge rights, or counting sessions and accepted lines as productivity."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What is the Claude Code settings precedence from highest to lowest?",
+     "a": "Managed, `--settings`, `.claude/settings.local.json`, `.claude/settings.json`, then `~/.claude/settings.json`."
+    },
+    {
+     "q": "Which two files do you commit so every clone shares permissions, hooks and project context?",
+     "a": "`.claude/settings.json` (permissions, hooks, plugins) and CLAUDE.md (project context)."
+    },
+    {
+     "q": "Which settings layer stops users turning a rule off, and how do list keys like `permissions.allow` behave?",
+     "a": "Only managed settings. List keys merge across files, so users can add but not remove managed entries."
+    },
+    {
+     "q": "Which Claude Code mechanism blocks actions even in bypass mode, and why is CLAUDE.md not it?",
+     "a": "A `PreToolUse` hook blocks actions even in bypass mode. CLAUDE.md is context, not enforcement."
+    },
+    {
+     "q": "How should automated PR review and triage run in CI, and what stays in place?",
+     "a": "Post findings as line comments. Branch protection and human approval stay in place."
+    },
+    {
+     "q": "Which tools show active settings sources, list hooks, and show hook outcomes when debugging Claude Code?",
+     "a": "`/status` shows settings sources, `/hooks` lists hooks by event, and `Ctrl+O` shows hook outcomes."
+    },
+    {
+     "q": "A hook never fires. What is a likely matcher problem?",
+     "a": "Hook matchers are case-sensitive, so a misspelled tool name silently matches nothing."
+    },
+    {
+     "q": "A truncated answer arrives with no HTTP error. What do you check?",
+     "a": "`stop_reason`, such as `model_context_window_exceeded`, not the HTTP status."
+    },
+    {
+     "q": "Trap: which two beliefs about CLAUDE.md and committed settings are wrong?",
+     "a": "That a CLAUDE.md rule is a guarantee, and that a committed file cannot be overridden. Only managed settings stop people turning a rule off."
+    },
+    {
+     "q": "Trap: a Claude Code problem appears. Which first actions destroy the evidence you needed?",
+     "a": "Changing settings, widening access or restarting before observing. Pick the cheapest observation that tells the likely causes apart."
+    },
+    {
+     "q": "Trap: which two mistakes appear with automated PR review and with measuring productivity?",
+     "a": "Granting the review bot merge rights, and counting sessions or accepted lines as productivity."
+    },
+    {
+     "q": "Which permission mode suits locked-down CI, and which is for containers only?",
+     "a": "`dontAsk` is for locked-down CI; `bypassPermissions` is for containers only."
+    },
+    {
+     "q": "Which Skill distribution channel has no version pinning or native rollback, and which supports explicit pinning?",
+     "a": "Org-provisioned Skills have neither, and updates are manual re-uploads. API Skills support explicit version pinning."
+    },
+    {
+     "q": "What rollout pattern beats an all-hands switch-on?",
+     "a": "One champion per team proves a real workflow, then seeds batches."
+    },
+    {
+     "q": "Hook JSON output is being ignored. What are two likely causes?",
+     "a": "Shell profile output printed before the JSON, or fields placed outside `hookSpecificOutput`."
+    }
+   ]
   }
  ]
 }

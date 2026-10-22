@@ -15,7 +15,7 @@ USER root
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY web.py ./
+COPY web.py plan.py ./
 COPY static ./static
 # Mermaid served by the portal itself (no CDN at run time); keep the version in step with MERMAID_VERSION in static/app.js
 ARG MERMAID_VERSION=11.17.2

@@ -9,10 +9,10 @@
   function go(view) { location.hash = view; }
   function route() {
     const v = (location.hash || "#home").slice(1);
-    state.view = ["home", "study", "quiz", "exam", "stats"].includes(v) ? v : "home";
+    state.view = ["home", "study", "quiz", "exam", "stats", "cram"].includes(v) ? v : "home";
     $$(".view").forEach(s => s.hidden = s.id !== `view-${state.view}`);
-    $$(".views a").forEach(a => a.setAttribute("aria-current", a.dataset.view === state.view));
-    ({ home: loadHome, study: loadStudy, quiz: openQuiz, exam: loadExam, stats: loadStats })[state.view]();
+    $$(".views a").forEach(a => a.setAttribute("aria-current", a.dataset.view === state.view || (state.view === "cram" && a.dataset.view === "study")));
+    ({ home: loadHome, study: loadStudy, quiz: openQuiz, exam: loadExam, stats: loadStats, cram: loadCram })[state.view]();
     window.scrollTo({ top: 0 });
   }
   window.addEventListener("hashchange", route);
@@ -22,7 +22,7 @@
     state.exams = await (await fetch("/api/exams")).json();
     state.public = (await (await fetch("/api/access")).json()).public;   // public link: no Claude, no reset
     document.documentElement.dataset.public = state.public ? "1" : "";
-    const sc = $("#scope"); sc.hidden = false; sc.textContent = state.public ? "Public view" : "Private"; sc.dataset.public = state.public ? "1" : "";
+    const sc = $("#scope"); sc.hidden = false; sc.innerHTML = state.public ? `${ic("globe")}Public view` : `${ic("lock-simple")}Private`; sc.dataset.public = state.public ? "1" : "";
     if (!state.exams.some(e => e.key === state.exam)) state.exam = state.exams[0].key;
     renderSwitch();
     setExam(state.exam, false);
@@ -72,12 +72,44 @@
                                          : `Multiple choice first: ${h.progress.mcq.total - h.progress.mcq.seen} left, then ${h.progress.tasks.total} scenario tasks`)
       : `${h.coverage.total - h.coverage.seen} ${unit} you have not seen yet`;
     $("#door-exam-d").textContent = `${h.exam_n} ${unit} in ${h.exam_minutes} min, scored at the end`;
+    if (!state.public) renderPlan(h.plan);
   }
+
+  // ── Plan (Home): exam date, today's targets, focus domains; the quiz bar shows the same numbers while you work ──
+  const days = (n) => n == null ? "No exam date yet" : n < 0 ? "Exam date passed" : n === 0 ? "Exam day" : `${n} day${n === 1 ? "" : "s"} to the exam`;
+  function fmtPlan(p) {
+    const cards = p.cards.due.length ? ` and ${p.cards.due.length} flashcards` : "";
+    const track = p.score ? (p.on_track ? `${p.score} predicted: on track for the ${p.pass} pass mark.` : `${p.score} predicted, ${p.gap} short of the ${p.pass} pass mark.`) : "Answer questions to get a predicted score.";
+    return `${days(p.days_left)}. Today: ${p.due} due reviews${cards}, then ${p.today.pace} new questions. ${track}`;
+  }
+  function renderPlan(p) {
+    state.plan = p;
+    const box = $("#plan"); box.hidden = !p; if (!p) return;
+    $("#ps-due").textContent = p.due + (p.cards.due.length ? ` +${p.cards.due.length}` : "");
+    $("#ps-new").textContent = p.today.pace;
+    $("#ps-done").textContent = p.today.done;
+    $("#ps-days").textContent = p.days_left == null ? "none" : Math.max(0, p.days_left);
+    $("#plan-line").textContent = fmtPlan(p);
+    $("#plan-focus").textContent = p.focus.length ? "Focus next: " + p.focus.map(f => `${f.domain}${f.acc != null ? ` (${Math.round(100 * f.acc)}% right)` : ""}`).join(", ") : "";
+    $("#plan-date").value = p.exam_date || ""; $("#plan-pace").value = p.today.pace;
+  }
+  async function savePlan(body) { renderPlan(await (await post("/plan", body)).json()); }
+  $("#plan-date").onchange = (e) => savePlan({ exam_date: e.target.value || null });
+  $("#plan-pace").onchange = (e) => savePlan({ pace: Number(e.target.value) || 20 });
+  $("#plan-go").onclick = () => { go("quiz"); setTimeout(() => act("next"), 50); };
+  function renderQuizBar(p) {
+    const bar = $("#quiz-bar"); bar.hidden = !p; if (!p) return;
+    $("#quiz-bar-text").textContent = `${p.due} due · ${p.new_left} unseen · today ${p.today.done} of ${p.today.target}${p.days_left != null ? ` · ${days(p.days_left)}` : ""}`;
+  }
+  async function refreshPlan() { try { const p = await api("/plan"); state.plan = p; renderQuizBar(p); } catch (e) { /* bar is cosmetic */ } }
 
   // ── Study ─────────────────────────────────────────────────────────────────
   async function loadStudy() {
     const s = await api("/study");
     const r = s.reading || {};
+    $("#deck").hidden = true;
+    try { state.plan = await api("/plan"); } catch (e) { state.plan = null; }     // due flashcards per domain
+    const dueKeys = new Set(state.plan?.cards.due || []);
     $("#study-intro").textContent = r.intro || "";
     $("#btn-card").hidden = !s.has_cards;
     const link = (l) => {
@@ -104,13 +136,16 @@
       const det = document.createElement("details"); det.className = "domain"; det.open = i === 0;
       const pct = c && c.total ? Math.round(100 * c.seen / c.total) : 0;
       det.innerHTML = `<summary><span><span class="dn">${esc(d.domain)}</span>${d.weight ? `<span class="dw">${d.weight}%</span>` : ""}</span>
-        <span class="cov">${c ? `<b>${c.right}</b> right first time, ${c.seen} of ${c.total} seen` : "coverage by source bank"}</span>
+        <span class="cov">${c ? `<b>${c.right}</b> right first time, ${c.seen} of ${c.total} seen` : "coverage by source bank"}</span>${ic("caret-down", "chev")}
         <span class="bar"><i style="width:${pct}%"></i></span></summary>`;
       if (d.summary) det.append(summaryBox(d.summary));
       const bar = document.createElement("div"); bar.className = "domain-actions";
-      bar.innerHTML = `<button type="button" class="btn btn-accent">🎯 Quiz me on this topic</button>
+      const nDue = (d.cards || []).filter(x => dueKeys.has(x.key)).length;
+      bar.innerHTML = `<button type="button" class="btn btn-accent">${ic("target")}Quiz me on this topic</button>
+        ${d.cards?.length ? `<button type="button" class="btn card-btn">${ic("cards")}Flashcards${nDue ? ` · ${nDue} due` : ` (${d.cards.length})`}</button>` : ""}
         ${d.notes?.length ? `<span class="read-count muted small"></span>` : ""}`;
       $("button", bar).onclick = () => { go("quiz"); setTimeout(() => act(`d|${d.domain}`), 50); };
+      $(".card-btn", bar)?.addEventListener("click", () => openDeck(d));
       det.append(bar);
       det.append(topicMedia(d));
       if (d.notes?.length) { det.append(notesBlock(d)); readCount(det, d); }   // own notes instead of links out to the vendor docs
@@ -134,10 +169,10 @@
   const rich = (s) => esc(s || "").replace(/`([^`]+)`/g, "<code>$1</code>");
   function summaryBox(s) {
     const el = document.createElement("section"); el.className = "summary";
-    el.innerHTML = `<h4>📌 What you need to know</h4>
+    el.innerHTML = `<h4>${ic("push-pin", "ic-accent")}What you need to know</h4>
       ${s.tests ? `<p class="tests">${rich(s.tests)}</p>` : ""}
       <ul class="must">${(s.must_know || []).map(x => `<li>${rich(x)}</li>`).join("")}</ul>
-      ${(s.traps || []).length ? `<p class="traps-h">⚠️ Common traps</p><ul class="traps">${s.traps.map(x => `<li>${rich(x)}</li>`).join("")}</ul>` : ""}`;
+      ${(s.traps || []).length ? `<p class="traps-h">${ic("warning", "ic-bad")}Common traps</p><ul class="traps">${s.traps.map(x => `<li>${rich(x)}</li>`).join("")}</ul>` : ""}`;
     return el;
   }
   // Read marks live in this browser (localStorage), one set of "domain#title" keys per exam.
@@ -146,7 +181,7 @@
   const noteKey = (d, n) => `${d.domain}#${n.title}`;
   function readCount(det, d) {
     const done = readSet(), n = d.notes.filter(x => done.has(noteKey(d, x))).length;
-    const el = $(".read-count", det); if (el) el.textContent = `📖 ${n} of ${d.notes.length} notes read`;
+    const el = $(".read-count", det); if (el) el.innerHTML = `${ic("book-open")} ${n} of ${d.notes.length} notes read`;
   }
   function notesBlock(d) {
     const wrap = document.createElement("div"); wrap.className = "notes";
@@ -168,7 +203,7 @@
       ${n.objective ? `<p class="obj">${esc(n.objective)}</p>` : ""}
       <p class="gist">${rich(n.gist)}</p>
       <ul>${(n.points || []).map(p => `<li>${rich(p)}</li>`).join("")}</ul>
-      ${n.tip ? `<p class="tip"><b>🎯 Exam tip</b> ${rich(n.tip)}</p>` : ""}
+      ${n.tip ? `<p class="tip"><b>${ic("target", "ic-accent")} Exam tip</b> ${rich(n.tip)}</p>` : ""}
       <div class="note-foot">${n.source?.url ? `<p class="src">Source: <a href="${esc(n.source.url)}" target="_blank" rel="noopener">${esc(n.source.title || "page")}</a></p>` : ""}</div>`;
     if (d) {                                                   // "Mark as read" toggle, kept per browser
       const b = document.createElement("button"); b.type = "button"; b.className = "read-btn";
@@ -368,13 +403,13 @@
     const d = await topicFor($(".dom", card)?.textContent, text ?? `${$(".qtext", card)?.textContent} ${$(".options", card)?.textContent || ""}`);
     if (!d || !(d.video || d.diagram) || $(".topic-panel", card)) return;
     const det = document.createElement("details"); det.className = "topic-panel";
-    det.innerHTML = `<summary>🎬 Topic: ${esc(d.domain)} · ${d.summary ? "key points + " : ""}video + diagram${d.notes?.length ? " + notes" : ""}</summary>`;
+    det.innerHTML = `<summary>${ic("film-slate")} Topic: ${esc(d.domain)} · ${d.summary ? "key points + " : ""}video + diagram${d.notes?.length ? " + notes" : ""}</summary>`;
     det.addEventListener("toggle", () => {
       if (!det.open || $(".topic", det)) return;
       if (d.summary) det.append(summaryBox(d.summary));
       det.append(topicMedia(d));
       if (d.notes?.length) {
-        const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = `📖 Read the ${d.notes.length} study notes`;
+        const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.innerHTML = `${ic("book-open")}Read the ${d.notes.length} study notes`;
         b.onclick = () => { state.studyFocus = d.domain; go("study"); };
         det.append(b);
       }
@@ -384,6 +419,64 @@
   }
   function studyCard() { go("quiz"); setTimeout(() => act("study"), 50); }
   $("#btn-card").onclick = studyCard;
+
+  // ── Flashcards: due first, then unseen, then the rest; Again / Got it schedule them on the question ladder ──
+  const DECK = { cards: [], i: 0, side: "front" };
+  function openDeck(d) {
+    const due = new Set(state.plan?.cards.due || []), seen = new Set(state.plan?.cards.seen || []);
+    const rank = (c) => due.has(c.key) ? 0 : seen.has(c.key) ? 2 : 1;
+    DECK.cards = [...d.cards].sort((a, b) => rank(a) - rank(b)); DECK.i = 0;
+    $("#deck-title").textContent = `🃏 ${d.domain}`;
+    const box = $("#deck"); box.hidden = false; box.scrollIntoView({ block: "start", behavior: "smooth" });
+    showCard();
+  }
+  function showCard(note) {
+    const c = DECK.cards[DECK.i], flash = $("#flash");
+    DECK.side = "front"; flash.dataset.side = "front";
+    $("#deck-again").disabled = $("#deck-ok").disabled = !c;
+    if (!c) { $("#flash-front").textContent = "Deck done. Cards you missed come back in 10 minutes, the rest on their schedule."; $("#flash-back").textContent = ""; $("#deck-pos").textContent = `${DECK.cards.length} reviewed`; return; }
+    $("#flash-front").textContent = c.q; $("#flash-back").textContent = c.a;
+    const due = (state.plan?.cards.due || []).includes(c.key);
+    $("#deck-pos").textContent = `${DECK.i + 1} of ${DECK.cards.length}${due ? " · due" : ""}${note ? ` · ${note}` : ""}`;
+  }
+  function flipCard() {
+    if (!DECK.cards[DECK.i]) return;
+    DECK.side = DECK.side === "front" ? "back" : "front"; $("#flash").dataset.side = DECK.side;   // CSS rotates the inner card
+  }
+  async function rateCard(ok) {
+    const c = DECK.cards[DECK.i]; if (!c) return;
+    $("#deck-again").disabled = $("#deck-ok").disabled = true;
+    let note = "";
+    try {
+      const r = await (await post("/card", { key: c.key, ok })).json();
+      note = `last one back in ${r.due_min < 60 ? `${r.due_min} min` : `${Math.round(r.due_min / 1440)} d`}`;
+      if (state.plan) { state.plan.cards.due = state.plan.cards.due.filter(k => k !== c.key); if (!state.plan.cards.seen.includes(c.key)) state.plan.cards.seen.push(c.key); }
+    } catch (e) { note = "not saved (offline?)"; }
+    DECK.i++; showCard(note);
+  }
+  $("#flash").onclick = flipCard;
+  $("#deck-again").onclick = () => rateCard(false);
+  $("#deck-ok").onclick = () => rateCard(true);
+  $("#deck-close").onclick = () => { $("#deck").hidden = true; };
+
+  // ── Cram sheet: every domain's must-knows, traps and exam tips on one printable page ──
+  async function loadCram() {
+    const s = await api("/study"); const r = s.reading || {};
+    $("#cram-title").textContent = `${cur()?.short || ""} cram sheet`;
+    const box = $("#cram-body"); box.innerHTML = "";
+    for (const d of r.domains || []) {
+      const sm = d.summary || {}, tips = (d.notes || []).map(n => n.tip).filter(Boolean);
+      const el = document.createElement("section"); el.className = "dom";
+      el.innerHTML = `<h3>${esc(d.domain)}${d.weight ? `<span class="dw">${d.weight}%</span>` : ""}</h3>
+        ${sm.tests ? `<p class="tests">${rich(sm.tests)}</p>` : ""}
+        ${(sm.must_know || []).length ? `<h4>Must know</h4><ul>${sm.must_know.map(x => `<li>${rich(x)}</li>`).join("")}</ul>` : ""}
+        ${(sm.traps || []).length ? `<h4>Traps</h4><ul class="traps">${sm.traps.map(x => `<li>${rich(x)}</li>`).join("")}</ul>` : ""}
+        ${tips.length ? `<h4>Exam tips</h4><ul>${tips.map(x => `<li>${rich(x)}</li>`).join("")}</ul>` : ""}`;
+      box.append(el);
+    }
+    if (!box.children.length) box.innerHTML = `<p class="muted">No study notes for this exam yet.</p>`;
+  }
+  $("#cram-print").onclick = () => print();
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   async function loadStats() {
@@ -401,7 +494,7 @@
   // Two buttons (quiz + progress view), same two-click confirm. Reset restarts the bank at question 1.
   let resetArmed = 0;
   const resetBtns = $$(".js-reset");
-  const setResetLabel = t => resetBtns.forEach(b => b.textContent = t);
+  const setResetLabel = t => resetBtns.forEach(b => ($(".lbl", b) || b).textContent = t);
   resetBtns.forEach(b => b.onclick = async () => {
     if (!resetArmed) { setResetLabel("Confirm reset"); resetArmed = setTimeout(() => { resetArmed = 0; setResetLabel("Reset progress"); }, 5000); return; }
     clearTimeout(resetArmed); resetArmed = 0; setResetLabel("Reset progress");
@@ -434,7 +527,7 @@
       ? `Scenario tasks: ${p.tasks.seen} of ${p.tasks.total} done. Multiple choice: ${p.mcq.seen} of ${p.mcq.total}.`
       : `Multiple choice first: ${p.mcq.seen} of ${p.mcq.total} seen. Scenario tasks (${p.tasks.total}) unlock automatically when the MCQ bank is done.`;
     $$("#mode-bar [data-mode]").forEach(b => b.setAttribute("aria-current", String(b.dataset.mode === p.forced)));
-    $("[data-act=next]").textContent = inTasks ? "Next task" : "Next question";
+    $("[data-act=next] .lbl").textContent = inTasks ? "Next task" : "Next question";
   }
   $$("#mode-bar [data-mode]").forEach(b => b.onclick = async () => {
     const p = await (await post("/mode", { mode: b.dataset.mode })).json();
@@ -443,21 +536,22 @@
   });
   async function openQuiz() {
     $("#btn-study-feed").hidden = !(cur() && cur().has_study);
-    $("[data-act=next]").textContent = "Next question";
+    $("[data-act=next] .lbl").textContent = "Next question";
     const h0 = state.home && state.home.key === state.exam ? state.home : await api("/home");
     state.home = h0;
     renderMode(h0.progress);
+    renderQuizBar(h0.plan);
     if (state.feedLoaded === state.exam) return;
     state.feedLoaded = state.exam;
     const h = h0;
     if (h.pending && h.pending.question.task) { addCard({ op: "add", id: "pending", kind: "text", html: h.pending.html, buttons: [] }); addTaskCard(h.pending.question); }
     else if (h.pending) addCard({ op: "add", id: "pending", kind: "text", html: h.pending.html, question: h.pending.question, buttons: [] });
-    else if (!feed.children.length) feed.innerHTML = `<p class="empty">${h.mode === "tasks" ? "No task yet. Press Next task, read it, then type the commands you would run." : "No question yet. Press Next question, or A to H once one is on screen."}</p>`;
+    else if (!feed.children.length) feed.innerHTML = `<div class="empty">${ic(h.mode === "tasks" ? "terminal-window" : "lightning")}<p>${h.mode === "tasks" ? "No task yet. Press Next task, read it, then type the commands you would run." : "Nothing on screen yet. Press Next question: due reviews come first, then new questions from your weakest heavy domains."}</p></div>`;
   }
   $$("[data-act]").forEach(b => b.onclick = () => act(b.dataset.act));
 
   async function act(data) { await run("/act", { data }); }
-  async function answer(id, picked) { await run("/answer", { id, picked }); }
+  async function answer(id, picked, guess) { await run("/answer", { id, picked, guess: !!guess }); }
   async function taskCheck(id, text) { await run("/task", { id, answer: text }, "Grading your commands"); }
   async function taskSelf(id, result) { await run("/task", { id, result }); }
 
@@ -547,7 +641,7 @@
           nav.innerHTML = `<span class="muted small">Study next</span>`;
           for (const w of weak) {
             const b = document.createElement("button"); b.type = "button"; b.className = "btn";
-            b.textContent = `📖 ${w.d}${w.n ? ` · ${Math.round(100 * w.acc)}%` : " · not started"}`;
+            b.innerHTML = `${ic("book-open")}${esc(w.d)}${w.n ? ` · ${Math.round(100 * w.acc)}%` : " · not started"}`;
             b.onclick = () => { state.studyFocus = w.d; go("study"); };
             nav.append(b);
           }
@@ -575,7 +669,7 @@
     const box = document.createElement("div"); box.className = "actions";
     for (const row of rows || []) for (const b of row) {
       if (!b.data || b.data.startsWith("a|") || b.data.startsWith("s|") || (state.public && b.data.startsWith("e|"))) continue;   // option buttons are the question card
-      const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn"; btn.textContent = b.label;
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn"; btn.innerHTML = iconize(esc(b.label));
       btn.onclick = () => { $$(".btn", box).forEach(x => x.disabled = true); act(b.data); };
       box.append(btn);
     }
@@ -611,12 +705,15 @@
     sub.hidden = !q.multi;
     $(".btn", sub).disabled = true;
     $(".btn", sub).onclick = () => submit([...picked].sort());
+    const guess = $(".guess", el);                        // 🤔 Guessing: a right answer still comes back in 10 minutes
+    guess.onclick = () => guess.setAttribute("aria-pressed", String(guess.getAttribute("aria-pressed") !== "true"));
     function submit(letters) {
       if (state.busy) return;
       $$(".opt", el).forEach(b => { b.disabled = true; b.setAttribute("aria-pressed", String(letters.includes(b.dataset.l))); });
       sub.hidden = true;
+      $(".guess-row", el).hidden = true;
       state.pendingCard = null;
-      answer(q.id, letters);
+      answer(q.id, letters, guess.getAttribute("aria-pressed") === "true");
     }
     state.pendingCard = { el, q, picked, submit };
     return el;
@@ -642,7 +739,7 @@
     const right = r.correct.length === x.picked.length && r.correct.every(l => x.picked.includes(l));
     el.classList.add("card-review", right ? "card-ok" : "card-bad");
     setQid($(".qid", el), r.id, r.tag); $(".dom", el).textContent = r.domain; $(".qtext", el).textContent = r.question;
-    $(".submit-row", el).remove();
+    $(".submit-row", el).remove(); $(".guess-row", el).remove();
     const v = document.createElement("p"); v.className = `verdict-line ${right ? "ok" : "bad"}`;
     v.textContent = right ? `Correct, ${r.correct.join(",")}` : `Wrong, you picked ${x.picked.join(",")}, answer ${r.correct.join(",")}`;
     $(".qtext", el).after(v);
@@ -653,6 +750,7 @@
     }
     const ex = document.createElement("div"); ex.className = "expl"; ex.textContent = r.explanation; el.append(ex);
     box.append(el);
+    addDecode(el, r.id, true);
   }
   function closePeek() { $("#peek").hidden = true; feed.hidden = false; }
   function peekList() {
@@ -687,6 +785,36 @@
       else if (g.picked.includes(b.dataset.l)) b.classList.add("is-wrong");
     });
     addTopic(el);
+    addDecode(el, g.id, state.public);
+    refreshPlan();
+  }
+
+  // ── Decoder: clue words in the stem, one line per option, the principle, a source link (web.py decode) ──
+  async function addDecode(card, qid, cachedOnly) {
+    if (!card || $(".decode", card)) return;
+    const box = document.createElement("div"); box.className = "decode";
+    box.innerHTML = cachedOnly ? "" : `<span class="wait">${ic("magnifying-glass", "ic-accent")}Decoding the question…</span>`;
+    card.append(box);
+    for (let i = 0; i < 45; i++) {                         // prefetched when the question was shown; usually ready at once
+      let r;
+      try { r = await fetch(`/api/${state.exam}/decode/${encodeURIComponent(qid)}${cachedOnly ? "?cached=1" : ""}`); } catch (e) { break; }
+      if (r.status === 200) return renderDecode(card, box, await r.json());
+      if (r.status !== 202 || cachedOnly) break;
+      await new Promise(ok => setTimeout(ok, 2000));
+    }
+    box.remove();
+  }
+  function renderDecode(card, box, d) {
+    const qt = $(".qtext", card);
+    let html = esc(qt.textContent);
+    for (const c of d.clues || []) { const e = esc(String(c).trim()); if (e && html.includes(e)) html = html.split(e).join(`<mark>${e}</mark>`); }
+    qt.innerHTML = html;
+    for (const o of d.options || []) {
+      const b = $(`.opt[data-l="${esc(String(o.letter))}"]`, card);
+      if (b && !$(".why", b)) b.insertAdjacentHTML("beforeend", `<span class="why">${esc(o.why)}</span>`);
+    }
+    box.innerHTML = (d.principle ? `<p class="principle"><b>${ic("magnifying-glass", "ic-accent")} Principle</b> ${esc(d.principle)}</p>` : "") +
+      (d.source?.url ? `<p class="src small">Source: <a href="${esc(d.source.url)}" target="_blank" rel="noopener">${esc(d.source.title || "page")}</a></p>` : "");
   }
 
   // Task exams: the task text was streamed as a normal card; this adds the answer box under it.
@@ -730,10 +858,18 @@
       else if (e.key === "ArrowLeft") $("#exam-prev").click();
       return;
     }
+    if (state.view === "study" && !$("#deck").hidden) {    // flashcards: Space flips, arrows rate, Esc closes
+      if (e.key === " " || e.key === "Enter") { flipCard(); e.preventDefault(); }
+      else if (e.key === "ArrowLeft") rateCard(false);
+      else if (e.key === "ArrowRight") rateCard(true);
+      else if (e.key === "Escape") $("#deck").hidden = true;
+      return;
+    }
     if (state.view !== "quiz") return;
     const p = state.pendingCard;
     if (p && p.task) return;
-    if (p && p.el.isConnected && /^[A-H]$/.test(k)) { $(`.opt[data-l="${k}"]`, p.el)?.click(); e.preventDefault(); }
+    if (p && p.el.isConnected && e.key === "?") { $(".guess", p.el)?.click(); e.preventDefault(); }
+    else if (p && p.el.isConnected && /^[A-H]$/.test(k)) { $(`.opt[data-l="${k}"]`, p.el)?.click(); e.preventDefault(); }
     else if (e.key === "Enter") {
       if (p && p.el.isConnected && p.q.multi) { if (p.picked.size) p.submit([...p.picked].sort()); }
       else if (!state.busy) act("next");
@@ -816,7 +952,7 @@
     setQid($(".qid", el), `${EX.cur + 1} of ${EX.run.questions.length}`, q.tag);
     $(".dom", el).textContent = q.multi ? "Select all that apply" : "";
     $(".qtext", el).textContent = q.question;
-    $(".submit-row", el).remove();
+    $(".submit-row", el).remove(); $(".guess-row", el).remove();
     const picked = new Set(EX.run.answers[q.id] || []);
     const opts = $(".options", el);
     for (const o of q.options) {
@@ -870,7 +1006,7 @@
       const el = $("#t-question").content.firstElementChild.cloneNode(true);
       el.classList.add("card-review", r.right ? "card-ok" : "card-bad");
       setQid($(".qid", el), r.id, r.tag); $(".dom", el).textContent = r.domain; $(".qtext", el).textContent = r.question;
-      $(".submit-row", el).remove();
+      $(".submit-row", el).remove(); $(".guess-row", el).remove();
       const v = document.createElement("p"); v.className = `verdict-line ${r.right ? "ok" : "bad"}`;
       if (r.task) {
         v.textContent = `Score ${r.score}/100, ${r.verdict}`;
@@ -891,20 +1027,31 @@
       }
       const ex = document.createElement("div"); ex.className = "expl"; ex.textContent = r.explanation; el.append(ex);
       const a = document.createElement("div"); a.className = "actions";
-      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Explain more with a diagram";
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.innerHTML = `${ic("graduation-cap")}Explain more with a diagram`;
       b.onclick = () => { go("quiz"); setTimeout(() => act(`e|${r.id}|${r.picked.join(",")}`), 50); };
       if (!state.public) a.append(b);
       el.append(a);
-      list.append(el); addTopic(el);
+      list.append(el); addTopic(el); addDecode(el, r.id, true);
     }
     window.scrollTo({ top: 0 });
   }
   $("#res-again").onclick = () => { EX.run = null; loadExam(); };
 
   // ── Telegram HTML -> page HTML ────────────────────────────────────────────
+  // The bots speak Telegram's emoji vocabulary; the page draws the same meaning with one icon family (Phosphor).
+  const ic = (name, cls) => `<i class="ph ph-${name}${cls ? " " + cls : ""}" aria-hidden="true"></i>`;
+  const EMOJI = { "🟢": ["check-circle", "ic-ok"], "🔴": ["x-circle", "ic-bad"], "📝": ["note-pencil", "ic-accent"], "🎓": ["graduation-cap", "ic-accent"],
+    "📊": ["chart-bar", "ic-accent"], "📚": ["books", "ic-accent"], "⏳": ["hourglass-medium"], "⚠️": ["warning", "ic-warn"], "⚠": ["warning", "ic-warn"],
+    "🆕": ["sparkle", "ic-accent"], "🎯": ["target", "ic-accent"], "📅": ["calendar-blank"], "🔄": ["arrow-counter-clockwise"], "◀️": ["caret-left"],
+    "➡️": ["arrow-right"], "▶️": ["caret-right"], "✅": ["check", "ic-ok"], "☑": ["check-square"], "🛠": ["wrench", "ic-accent"], "🧭": ["compass", "ic-accent"],
+    "📘": ["book-open-text", "ic-accent"], "🗺": ["map-trifold"], "🎬": ["film-slate"], "📖": ["book-open"], "🔀": ["shuffle"], "🪪": ["identification-card"],
+    "💡": ["lightbulb", "ic-warn"], "🔍": ["magnifying-glass"], "📌": ["push-pin", "ic-accent"], "🔁": ["arrows-clockwise"], "⚪": ["circle"], "🟡": ["warning-circle", "ic-warn"],
+    "❌": ["x", "ic-bad"], "🤔": ["dice-three"], "🖨": ["printer"], "🃏": ["cards"], "🗒": ["notepad"] };
+  const EMOJI_RX = new RegExp(Object.keys(EMOJI).sort((a, b) => b.length - a.length).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+  const iconize = (html) => html.replace(EMOJI_RX, m => ic(EMOJI[m][0], EMOJI[m][1]));
   function tg(html) {
-    return (html || "").replace(/<tg-spoiler>/g, '<span class="spoiler">').replace(/<\/tg-spoiler>/g, "</span>")
-      .replace(/<blockquote expandable>/g, "<blockquote>").replace(/<a /g, '<a target="_blank" rel="noopener" ');
+    return iconize((html || "").replace(/<tg-spoiler>/g, '<span class="spoiler">').replace(/<\/tg-spoiler>/g, "</span>")
+      .replace(/<blockquote expandable>/g, "<blockquote>").replace(/<a /g, '<a target="_blank" rel="noopener" '));
   }
   function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 

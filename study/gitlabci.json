@@ -247,7 +247,69 @@
      "Using job `rules` to stop duplicate branch plus MR pipelines; that is a `workflow:rules` job.",
      "Assuming a basic CI Lint pass catches `needs` and `rules` errors; simulation does that."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which top-level keywords in `.gitlab-ci.yml` are global, and what is any other top-level key?",
+     "a": "`stages`, `default`, `include`, `workflow` and `variables` are global. Any other top-level key is a job."
+    },
+    {
+     "q": "What must every job define at minimum?",
+     "a": "Either `script` or `trigger`."
+    },
+    {
+     "q": "What does a leading dot in a job name, such as `.test-template`, make that job?",
+     "a": "A hidden job: a template that never runs by itself and that other jobs can borrow with `extends`."
+    },
+    {
+     "q": "When a job and the template it `extends` set the same key, which value wins?",
+     "a": "The job's own key. `extends` deep-merges hashes, and keys set on the job itself take precedence."
+    },
+    {
+     "q": "How do array keys such as `rules` merge when the main file and an included file both set them?",
+     "a": "Arrays are replaced, never appended: the top-level file's `rules` replaces the included file's `rules`."
+    },
+    {
+     "q": "Name the five `include` types.",
+     "a": "`local`, `project`, `remote`, `template` and `component`."
+    },
+    {
+     "q": "How many includes can one pipeline have at most?",
+     "a": "Up to 150, with nested includes counted; self-managed instances can change the limit."
+    },
+    {
+     "q": "Which keyword decides whether the whole pipeline is created, before any job `rules` are checked?",
+     "a": "`workflow:rules`. Rules are checked in order, the first match decides, and no match means no pipeline."
+    },
+    {
+     "q": "How does a component template read an input, such as `stage`, declared under `spec:inputs`?",
+     "a": "Write `$[[ inputs.stage ]]` in the template; `spec:inputs` declares the parameters."
+    },
+    {
+     "q": "Which version references can follow `@` when you include a component?",
+     "a": "A version such as `@1.0.0`, or `@~latest` for the newest published. Pin a version, because `~latest` can pull breaking changes."
+    },
+    {
+     "q": "Trap: does `extends` or `include` append a job's `script` lines to the template's `script`?",
+     "a": "No. The later array replaces the earlier one; if the job sets `script`, the template's `script` is gone."
+    },
+    {
+     "q": "Trap: where do you stop duplicate branch plus merge request pipelines, in job `rules` or elsewhere?",
+     "a": "In `workflow:rules`, not job `rules`. Use `$CI_OPEN_MERGE_REQUESTS` there to stop the duplicates."
+    },
+    {
+     "q": "Trap: a basic CI Lint syntax check passes. Does that rule out `needs` and `rules` errors?",
+     "a": "No. Only simulating pipeline creation for the default branch catches `needs` and `rules` problems."
+    },
+    {
+     "q": "Which reuse mechanisms work across `include` files, and which work only inside one file?",
+     "a": "`extends` and `!reference` work across included files. YAML anchors (`&name`, `*name`, `<<: *name`) only work inside one file."
+    },
+    {
+     "q": "How can one job opt out of the values set in `default:`?",
+     "a": "Set `inherit:default: false` on the job. Otherwise a job's own value overrides `default`."
+    }
+   ]
   },
   {
    "domain": "Pipeline Development",
@@ -437,7 +499,69 @@
      "Expecting a trigger job to fail with its child; without `strategy` it passes once created.",
      "Forgetting `when: manual` inside `rules` flips `allow_failure` to false, blocking the pipeline."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "How are job `rules` evaluated, and what happens when no rule matches?",
+     "a": "In order, and the first match wins. If no rule matches, the job is skipped."
+    },
+    {
+     "q": "Which values can `when` take on a job, and which is the default?",
+     "a": "`on_success` (the default), `manual`, `delayed` (with `start_in`), `always` and `never`."
+    },
+    {
+     "q": "When does a job with `needs: [build_a]` start?",
+     "a": "As soon as `build_a` finishes, even if other build jobs are still running."
+    },
+    {
+     "q": "What does `needs: []` do to a job?",
+     "a": "It starts the job at once; good for lint and scanners."
+    },
+    {
+     "q": "Which `trigger` keyword creates a child pipeline, and which creates a multi-project pipeline?",
+     "a": "`trigger:include` creates a child pipeline in the same project; `trigger:project` creates a multi-project pipeline."
+    },
+    {
+     "q": "Which `trigger:strategy` values make the trigger job reflect the downstream pipeline's status?",
+     "a": "`mirror` or `depend`."
+    },
+    {
+     "q": "Which `rules:if` condition puts a job into merge request pipelines?",
+     "a": "`$CI_PIPELINE_SOURCE == \"merge_request_event\"`. Jobs with no merge request rule do not appear in MR pipelines."
+    },
+    {
+     "q": "Which two settings clean up a review app?",
+     "a": "`environment:on_stop` names a stop job, and that stop job sets `environment:action: stop`."
+    },
+    {
+     "q": "Which keyword lets only one deploy job run at a time, such as two pipelines deploying to production?",
+     "a": "`resource_group`, for example `resource_group: production`. Not `needs` or stages."
+    },
+    {
+     "q": "Trap: should new config use `only/except` or `rules`?",
+     "a": "`rules`. `only/except` is deprecated, and mixing it with `rules` in one pipeline causes surprises."
+    },
+    {
+     "q": "Trap: a child pipeline fails but the parent's trigger job passes. Why?",
+     "a": "Without `trigger:strategy`, the trigger job passes once the downstream pipeline is created. Add `mirror` or `depend` to follow its status."
+    },
+    {
+     "q": "Trap: what does `when: manual` inside `rules` do to `allow_failure`?",
+     "a": "It flips the default to `false`, so the manual job blocks later stages. Outside `rules`, `when: manual` defaults to `allow_failure: true` and never blocks."
+    },
+    {
+     "q": "How do clauses combine inside one rule, and how do separate rules combine?",
+     "a": "Clauses in one rule combine with AND; separate rules act like OR."
+    },
+    {
+     "q": "A job's `needs` points at a job that `rules` excluded, so creation fails. Which option avoids the error?",
+     "a": "`needs:optional: true`, or fix the rules of the needed job."
+    },
+    {
+     "q": "How do you keep `main` green when many merge requests merge at once?",
+     "a": "Merge trains: they queue MRs, and each is tested on top of the ones ahead."
+    }
+   ]
   },
   {
    "domain": "CI/CD Fundamentals",
@@ -658,7 +782,69 @@
      "Expecting a protected variable on a feature branch; it is simply empty there.",
      "Assuming `.gitlab-ci.yml` variables beat project UI variables; UI variables rank higher."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "If `stages:` is not defined, which stages does a pipeline have, in order?",
+     "a": "`.pre`, `build`, `test`, `deploy`, `.post`. `.pre` always runs first and `.post` always runs last."
+    },
+    {
+     "q": "In what order do stages run, and how do the jobs inside one stage run?",
+     "a": "Stages run in order; jobs inside one stage run in parallel when enough runners are free."
+    },
+    {
+     "q": "What is the variable precedence order, from highest to lowest?",
+     "a": "Security policy, manual job, pipeline, project, group, instance, YAML, then predefined variables."
+    },
+    {
+     "q": "What does marking a CI/CD variable Protected do?",
+     "a": "Only pipelines on protected branches or protected tags receive its value."
+    },
+    {
+     "q": "What is the minimum length of a masked variable's value, and how does it appear in logs?",
+     "a": "8 or more characters; it prints as `[MASKED]`."
+    },
+    {
+     "q": "What is the default artifact expiry when a job sets no `expire_in`?",
+     "a": "The instance default applies: 30 days out of the box."
+    },
+    {
+     "q": "How reliable is `cache`, and where does it live?",
+     "a": "Best effort only. It lives with the runner (or in S3 when distributed), so losing it must be harmless."
+    },
+    {
+     "q": "A job uses `services: [postgres:16]`. Which hostname do tests use to reach the database?",
+     "a": "`postgres`, the service hostname, not `localhost` or a socket."
+    },
+    {
+     "q": "Trap: you use cache to pass build output to the deploy job. What is the reliable way?",
+     "a": "Artifacts. They pass build output to later jobs; cache is best effort and suits reused dependencies."
+    },
+    {
+     "q": "Trap: a deploy works on `main` but fails on a feature branch with an empty token. Why?",
+     "a": "The variable is protected, so it is simply empty on feature branches. Masked does not mean protected."
+    },
+    {
+     "q": "Trap: a project UI variable and a job's `variables:` share a name. Which value wins?",
+     "a": "The UI variable, because variables in `.gitlab-ci.yml` rank lower. A value typed on Run pipeline beats both."
+    },
+    {
+     "q": "Which stage does a job land in when it has no `stage` keyword?",
+     "a": "The `test` stage."
+    },
+    {
+     "q": "Why do rules testing `$CI_COMMIT_BRANCH` silently miss merge request pipelines?",
+     "a": "`CI_COMMIT_BRANCH` is unset in tag and MR pipelines. `CI_COMMIT_TAG` is set only in tag pipelines."
+    },
+    {
+     "q": "What are the `cache:policy` values, and which is the default?",
+     "a": "`pull-push` is the default; `pull` suits read-only jobs; `push` only saves the cache."
+    },
+    {
+     "q": "What separates continuous delivery from continuous deployment?",
+     "a": "Delivery: always releasable, deployed by a manual step. Deployment: automatic to production. A manual production gate means continuous delivery."
+    }
+   ]
   },
   {
    "domain": "Troubleshooting & Optimization",
@@ -804,7 +990,69 @@
      "Enabling debug trace on a public project log, leaking variable values.",
      "Thinking `parallel` needs no capacity; you still need enough runners or concurrency."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which variable prints every command in a job log for debugging?",
+     "a": "`CI_DEBUG_TRACE: \"true\"`. Set it on one job, because it can expose secrets."
+    },
+    {
+     "q": "Which CI Lint mode catches `needs` and `rules` errors before the pipeline runs?",
+     "a": "Simulating pipeline creation for the default branch. A plain syntax check misses them."
+    },
+    {
+     "q": "A job stays in pending. What is the usual cause?",
+     "a": "No online runner has every tag the job lists. A job with `tags: [gpu]` waits when no available runner has the `gpu` tag."
+    },
+    {
+     "q": "What is the maximum for `retry`, and what is its default?",
+     "a": "`retry: 2` is the maximum, and the default is `0`."
+    },
+    {
+     "q": "Which `retry` option limits retries to certain failure types, such as `runner_system_failure`?",
+     "a": "`retry:when`, for example `[runner_system_failure, stuck_or_timeout_failure]`, which retries only infrastructure failures."
+    },
+    {
+     "q": "What is the difference between `parallel: N` and `parallel:matrix`?",
+     "a": "`parallel: N` splits one job N ways (N from 1 to 200); `parallel:matrix` runs one job per combination of variable values."
+    },
+    {
+     "q": "Which keyword lets a newer pipeline cancel outdated, redundant jobs?",
+     "a": "`interruptible: true`. It stops wasted runs on superseded commits."
+    },
+    {
+     "q": "Which keywords start jobs earlier, skip jobs for untouched files, and reuse dependencies until the lockfile changes?",
+     "a": "`needs`, `rules:changes` and `cache:key:files`. Small purpose-built images also cut runtime."
+    },
+    {
+     "q": "Trap: a test fails for real. Should you raise `retry` to fix it?",
+     "a": "No. `retry` suits flaky runner or network issues, not broken tests."
+    },
+    {
+     "q": "Trap: why is turning on `CI_DEBUG_TRACE` risky on a public project?",
+     "a": "The debug log can print variable values, including masked secrets, into a public project's log. Restrict who can read job logs first."
+    },
+    {
+     "q": "Trap: does `parallel` need extra runner capacity?",
+     "a": "Yes. You still need several runners or a runner with enough concurrency."
+    },
+    {
+     "q": "No pipeline appears at all after a push. Which two things do you check?",
+     "a": "`workflow:rules`, and `[skip ci]` in the commit message."
+    },
+    {
+     "q": "Each push creates two pipelines, a branch one and an MR one. What fixes it?",
+     "a": "`workflow:rules`. Duplicate pipelines are a rules problem, not a runner problem."
+    },
+    {
+     "q": "Which variables tell each `parallel` copy which slice of the tests to run?",
+     "a": "`CI_NODE_INDEX` and `CI_NODE_TOTAL`."
+    },
+    {
+     "q": "How does a job's `timeout` relate to the project timeout and the runner's timeout?",
+     "a": "A job `timeout` may exceed the project timeout, but never the runner's timeout."
+    }
+   ]
   },
   {
    "domain": "Container & Package Management",
@@ -944,7 +1192,69 @@
      "Expecting `CI_REGISTRY_PASSWORD` to work after the job; it lives only while the job runs.",
      "Treating the dependency proxy as a project feature; it is enabled per group."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What does Docker-in-Docker need in the job and on the runner?",
+     "a": "`image: docker` plus `services: [docker:dind]` in the job, and the runner in privileged mode."
+    },
+    {
+     "q": "Which setting enables TLS for Docker-in-Docker?",
+     "a": "`DOCKER_TLS_CERTDIR: \"/certs\"`, with `/certs/client` shared."
+    },
+    {
+     "q": "How do you run Docker-in-Docker without TLS, and which port does it use?",
+     "a": "Set `DOCKER_TLS_CERTDIR: \"\"` and `DOCKER_HOST: tcp://docker:2375`. An empty value disables TLS on port 2375."
+    },
+    {
+     "q": "What is the trade-off of socket binding with `/var/run/docker.sock` instead of dind?",
+     "a": "It needs no privileged mode, but it shares the host's Docker daemon, which is a security risk."
+    },
+    {
+     "q": "Which command and variables log a job in to the GitLab Container Registry?",
+     "a": "`docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY`."
+    },
+    {
+     "q": "How should a build job tag the image it pushes?",
+     "a": "`$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA`, a tag per commit. Tag `latest` only from `main`, not on every build."
+    },
+    {
+     "q": "Which credential authenticates a package registry job inside a pipeline?",
+     "a": "`CI_JOB_TOKEN`. Outside CI, use deploy or access tokens."
+    },
+    {
+     "q": "Which feature and image prefix fix a Docker Hub 'too many requests' failure?",
+     "a": "Use the dependency proxy: `image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:20`. A registry mirror is the runner-admin alternative."
+    },
+    {
+     "q": "Trap: should a job log in to the registry with a hard-coded personal token?",
+     "a": "No. Use the built-in `$CI_REGISTRY_USER` and `$CI_REGISTRY_PASSWORD`; the job variables already exist."
+    },
+    {
+     "q": "Trap: can `CI_REGISTRY_PASSWORD` give a Kubernetes cluster registry access after the job ends?",
+     "a": "No. It equals the job token and expires when the job ends. Use a deploy token for long-lived access."
+    },
+    {
+     "q": "Trap: at what level is the dependency proxy enabled?",
+     "a": "Per group, not per project. Admins can also switch it on or off instance-wide."
+    },
+    {
+     "q": "A job fails with 'Cannot connect to the Docker daemon'. What is the usual cause?",
+     "a": "A missing dind service or privileged flag."
+    },
+    {
+     "q": "Which daemonless tool builds OCI images without privileged Docker?",
+     "a": "Buildah."
+    },
+    {
+     "q": "How large can a single generic package file be on GitLab.com?",
+     "a": "Up to 5 GB per file."
+    },
+    {
+     "q": "Files must outlive `expire_in` or be shared across projects. Which registry do you prefer?",
+     "a": "The package registry. Packages do not expire like artifacts, so you clean them up yourself."
+    }
+   ]
   },
   {
    "domain": "Security Integration",
@@ -1111,7 +1421,69 @@
      "Picking SAST for vulnerable packages; that is dependency scanning.",
      "Confusing scan execution policy with approval policy: one runs scans, one gates merges."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "How do you add the SAST scanner to a pipeline?",
+     "a": "Include GitLab's template: `include: - template: Jobs/SAST.gitlab-ci.yml`."
+    },
+    {
+     "q": "Which stage do SAST jobs run in?",
+     "a": "The `test` stage."
+    },
+    {
+     "q": "Which scanner does GitLab container scanning use?",
+     "a": "Trivy. It finds OS and package flaws in an image."
+    },
+    {
+     "q": "Which variable tells container scanning which image to scan?",
+     "a": "`CS_IMAGE`."
+    },
+    {
+     "q": "Which keyword makes GitLab parse a scanner's JSON output for the MR and the vulnerability report?",
+     "a": "`artifacts:reports`, such as `sast` or `container_scanning`. Plain `artifacts:paths` is not parsed."
+    },
+    {
+     "q": "Which tier do the MR security widget and the vulnerability report need?",
+     "a": "Ultimate. The JSON report artifact works on all tiers."
+    },
+    {
+     "q": "What is the difference between a scan execution policy and a merge request approval policy?",
+     "a": "A scan execution policy forces scans to run; a merge request approval policy requires approval when there are findings."
+    },
+    {
+     "q": "Which report artifact does Code Quality read to show findings in the merge request?",
+     "a": "`artifacts:reports:codequality`, written by any linter that outputs the Code Quality JSON format."
+    },
+    {
+     "q": "Trap: SAST jobs fail to load after you customise `stages`. What did you drop?",
+     "a": "The `test` stage. SAST jobs land in `test`, so it must stay listed in `stages`."
+    },
+    {
+     "q": "Trap: which scanner finds vulnerable packages from lockfiles like `requirements.txt`, SAST or another?",
+     "a": "Dependency scanning, not SAST. SAST scans your own source code."
+    },
+    {
+     "q": "Trap: you need scans in projects whose YAML you do not control. Scan execution or approval policy?",
+     "a": "Scan execution policy runs the scans. A merge request approval policy only gates merges on findings."
+    },
+    {
+     "q": "Which scanner attacks a running app, often a review app?",
+     "a": "DAST."
+    },
+    {
+     "q": "Which scanner finds keys and tokens committed to the repository?",
+     "a": "Secret detection."
+    },
+    {
+     "q": "What does a pipeline execution policy do?",
+     "a": "It injects required CI/CD jobs into project pipelines."
+    },
+    {
+     "q": "What should block risky merges, given scanner jobs use `allow_failure: true` so findings do not break the pipeline?",
+     "a": "Rules or policies, not job failure."
+    }
+   ]
   },
   {
    "domain": "Runner Configuration",
@@ -1244,7 +1616,69 @@
      "Thinking any one matching tag is enough; the runner needs all of the job's tags.",
      "Using the deprecated registration token flow instead of a runner authentication token."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What are the three runner scopes?",
+     "a": "Instance (all projects), group (a group and its subgroups) and project."
+    },
+    {
+     "q": "Which runner scope are GitLab-hosted runners?",
+     "a": "Instance runners."
+    },
+    {
+     "q": "What does a runner authentication token start with?",
+     "a": "`glrt-`. You create the runner in GitLab first, and it gives you the token."
+    },
+    {
+     "q": "Which file holds a registered runner's settings?",
+     "a": "`config.toml`."
+    },
+    {
+     "q": "What does the Docker executor give each job?",
+     "a": "A clean container per job, with support for `image` and `services`."
+    },
+    {
+     "q": "Which executor runs jobs on the host with no isolation between jobs?",
+     "a": "The shell executor: jobs run on the host as the runner user with no clean environment."
+    },
+    {
+     "q": "What does the Kubernetes executor create for each job?",
+     "a": "A new pod per job, with build and service containers."
+    },
+    {
+     "q": "When does a runner take a job that lists tags?",
+     "a": "Only if the runner has every tag the job lists."
+    },
+    {
+     "q": "Which flag makes a runner run jobs only from protected branches and tags?",
+     "a": "`--access-level=ref_protected`, which makes a protected runner for protected refs only."
+    },
+    {
+     "q": "Trap: a job sets `image:` but the runner uses the shell executor. What happens?",
+     "a": "`image:` is ignored on a shell executor, and so is `services:`. The job runs on the host."
+    },
+    {
+     "q": "Trap: a job lists `tags: [gpu, linux]`. Is a runner holding only `linux` enough?",
+     "a": "No. The runner needs all of the job's tags, not just one matching tag."
+    },
+    {
+     "q": "Trap: which runner registration flow is deprecated?",
+     "a": "The registration token flow. Use a runner authentication token (`glrt-`) instead."
+    },
+    {
+     "q": "Which `config.toml` setting caps how many jobs run at once across all runners in that file?",
+     "a": "`concurrent`. Raise it to run more jobs at once on one host."
+    },
+    {
+     "q": "Which runner scope shares runners across a team's projects without needing admin rights?",
+     "a": "A group runner. Project runners suit special hardware, credentials or isolation for one project."
+    },
+    {
+     "q": "A job sets `tags` while `default:tags` also exists. Which tags apply?",
+     "a": "Only the job's `tags`. Job `tags` replace `default:tags` and never merge."
+    }
+   ]
   }
  ]
 }

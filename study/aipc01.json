@@ -308,7 +308,69 @@
      "Blaming or swapping the model when retrieval returns the wrong chunks.",
      "Hardcoding prompts and model IDs in Lambda instead of managed, versioned config."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which Bedrock API gives one request shape for every model that supports messages, so you can swap providers without rewriting code?",
+     "a": "`Converse` (and `ConverseStream` for streaming). Keep the model ID in config such as AppConfig, not in code, to switch models without redeploying."
+    },
+    {
+     "q": "Which approach fits changing or private facts, which fits changing model behaviour, and which fits a cheaper, faster model?",
+     "a": "RAG for changing or private facts; fine-tuning for behaviour; distillation (big teacher, smaller student) for cheaper, faster results with the same quality on a narrow task."
+    },
+    {
+     "q": "How do you serve a custom model in Bedrock?",
+     "a": "With Provisioned Throughput or an on-demand custom model deployment."
+    },
+    {
+     "q": "What does a knowledge base sync re-ingest, and which API call starts the ingestion?",
+     "a": "Only added, changed or deleted files, because sync is incremental. The call is `StartIngestionJob`."
+    },
+    {
+     "q": "What is the default chunk size for a knowledge base?",
+     "a": "About 300 tokens per chunk, keeping whole sentences."
+    },
+    {
+     "q": "Which chunking strategy returns the larger parent chunk, and which one costs extra?",
+     "a": "Hierarchical searches small child chunks and returns their larger parent; semantic splits where meaning shifts and costs extra because it uses a foundation model."
+    },
+    {
+     "q": "Name four techniques that fix poor retrieval in a RAG pipeline.",
+     "a": "Hybrid search (semantic plus keyword), metadata filters, a reranker that rescores chunks, and query decomposition of multi-part questions."
+    },
+    {
+     "q": "What does Prompt Management store, and how do Flows reach production?",
+     "a": "Versioned prompt templates with variables; Flows chain nodes and deploy via aliases that apps call with `InvokeFlow`."
+    },
+    {
+     "q": "Trap: a team wants the model to answer from newly added documents. Is fine-tuning the fix?",
+     "a": "No. Syncing the knowledge base is the fix; RAG needs no training. Retraining just to add documents is the trap."
+    },
+    {
+     "q": "Trap: RAG answers are wrong and the model looks to blame. What should you check before swapping it?",
+     "a": "Whether retrieval returned the wrong chunks. Tune retrieval instead of blaming or swapping the model."
+    },
+    {
+     "q": "Trap: prompts and model IDs are hardcoded inside Lambda functions. What should you use instead?",
+     "a": "Managed, versioned config: Prompt Management for prompts, and AppConfig or a parameter for the model ID."
+    },
+    {
+     "q": "What must a vector index's dimensions match, and what sizes does Titan Text V2 offer?",
+     "a": "The embedding model's dimensions. Titan Text V2 offers 1,024, 512 or 256."
+    },
+    {
+     "q": "Invoices, call recordings and video must go through one pipeline. Which managed service fits?",
+     "a": "Bedrock Data Automation: documents, images, audio and video to structured output through one API, not custom OCR and Lambda glue."
+    },
+    {
+     "q": "In a `Converse` request, where do model-only settings, tools and guardrails go?",
+     "a": "Model-only settings in `additionalModelRequestFields`, tools in `toolConfig`, guardrails in `guardrailConfig`."
+    },
+    {
+     "q": "When you use a managed prompt in `Converse`, which request fields can you not also send?",
+     "a": "`system`, `inferenceConfig` and `toolConfig`."
+    }
+   ]
   },
   {
    "domain": "Implementation and integration",
@@ -540,7 +602,69 @@
      "Synchronous calls for bulk or slow work that should go through SQS, events or batch.",
      "Provisioned Throughput to fix spiky throttling that backoff and cross-Region inference solve."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What defines a Bedrock Agent action group, and what runs it?",
+     "a": "An OpenAPI schema or function details; it is executed by Lambda or returned to your app (return of control)."
+    },
+    {
+     "q": "Bedrock Agents Classic is closed to new customers. Where does AWS point new agent builds?",
+     "a": "To Amazon Bedrock AgentCore."
+    },
+    {
+     "q": "Name the AgentCore building blocks.",
+     "a": "Runtime, Memory, Gateway (MCP tools), Identity, Policy, Observability and Evaluations."
+    },
+    {
+     "q": "Which open-source SDK from AWS builds agents, and what is the standard way to plug in tools?",
+     "a": "Strands Agents is the open-source agent SDK; MCP is the standard way to plug in tools."
+    },
+    {
+     "q": "Which service adds stop conditions, retries, circuit breakers and human approval around model and agent calls?",
+     "a": "AWS Step Functions. It can call Bedrock `InvokeModel` directly, with no Lambda glue needed."
+    },
+    {
+     "q": "Which API gets the first tokens to users fast and avoids read timeouts on long answers?",
+     "a": "`ConverseStream` (or `InvokeModelWithResponseStream`): it returns tokens as they are generated instead of waiting for the full answer."
+    },
+    {
+     "q": "How do you handle an HTTP 429 `ThrottlingException` from Bedrock?",
+     "a": "Retry with exponential backoff and jitter (or SDK adaptive mode), then add cross-Region inference."
+    },
+    {
+     "q": "Trap: refunds over a limit need approval. Is a strict system prompt enough to stop risky agent actions?",
+     "a": "No. Use workflow controls: Step Functions pausing on a callback task token until a person approves, plus IAM roles limiting each step."
+    },
+    {
+     "q": "Trap: thousands of uploads need model processing and nobody is waiting. Why are synchronous API calls wrong?",
+     "a": "They time out under load. Decouple with an S3 event to SQS to Lambda (EventBridge and SQS), or use batch."
+    },
+    {
+     "q": "Trap: intermittent 429s appear at peak with spiky traffic. Is buying Provisioned Throughput the fix?",
+     "a": "No. Exponential backoff with jitter plus cross-Region inference solve spiky throttling. Retrying instantly in a tight loop is also a trap."
+    },
+    {
+     "q": "Which alias do you use to test a Bedrock Agent, and what must production call?",
+     "a": "Test on `TSTALIASID`; production calls an alias that points to a numbered version, not the test alias."
+    },
+    {
+     "q": "You must take a LangGraph or Strands agent to production with session isolation and memory. Which service fits?",
+     "a": "AgentCore Runtime plus Memory, not hand-built ECS hosting with a DynamoDB memory layer."
+    },
+    {
+     "q": "Where should you host an MCP server for light stateless tools, and where for heavy or long-running tools?",
+     "a": "Lambda for light stateless tools; ECS for heavy or long-running tools."
+    },
+    {
+     "q": "Which AWS service fits when data must stay on premises, and which fits ultra-low latency at the edge?",
+     "a": "AWS Outposts for data that must stay on premises; AWS Wavelength for ultra-low latency at the edge."
+    },
+    {
+     "q": "Which IAM permission does `ConverseStream` need, and is it the same as for `Converse`?",
+     "a": "`bedrock:InvokeModelWithResponseStream`; it is separate from `bedrock:InvokeModel`, which `Converse` uses."
+    }
+   ]
   },
   {
    "domain": "AI safety, security and governance",
@@ -759,7 +883,69 @@
      "Expecting guardrails to scan retrieved chunks or tool results; they check prompts and answers.",
      "NAT gateways or gateway endpoints for Bedrock; it needs an interface endpoint."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Name the six Bedrock Guardrails safeguards.",
+     "a": "Content filters, denied topics, word filters, sensitive information (PII) filters, contextual grounding check and Automated Reasoning checks."
+    },
+    {
+     "q": "Which API applies the same guardrail policy without invoking a model, even for models outside Bedrock?",
+     "a": "`ApplyGuardrail`, for example for a self-hosted or non-Bedrock model."
+    },
+    {
+     "q": "With `InvokeModel`, what must you do so the prompt attack filter actually checks user input?",
+     "a": "Wrap the user input in guardrail input tags; untagged input is not filtered for prompt attacks."
+    },
+    {
+     "q": "Does Bedrock share your prompts and outputs with model providers or use them for training?",
+     "a": "No. Bedrock neither shares prompts or outputs with model providers nor uses them for training."
+    },
+    {
+     "q": "Which VPC endpoint type keeps Bedrock traffic private, and what do endpoint policies do?",
+     "a": "Interface endpoints (PrivateLink), with no internet gateway or NAT needed; endpoint policies limit which actions and resources can be used through them."
+    },
+    {
+     "q": "Which Bedrock resources can a customer managed KMS key encrypt?",
+     "a": "Customization jobs and custom models, agents, ingestion jobs and evaluations."
+    },
+    {
+     "q": "Which logs capture the full prompt and response text of Bedrock calls: CloudTrail or invocation logging?",
+     "a": "Invocation logging only. CloudTrail records who called which API and when, not the prompt or response text."
+    },
+    {
+     "q": "Trap: you must flag RAG answers not supported by the retrieved documents. Do content filters or denied topics help?",
+     "a": "No. They judge harm, not accuracy. The contextual grounding check scores grounding and relevance and blocks answers under your threshold."
+    },
+    {
+     "q": "Trap: do guardrails scan retrieved chunks or tool results for prompt attacks?",
+     "a": "No. They check prompts and answers only; tool results and tool definitions are not checked, so validate them yourself."
+    },
+    {
+     "q": "Trap: can a NAT gateway or a gateway endpoint give Bedrock a private network path?",
+     "a": "No. Bedrock needs an interface VPC endpoint; gateway endpoints exist only for S3 and DynamoDB."
+    },
+    {
+     "q": "Which guardrail safeguard blocks a whole subject such as investment advice, and which blocks exact words such as competitor names?",
+     "a": "Denied topics block whole subjects; word filters block exact words. Using word filters to block a whole topic is the trap."
+    },
+    {
+     "q": "Which service finds PII stored in an S3 data lake before indexing, and which masks card numbers in chatbot replies?",
+     "a": "Amazon Macie finds PII in S3; a guardrail sensitive information (PII) filter masks it in replies. Mixing up these two jobs is the trap."
+    },
+    {
+     "q": "Name the four Bedrock interface endpoint services.",
+     "a": "`bedrock`, `bedrock-runtime`, `bedrock-agent` and `bedrock-agent-runtime`."
+    },
+    {
+     "q": "Which tasks does the contextual grounding check support, and which does it not?",
+     "a": "It supports summarisation, paraphrasing and question answering, but not conversational chatbot QA."
+    },
+    {
+     "q": "Which SageMaker feature documents a model's intended use, limits and evaluation results for governance?",
+     "a": "SageMaker model cards."
+    }
+   ]
   },
   {
    "domain": "Operational efficiency and optimization",
@@ -980,7 +1166,69 @@
      "Global inference profiles when data residency rules require one geography.",
      "Putting changing content before the cached prefix, which turns every request into a miss."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What does Bedrock batch inference cost compared with on-demand, and how do jobs get their input and output?",
+     "a": "About 50% of the on-demand price; asynchronous jobs read JSONL prompts from S3 and write results to S3."
+    },
+    {
+     "q": "What do the Standard, Flex and Priority service tiers each offer?",
+     "a": "Standard: default pay-per-token. Flex: discount for work that can wait. Priority: fastest replies at a premium."
+    },
+    {
+     "q": "How does Provisioned Throughput bill, and what commitment terms are available?",
+     "a": "Hourly per model unit; terms are no commitment, 1 month or 6 months, and longer terms lower the hourly price."
+    },
+    {
+     "q": "How do geographic and Global cross-Region inference profiles differ?",
+     "a": "Geographic profiles (US, EU, APAC) keep processing inside that geography; Global profiles route to any commercial Region and cost about 10% less."
+    },
+    {
+     "q": "How should you order a prompt for caching, and which inference mode does prompt caching not apply to?",
+     "a": "Static content first (system prompt, documents, tools), changing question last; cache reads cost less. It is on-demand only, so not batch inference."
+    },
+    {
+     "q": "Which `AWS/Bedrock` CloudWatch metric counts throttled requests?",
+     "a": "`InvocationThrottles`. The namespace also has `Invocations`, `InvocationLatency`, token counts and `TimeToFirstToken`."
+    },
+    {
+     "q": "Is Bedrock model invocation logging on by default, and where do the logs go once enabled?",
+     "a": "No, it is off by default. Once enabled, it sends full prompts and responses to CloudWatch Logs or S3."
+    },
+    {
+     "q": "Trap: traffic is spiky or low. Why is Provisioned Throughput the wrong choice?",
+     "a": "It bills every hour until you delete it, used or not. It suits steady, high-volume traffic with predictable throughput."
+    },
+    {
+     "q": "Trap: EU data must stay in the EU but you hit throttles. Which inference profile fits, and which is the trap?",
+     "a": "An EU geographic profile fits. A Global profile is the trap under data residency rules, as is hand-built multi-Region load balancing."
+    },
+    {
+     "q": "Trap: dynamic text sits before the cached prefix in a prompt. What happens to every request?",
+     "a": "Every request becomes a cache miss; changing content must come after the static, cached prefix."
+    },
+    {
+     "q": "What does the Reserved service tier commit you to, and what uptime does it target?",
+     "a": "You set tokens per minute for 1 or 3 months, with a 99.5% uptime target."
+    },
+    {
+     "q": "What minimum prefix size does a prompt cache checkpoint need, and what TTL is common?",
+     "a": "512 to 4,096 tokens depending on the model; TTL is often 5 minutes."
+    },
+    {
+     "q": "How do you request latency-optimized inference on supported models?",
+     "a": "Set `performanceConfig` latency to `optimized` (preview)."
+    },
+    {
+     "q": "Provisioned Throughput works for custom models. With which two features can it not be combined?",
+     "a": "Inference profiles (cross-Region) and batch inference."
+    },
+    {
+     "q": "Which caching approach returns a stored answer when a new question is close enough in meaning to an earlier one?",
+     "a": "Semantic caching. It differs from prompt caching, which reuses a repeated prompt prefix."
+    }
+   ]
   },
   {
    "domain": "Testing, validation and troubleshooting",
@@ -1156,7 +1404,69 @@
      "Changing the model before checking whether retrieval returned the right chunks.",
      "Judging agents only on final text, ignoring tool choices and traces."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What three ways do Bedrock evaluations score a model on your own prompt dataset?",
+     "a": "Programmatic metrics, an LLM-as-a-judge (a second model scores each response), or human reviewers."
+    },
+    {
+     "q": "What does an LLM-as-a-judge job need besides the generator model, and what does it return?",
+     "a": "A separate evaluator model; it returns a score plus an explanation for each response."
+    },
+    {
+     "q": "How do you evaluate a model that is hosted outside Bedrock?",
+     "a": "Bring your own inference responses to the evaluation job."
+    },
+    {
+     "q": "Which metrics does a retrieve-only RAG evaluation score, and which one needs ground-truth reference texts?",
+     "a": "Context relevance and context coverage; context coverage needs ground-truth reference texts in the dataset."
+    },
+    {
+     "q": "Which three practices protect against regressions when you change a prompt, model or data source?",
+     "a": "A golden dataset of fixed questions with known good answers, automated quality gates that block a release when scores drop, and canary releases."
+    },
+    {
+     "q": "Map each symptom to its layer: HTTP 429, truncated output and wrong facts.",
+     "a": "429 is quota (throttling); truncation is the context window; wrong facts is retrieval."
+    },
+    {
+     "q": "Trap: you need to judge open-ended quality such as tone or helpfulness. Are BLEU or ROUGE the right metrics?",
+     "a": "No. Use an LLM-as-a-judge or human reviewers, which fit open-ended quality better than BLEU or ROUGE."
+    },
+    {
+     "q": "Trap: answers are wrong though the model is strong. What do you run first before swapping the generator model?",
+     "a": "A retrieve-only evaluation, to check context relevance and whether retrieval returned the right chunks."
+    },
+    {
+     "q": "Trap: you grade an agent only on its final answer text. What else must you measure?",
+     "a": "Tool choices and their inputs, via traces: task completion rate, tool choice accuracy, number of steps and latency."
+    },
+    {
+     "q": "Which built-in metrics can an LLM-as-a-judge job score, and how do you cover business rules like brand voice?",
+     "a": "Built-in metrics include correctness, completeness, faithfulness, helpfulness, coherence and harmfulness; add custom metrics for business rules."
+    },
+    {
+     "q": "What format and size limit apply to a Bedrock RAG evaluation dataset?",
+     "a": "JSON Lines, up to 1,000 prompts per evaluation."
+    },
+    {
+     "q": "Which evaluation type fits brand tone or helpfulness at scale, and which fits regulated content?",
+     "a": "LLM-as-a-judge for tone or helpfulness at scale and low cost; human evaluation (staff or subject experts) for expert sign-off on regulated content."
+    },
+    {
+     "q": "Judge models have biases. What two habits keep an LLM-as-a-judge evaluation trustworthy?",
+     "a": "Keep the rubric fixed and spot-check with humans. Letting the same model judge itself is the trap."
+    },
+    {
+     "q": "Which AgentCore features score agents and trace slow or failing steps?",
+     "a": "Evaluations scores agents before and after deployment; Observability uses OpenTelemetry traces to find slow or failing steps."
+    },
+    {
+     "q": "Model output comes back in the wrong format. What two actions does troubleshooting call for?",
+     "a": "Validate the output against a schema and compare prompt versions in the logs."
+    }
+   ]
   }
  ]
 }

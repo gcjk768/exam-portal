@@ -279,7 +279,69 @@
      "Choosing Express workflows for long waits, human approval or non-idempotent payment steps.",
      "Fine-tuning a model to keep facts fresh instead of using RAG."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "In Bedrock AgentCore, which component turns APIs and Lambda functions into MCP tools that agents can call?",
+     "a": "Gateway. Runtime hosts the agents; Memory keeps short-term chat context and long-term knowledge."
+    },
+    {
+     "q": "Which approach keeps answers current and citable from your own documents: RAG with Knowledge Bases or fine-tuning?",
+     "a": "RAG with Bedrock Knowledge Bases. Fine-tuning does not keep facts current."
+    },
+    {
+     "q": "Which service gives app-layer networking between services across VPCs and accounts, secured by IAM-based auth policies?",
+     "a": "VPC Lattice, with auth policies at service network and service level."
+    },
+    {
+     "q": "Which ECS-only feature gives short-name discovery through a Cloud Map namespace, with a proxy in every task?",
+     "a": "ECS Service Connect. When calls span EC2, Lambda, EKS or accounts, use VPC Lattice instead."
+    },
+    {
+     "q": "Which service fans out filtered events to many targets, and which buffers work for a single consumer?",
+     "a": "EventBridge fans out filtered events; SQS buffers work for one consumer."
+    },
+    {
+     "q": "What are the maximum run time and delivery guarantee of Step Functions Standard versus Express workflows?",
+     "a": "Standard: up to one year, exactly-once. Express: up to five minutes, at-least-once when async."
+    },
+    {
+     "q": "Which service is the regional hub that joins many VPCs, VPNs and Direct Connect without a peering mesh?",
+     "a": "Transit Gateway. Full-mesh peering does not scale and is not transitive."
+    },
+    {
+     "q": "Trap: accounts have overlapping CIDRs and need service-level auth. Why are Transit Gateway and peering wrong?",
+     "a": "Peering and Transit Gateway cannot handle overlapping CIDRs, and Transit Gateway only routes layer 3 between networks. Choose VPC Lattice."
+    },
+    {
+     "q": "Trap: a workflow has human approval, long waits or payment steps that are not idempotent. Which type is wrong, and which fits?",
+     "a": "Express is wrong: it is capped at five minutes and suits idempotent stream processing. Standard fits payments, approvals and long waits."
+    },
+    {
+     "q": "Trap: you fine-tune a model to keep facts fresh. What does fine-tuning actually change?",
+     "a": "Style or behaviour, not facts. It does not keep facts current; use RAG with Knowledge Bases instead."
+    },
+    {
+     "q": "A scenario wants agents in production with little undifferentiated work. What is the answer and what is the over-built distractor?",
+     "a": "AgentCore services. The distractor is hand-building agent hosting, tool wrappers and session isolation on EC2."
+    },
+    {
+     "q": "Which vector stores are customer-managed options for a Bedrock knowledge base?",
+     "a": "OpenSearch Serverless, Aurora and Neptune. In a managed knowledge base, Bedrock runs ingestion, indexing and storage for you."
+    },
+    {
+     "q": "Which EventBridge feature links one source, such as a DynamoDB stream, to one target point-to-point?",
+     "a": "Pipes. Event buses connect many sources to many targets, with filtering and optional transformation."
+    },
+    {
+     "q": "Which Step Functions patterns and features does an Express workflow lack?",
+     "a": "`.sync` and `.waitForTaskToken` patterns, Distributed Map and activities."
+    },
+    {
+     "q": "What do you enable on Transit Gateway so a stateful firewall keeps a flow in the same AZ?",
+     "a": "Appliance mode, for stateful firewalls."
+    }
+   ]
   },
   {
    "domain": "Security, compliance & governance",
@@ -505,7 +567,69 @@
      "Picking GuardDuty or Macie when the need is a central compliance score across accounts.",
      "Copying raw data into a shared bucket when Clean Rooms keeps rows private."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What is effective access when SCPs, RCPs, identity policies and resource policies all apply?",
+     "a": "The intersection of all of them. SCPs and RCPs only cap permissions; they never grant access."
+    },
+    {
+     "q": "Which policy type stops outside accounts reaching your S3 buckets org-wide, and which stops your developers using a Region?",
+     "a": "RCP limits access to your resources, including by outside principals; SCP limits your own principals, such as developers using a Region."
+    },
+    {
+     "q": "Which accounts and roles fall outside SCP restrictions?",
+     "a": "The management account (RCPs skip it too) and service-linked roles."
+    },
+    {
+     "q": "Which Control Tower component vends new accounts from approved, preconfigured templates?",
+     "a": "Account Factory. Control Tower itself builds the landing zone."
+    },
+    {
+     "q": "Which service aggregates GuardDuty, Inspector and Macie findings and also scores you against security standards?",
+     "a": "Security Hub. Standards include AWS Foundational Security Best Practices, CIS, PCI DSS and NIST."
+    },
+    {
+     "q": "Which Bedrock feature filters harmful content, masks PII and checks grounding on prompts and model answers?",
+     "a": "Bedrock Guardrails. Prompt wording alone is the weak distractor; it is not an enforced control."
+    },
+    {
+     "q": "In AWS KMS, what protects traffic against harvest now, decrypt later, and what gives post-quantum signatures?",
+     "a": "Hybrid ML-KEM TLS protects traffic in transit; ML-DSA keys give post-quantum signatures."
+    },
+    {
+     "q": "Trap: an answer uses an SCP to give developers access to a service. Why is it wrong?",
+     "a": "SCPs only cap permissions and never grant access. Any answer where an SCP grants access is wrong."
+    },
+    {
+     "q": "Trap: the need is a central compliance score across accounts. Why are GuardDuty and Macie wrong?",
+     "a": "GuardDuty detects threats and Macie finds S3 PII. They feed Security Hub, which is the central compliance view, and do not replace it."
+    },
+    {
+     "q": "Trap: two companies must match customers without exchanging raw data. Why is a shared S3 bucket wrong?",
+     "a": "Copying data into a shared bucket breaks the privacy requirement. Clean Rooms lets partners query combined data without seeing each other's raw rows."
+    },
+    {
+     "q": "How many SCPs and RCPs can you attach to a single target at most?",
+     "a": "At most 10 SCPs and 5 RCPs per target."
+    },
+    {
+     "q": "Which two sets of categories describe Control Tower controls?",
+     "a": "Preventive, detective or proactive; and mandatory, strongly recommended or elective."
+    },
+    {
+     "q": "Which findings does Security Hub collect, relative to the day you enable it?",
+     "a": "Only findings created after you enable it; nothing is retroactive."
+    },
+    {
+     "q": "Which Bedrock Guardrails check flags RAG answers that are not supported by the retrieved sources?",
+     "a": "Contextual grounding checks."
+    },
+    {
+     "q": "Which CloudTrail field confirms a KMS call used hybrid post-quantum TLS, and what example value shows it?",
+     "a": "`tlsDetails.keyExchange`, for example `X25519MLKEM768`."
+    }
+   ]
   },
   {
    "domain": "Cost-optimized design",
@@ -693,7 +817,69 @@
      "Running stateful or non-interruptible workloads on Spot alone.",
      "Routing heavy S3 traffic through NAT gateways instead of a gateway endpoint."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What are the maximum discounts of Compute Savings Plans and EC2 Instance Savings Plans, and what limits the latter?",
+     "a": "Compute SP up to 66%, any family, size and Region. EC2 Instance SP up to 72%, locked to one family in one Region."
+    },
+    {
+     "q": "How much notice does a Spot interruption give, and do Savings Plans cover Spot usage?",
+     "a": "Two minutes. Savings Plans do not cover Spot, and it does not count toward commitments."
+    },
+    {
+     "q": "What are the minimum storage durations for S3 IA classes, Glacier Instant and Flexible, and Deep Archive?",
+     "a": "IA classes: 30 days. Glacier Instant Retrieval and Glacier Flexible: 90 days. Deep Archive: 180 days."
+    },
+    {
+     "q": "Which S3 feature fits unknown access patterns, and which fits a known ageing pattern such as logs hot for 30 days?",
+     "a": "Intelligent-Tiering for unknown access; lifecycle rules for known ageing patterns."
+    },
+    {
+     "q": "Which two services have gateway VPC endpoints with no hourly charge that bypass NAT?",
+     "a": "S3 and DynamoDB. Interface endpoints via PrivateLink have an hourly fee."
+    },
+    {
+     "q": "What must you do to a cost allocation tag before it appears in Cost Explorer?",
+     "a": "Activate it in Billing. Forgetting to activate tags is the common gap."
+    },
+    {
+     "q": "How many days of CloudWatch metrics does Compute Optimizer read to suggest sizes and spot idle resources?",
+     "a": "14 days. You must opt in first."
+    },
+    {
+     "q": "Trap: the only copy of irreplaceable data goes into One Zone-IA. What is wrong?",
+     "a": "One Zone-IA lives in a single AZ, so use it only for re-creatable data or CRR replicas."
+    },
+    {
+     "q": "Trap: a database or a job that cannot be interrupted runs on Spot alone. What should you keep?",
+     "a": "An On-Demand or Savings Plan baseline. Spot is cheapest for stateless, retry-safe work."
+    },
+    {
+     "q": "Trap: EC2 pulls lots of S3 data through a NAT gateway. What is the cheap fix?",
+     "a": "Add an S3 gateway endpoint, which has no hourly charge and bypasses NAT. It is the most common cost fix tested."
+    },
+    {
+     "q": "What is the maximum discount of a Database Savings Plan, and which services does it cover?",
+     "a": "Up to 35%, across Aurora, RDS, DynamoDB and more."
+    },
+    {
+     "q": "Data is rarely accessed but needs instant millisecond reads. Which S3 storage class fits?",
+     "a": "Glacier Instant Retrieval: 90-day minimum, for roughly quarterly access."
+    },
+    {
+     "q": "After how many idle days does S3 Intelligent-Tiering move objects, and which objects never tier?",
+     "a": "It moves objects after 30 and 90 idle days. Objects under 128 KB never tier."
+    },
+    {
+     "q": "What happens if a lifecycle rule expires an object before its storage class minimum duration?",
+     "a": "You are still charged that class's minimum storage duration."
+    },
+    {
+     "q": "Where should you place NAT gateways to limit data transfer cost for high-traffic instances?",
+     "a": "In the same AZ as the high-traffic instances."
+    }
+   ]
   },
   {
    "domain": "Resilience, migration & business continuity",
@@ -934,7 +1120,69 @@
      "Refactoring during a large migration instead of rehosting first and modernising later.",
      "Failing over with control plane actions instead of data plane switches."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What do RTO and RPO each measure?",
+     "a": "RTO is the maximum acceptable time from interruption to restored service. RPO is the maximum acceptable time since the last recovery point."
+    },
+    {
+     "q": "What is the order of the four DR strategies from cheapest and slowest to costliest and fastest?",
+     "a": "Backup and restore, pilot light, warm standby, active-active: cost rises and RTO falls at each step."
+    },
+    {
+     "q": "Which of pilot light and warm standby can take traffic at once, and which cannot until scaled up?",
+     "a": "Warm standby can take traffic at once; pilot light cannot serve requests until scaled up."
+    },
+    {
+     "q": "Which service assesses an app against its RTO and RPO targets, and which injects real faults safely?",
+     "a": "Resilience Hub assesses the app against RTO and RPO targets; Fault Injection Service (FIS) injects real faults safely."
+    },
+    {
+     "q": "Which ARC feature moves traffic off one impaired AZ, and which fails over between Regions?",
+     "a": "Zonal shift moves traffic off one AZ; routing control fails over between Regions."
+    },
+    {
+     "q": "What are the seven Rs of migration strategies?",
+     "a": "Retire, retain, rehost, relocate, replatform, repurchase, refactor."
+    },
+    {
+     "q": "Which tool migrates servers, which databases, which files online, and which bulk data offline?",
+     "a": "MGN for servers, DMS for databases, DataSync for files, Snowball for offline bulk."
+    },
+    {
+     "q": "Trap: the RTO is minutes and you pick pilot light. What does pilot light actually keep running?",
+     "a": "Data replicated live and core infrastructure ready, but app servers off. Warm standby is the scaled-down working copy."
+    },
+    {
+     "q": "Trap: a large migration starts by refactoring applications. What is the better order?",
+     "a": "Rehost first and modernise later. Refactor is the most complex strategy, so avoid it during large migrations."
+    },
+    {
+     "q": "Trap: a failover plan relies on control plane calls. What should you use instead?",
+     "a": "Data plane actions. Avoid depending on control plane calls when failing over."
+    },
+    {
+     "q": "What do minutes of RPO and minutes of RTO each rule out?",
+     "a": "Minutes of RPO rule out nightly backups; minutes of RTO rule out rebuilding from backups."
+    },
+    {
+     "q": "What are the three parts of a Fault Injection Service experiment template?",
+     "a": "Actions, targets and stop conditions. Stop conditions are CloudWatch alarms that halt the experiment automatically."
+    },
+    {
+     "q": "How do ARC zonal shift and zonal autoshift differ?",
+     "a": "Zonal shift is manual and temporary, with expiry up to three days; autoshift is done by AWS when its telemetry sees an AZ impairment."
+    },
+    {
+     "q": "Changing database engine with little downtime: which two tools do you combine?",
+     "a": "Schema Conversion (or AWS SCT) to convert the schema, plus DMS ongoing replication to keep source and target in sync."
+    },
+    {
+     "q": "Which migration strategy is fastest with least change, and which gives a managed database with little code change?",
+     "a": "Rehost is fastest with least change; replatform gives a managed database, such as SQL Server to Amazon RDS."
+    }
+   ]
   },
   {
    "domain": "Operational excellence & automation",
@@ -1147,7 +1395,69 @@
      "Choosing all-at-once deployment when the question stresses minimal risk or fast rollback.",
      "Managing many S3 bucket policies instead of Lake Formation fine-grained grants."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which ECR scanning mode re-checks pushed images as new CVEs appear, and which service powers it?",
+     "a": "Enhanced scanning, powered by Amazon Inspector; it runs on push and continuously."
+    },
+    {
+     "q": "How do CodeDeploy canary and linear deployments shift traffic, and which option is riskiest?",
+     "a": "Canary shifts 10% first, the rest after a wait; linear shifts in equal steps. All-at-once is riskiest."
+    },
+    {
+     "q": "At which levels can Lake Formation grant access, and what scales permissions without per-table grants?",
+     "a": "Database, table, column, row and cell level. Tag-based access control (LF-TBAC) scales permissions with tags."
+    },
+    {
+     "q": "Which CloudWatch feature probes endpoints on a schedule, which measures real user sessions, and which tracks SLOs?",
+     "a": "Synthetics canaries probe endpoints; RUM measures real user sessions; Application Signals tracks SLOs and service health."
+    },
+    {
+     "q": "What gives one CloudWatch view across many accounts, instead of log-copying scripts?",
+     "a": "Cross-account observability: link source accounts to a monitoring account, also possible via Organizations."
+    },
+    {
+     "q": "What is the standard auto-remediation path for a Config or Security Hub finding with least effort?",
+     "a": "An EventBridge rule that triggers a Systems Manager Automation runbook."
+    },
+    {
+     "q": "Which StackSets permission model auto-deploys a baseline to every new account that joins an OU?",
+     "a": "Service-managed permissions with Organizations and auto-deployment."
+    },
+    {
+     "q": "Trap: custom Lambda or SSH scripts remediate a fleet or deploy baselines per account. What fits instead?",
+     "a": "SSM Automation runbooks for fixes, with no bastion or SSH, and StackSets for baselines. Per-account scripts are error-prone."
+    },
+    {
+     "q": "Trap: the question stresses minimal risk and fast rollback. Why is all-at-once deployment wrong?",
+     "a": "It is the fastest but riskiest. Use blue/green or canary with alarm-based rollback."
+    },
+    {
+     "q": "Trap: analysts need column or row-level access across accounts and you manage many S3 bucket policies. What is better?",
+     "a": "Lake Formation fine-grained grants. Many S3 bucket policies and IAM rules are the high-effort wrong answer."
+    },
+    {
+     "q": "What does basic ECR image scanning cover, and when does it run?",
+     "a": "OS packages only, on push or manually. Enhanced scanning adds language packages and continuous scans."
+    },
+    {
+     "q": "Which in-place CodeDeploy deployment configurations exist on EC2, and what sets them?",
+     "a": "`AllAtOnce`, `HalfAtATime` or `OneAtATime`, set by minimum healthy hosts."
+    },
+    {
+     "q": "With a Network Load Balancer, which ECS deployment configuration is the only one supported?",
+     "a": "Only `ECSAllAtOnce`."
+    },
+    {
+     "q": "Which Lake Formation mode lets you adopt its permissions gradually alongside IAM?",
+     "a": "Hybrid access mode."
+    },
+    {
+     "q": "What do Systems Manager rate controls set for bulk changes?",
+     "a": "Concurrency and error thresholds, so bulk changes are safe."
+    }
+   ]
   }
  ]
 }

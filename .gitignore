@@ -6,3 +6,7 @@ __pycache__/
 *.pyc
 temp/
 static/vendor/
+
+# Udemy mock sets (paid course content): parsed by tools/udemy_mock.py, never in the repo
+/Claude Certified Architect Professional Mock Exam.txt
+.playwright-mcp/

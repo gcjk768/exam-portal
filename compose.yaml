@@ -17,7 +17,7 @@ services:
     environment:
       EXAMS: "ccarp:/exams/ccarp:/vault/ccarp,sapc03:/exams/sapc03:/vault/sapc03,aipc01:/exams/aipc01:/vault/aipc01,cka:/exams/cka:/vault/cka,gitlabci:/exams/gitlabci:/vault/gitlabci,tfassoc:/exams/tfassoc:/vault/tfassoc"
     volumes:
-      # each quiz bot's stack: code read-only, its data/ (questions + the shared state.json) read-write
+      # each quiz bot's stack: code read-only, its data/ (questions + the shared state.json + decoder cache) read-write
       - "${CCARP_DIR:-/volume1/docker/ccarp-quiz}:/exams/ccarp:ro"
       - "${CCARP_DIR:-/volume1/docker/ccarp-quiz}/data:/exams/ccarp/data"
       - "${SAPC03_DIR:-/volume1/docker/sapc03-quiz}:/exams/sapc03:ro"

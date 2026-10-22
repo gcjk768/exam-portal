@@ -163,7 +163,61 @@
      "Calling Terraform procedural; scripts and runbooks are procedural, Terraform is declarative.",
      "Treating manual console changes as fine alongside IaC; they cause drift."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What does infrastructure as code (IaC) mean?",
+     "a": "Defining infrastructure in configuration files that you version, reuse and share, instead of clicking in a console."
+    },
+    {
+     "q": "In Terraform's declarative model, what do you write and what does Terraform work out?",
+     "a": "You describe the end state; Terraform works out the steps to reach it."
+    },
+    {
+     "q": "Which five benefits of IaC does the exam expect you to name?",
+     "a": "Version history, code review, reuse via modules, plan previews, and automation in CI/CD."
+    },
+    {
+     "q": "What acts as the source of truth for what Terraform manages?",
+     "a": "State: Terraform's record of which real object each resource block owns."
+    },
+    {
+     "q": "What lets the same Terraform language and workflow drive any platform that has an API?",
+     "a": "Providers. They translate the same language and init, plan, apply loop into calls to that platform's API."
+    },
+    {
+     "q": "Can one configuration mix cloud, on-prem and SaaS providers, and can they reference each other?",
+     "a": "Yes. One configuration can mix them, and one provider's output can feed another provider's resource."
+    },
+    {
+     "q": "Trap: does Terraform make code portable, so an `aws_instance` can deploy to Azure?",
+     "a": "No. The workflow and language are shared, but resources like `aws_instance` are provider-specific and never deploy to Azure."
+    },
+    {
+     "q": "Trap: a question calls Terraform procedural. Which approaches are actually procedural?",
+     "a": "Shell scripts and runbooks are procedural. Terraform is declarative: you state the end result, not step-by-step commands."
+    },
+    {
+     "q": "Trap: are manual console changes fine alongside IaC?",
+     "a": "No. They cause drift, and they are the anti-pattern IaC removes."
+    },
+    {
+     "q": "How does Terraform create resources that do not depend on each other?",
+     "a": "It builds a dependency graph and creates independent resources in parallel."
+    },
+    {
+     "q": "Trap: an answer option says IaC removes the need for state or guarantees lower cloud bills. Is it right?",
+     "a": "No. Reject both claims; benefit questions want versioning, reuse, consistency and automation."
+    },
+    {
+     "q": "What does service-agnostic mean for Terraform's reach beyond virtual machines?",
+     "a": "It also manages things like DNS, monitoring, Git or Kubernetes, not only VMs."
+    },
+    {
+     "q": "What does a multi-cloud Terraform setup improve?",
+     "a": "Fault tolerance. Each cloud still keeps its own resource types."
+    }
+   ]
   },
   {
    "domain": "2. Fundamentals",
@@ -299,7 +353,65 @@
      "Writing `aws.alias.west` or a quoted string instead of `aws.west`.",
      "Assuming state is optional or that it hides secrets; it is required and stores them in plain text."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Where do you declare the providers a configuration needs, and which two arguments does each one take?",
+     "a": "In `required_providers`, giving each provider a `source` such as `hashicorp/aws` and a `version` constraint."
+    },
+    {
+     "q": "In a version constraint, which operator lets only the rightmost version part rise, and which sets a minimum?",
+     "a": "`~>` lets only the rightmost part rise (`~> 1.2.0` allows only 1.2.x patches); `>=` sets a minimum."
+    },
+    {
+     "q": "Which file records the chosen provider versions and checksums, and should it go in Git?",
+     "a": "`.terraform.lock.hcl`. Commit it to Git so the whole team gets the same provider version."
+    },
+    {
+     "q": "Which command downloads the providers a configuration needs?",
+     "a": "`terraform init`. Add or change a provider and you must run it again."
+    },
+    {
+     "q": "How do you move a provider past the version pinned in the lock file?",
+     "a": "Run `terraform init -upgrade`: it ignores the lock and picks the newest allowed version. A plain `init` keeps the locked version."
+    },
+    {
+     "q": "How do you set up a second configuration of one provider, such as another region, and select it on a resource?",
+     "a": "Add another `provider` block with a unique `alias`, such as `west`, then set `provider = aws.west` on the resource."
+    },
+    {
+     "q": "What does Terraform state map, and what extra metadata does it store?",
+     "a": "It maps each resource address, such as `aws_instance.web`, to one real object, and stores dependency metadata."
+    },
+    {
+     "q": "Trap: does the lock file pin module versions?",
+     "a": "No. `.terraform.lock.hcl` tracks providers only, not modules."
+    },
+    {
+     "q": "Trap: how do you reference the provider alias `west` of `aws` on a resource?",
+     "a": "`provider = aws.west`. Not `aws.alias.west`, and not a quoted string."
+    },
+    {
+     "q": "Trap: is state optional, and does it hide secrets?",
+     "a": "No to both. State is required and stores secrets in plain text. Never hand-edit it."
+    },
+    {
+     "q": "What is the format of a provider source address, and what is the default hostname?",
+     "a": "`[hostname/]namespace/type`; the hostname defaults to `registry.terraform.io`."
+    },
+    {
+     "q": "Which provider configuration does a resource with no `provider` argument use?",
+     "a": "The default, unaliased configuration."
+    },
+    {
+     "q": "How do you pass an aliased provider into a child module?",
+     "a": "With the `providers` map in the module block: `providers = { aws = aws.west }`."
+    },
+    {
+     "q": "What is the default state file, and which backend writes it?",
+     "a": "A JSON file named `terraform.tfstate`, written by the local backend."
+    }
+   ]
   },
   {
    "domain": "3. Core workflow",
@@ -473,7 +585,65 @@
      "Forgetting `fmt` only formats the current directory unless you add `-recursive`.",
      "Expecting `-auto-approve` to matter with a saved plan; the plan file is already the approval."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What are the three core workflow stages, and which command must run first?",
+     "a": "Write, Plan, Apply. Run `terraform init` first to install providers and modules."
+    },
+    {
+     "q": "What does `terraform init` set up, and is it safe to run again?",
+     "a": "It sets up the backend, providers, modules and lock file. Rerunning is always safe; it never deletes config or state."
+    },
+    {
+     "q": "What does `terraform validate` check, and what does it not touch?",
+     "a": "Syntax and internal consistency only. It makes no API calls and does not read state."
+    },
+    {
+     "q": "How do you save a plan and then run exactly that plan?",
+     "a": "`terraform plan -out=tfplan`, then `terraform apply tfplan`. A saved plan runs with no prompt."
+    },
+    {
+     "q": "Which `apply` flag is `terraform destroy` a shortcut for, and how do you preview a destroy?",
+     "a": "`terraform apply -destroy`. Preview it with `terraform plan -destroy`."
+    },
+    {
+     "q": "Which `fmt` flag fails a CI pipeline on bad style without rewriting files?",
+     "a": "`terraform fmt -check`: it changes nothing and exits non-zero when files need formatting."
+    },
+    {
+     "q": "Which plan option shows drift, which forces replacement of one resource, and which narrows scope?",
+     "a": "`-refresh-only` shows drift, `-replace=ADDR` forces replacement, and `-target` narrows the scope."
+    },
+    {
+     "q": "Trap: does `terraform validate` catch bad credentials, drift or API errors?",
+     "a": "No. It inspects only the code itself: no remote services, no credentials, no drift."
+    },
+    {
+     "q": "Trap: which directories does `terraform fmt` format by default?",
+     "a": "Only the current directory. Add `-recursive` to format subfolders."
+    },
+    {
+     "q": "Trap: what does `-auto-approve` do when you apply a saved plan file?",
+     "a": "Nothing; it is ignored. Passing a saved plan already counts as approval."
+    },
+    {
+     "q": "In plan output, what do the symbols `+`, `~`, `-` and `<=` mean?",
+     "a": "`+` create, `~` update in place, `-` destroy, `<=` read a data source."
+    },
+    {
+     "q": "In plan output, which symbol means destroy then recreate, and which creates the replacement first?",
+     "a": "`-/+` destroys then recreates; `+/-` creates the replacement first (`create_before_destroy`)."
+    },
+    {
+     "q": "Which resources does `terraform destroy` delete?",
+     "a": "Every resource tracked in the current state. Anything Terraform does not manage is left alone."
+    },
+    {
+     "q": "Without a plan file, which planning options does `apply` accept?",
+     "a": "`-replace`, `-target`, `-var` and `-refresh-only`, like `plan`. A saved plan file accepts no extra planning options."
+    }
+   ]
   },
   {
    "domain": "4. Configuration",
@@ -729,7 +899,65 @@
      "Believing `sensitive` encrypts a value or removes it from state.",
      "Expecting environment variables to beat `terraform.tfvars`; they rank below every tfvars file."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which block creates and manages an object, and which one only reads an existing one?",
+     "a": "`resource` creates and manages; `data` only reads, and is referenced as `data.<TYPE>.<NAME>.<ATTR>`."
+    },
+    {
+     "q": "How does Terraform learn the build order, and when do you add `depends_on`?",
+     "a": "A reference like `aws_vpc.main.id` creates an implicit dependency; add `depends_on` only for a dependency Terraform cannot see."
+    },
+    {
+     "q": "List variable value precedence from highest to lowest.",
+     "a": "`-var`/`-var-file`, `*.auto.tfvars`, `terraform.tfvars.json`, `terraform.tfvars`, `TF_VAR_` env, then `default`."
+    },
+    {
+     "q": "What does `for_each` take as input, and what does `count` take?",
+     "a": "`for_each` takes a map or set of strings known at plan time; `count` takes a number."
+    },
+    {
+     "q": "Which custom conditions stop the run, and which one only warns?",
+     "a": "Variable validation, `precondition` and `postcondition` stop the run. `check` blocks with `assert` only warn (Terraform 1.5+)."
+    },
+    {
+     "q": "What does `sensitive = true` do, and what keeps a value out of state?",
+     "a": "It only redacts output; the value is still in state in plain text. `ephemeral = true` (1.10+) keeps values out of state."
+    },
+    {
+     "q": "Can you write your own functions in Terraform configuration?",
+     "a": "No. Only built-in and provider functions exist, such as `merge` and `join`; try them in `terraform console`."
+    },
+    {
+     "q": "Trap: what happens when you delete a middle item from a `count` list of distinct items?",
+     "a": "Indexes shift, so every later resource is recreated. `for_each` keys avoid that churn."
+    },
+    {
+     "q": "Trap: does marking a variable `sensitive` encrypt it or remove it from state?",
+     "a": "No. It only hides the value in output. It stays in state and plan files, and `terraform output -json` or `-raw` still prints it."
+    },
+    {
+     "q": "Trap: a value is set in both a `TF_VAR_` environment variable and `terraform.tfvars`. Which wins?",
+     "a": "The tfvars file. Environment variables rank below every tfvars file; CLI flags win over all of them."
+    },
+    {
+     "q": "Which tfvars file loads automatically, and what loads a file like `prod.tfvars`?",
+     "a": "`terraform.tfvars` loads automatically; `prod.tfvars` needs `-var-file`."
+    },
+    {
+     "q": "By default, how many independent resources does Terraform build in parallel?",
+     "a": "Up to 10 at a time."
+    },
+    {
+     "q": "Which `lifecycle` setting makes any plan that would destroy a resource fail, and when does it stop protecting?",
+     "a": "`prevent_destroy = true`. It protects only while the block stays in config."
+    },
+    {
+     "q": "What is the difference between a `map` and an `object` type?",
+     "a": "`map` has one value type for all keys; `object` has a schema of named attributes, each with its own type."
+    }
+   ]
   },
   {
    "domain": "5. Modules",
@@ -856,7 +1084,65 @@
      "Reading a child's resource directly, like `module.net.aws_vpc.main.id`, instead of an output.",
      "Assuming the lock file pins module versions; it does not."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which kinds of `source` can a `module` block use?",
+     "a": "A local path, a public or private registry, a Git URL, or an archive."
+    },
+    {
+     "q": "What is the public registry module source format, and what does a private registry add?",
+     "a": "`<NAMESPACE>/<NAME>/<PROVIDER>`, e.g. `hashicorp/consul/aws`. Private adds a hostname: `app.terraform.io/<ORG>/<NAME>/<PROVIDER>`."
+    },
+    {
+     "q": "Which module sources accept `version`, and how does a Git source pin a version?",
+     "a": "Only registry sources accept `version`. A Git source pins with `?ref=v1.2.0` in the URL."
+    },
+    {
+     "q": "What can a child module see, and how does the parent read data from it?",
+     "a": "A child sees only its own variables, locals and resources. The parent reads child data only through outputs."
+    },
+    {
+     "q": "What is the syntax to reference a child module's output?",
+     "a": "`module.<NAME>.<OUTPUT>`, for example `module.net.vpc_id`."
+    },
+    {
+     "q": "When must you rerun `terraform init` for modules?",
+     "a": "After adding a module or changing its source or version."
+    },
+    {
+     "q": "How many levels of child modules does HashiCorp recommend, and what wires the modules together?",
+     "a": "One level: composition over deep nesting. The root module wires the child modules together."
+    },
+    {
+     "q": "Trap: what happens if you set `version` on a local path or Git module source?",
+     "a": "It is an error. Local paths are not versioned, and Git sources pin with `?ref=` instead."
+    },
+    {
+     "q": "Trap: is `module.net.aws_vpc.main.id` a valid way to read a child module's VPC ID?",
+     "a": "No. A parent cannot reach into a child's resources; the child must expose the value as an output."
+    },
+    {
+     "q": "Trap: does the lock file pin module versions?",
+     "a": "No. It does not record module versions; `init` picks the newest match. Use an exact version constraint for the same module version every time."
+    },
+    {
+     "q": "Can a module `source` use a variable?",
+     "a": "No. `source` must be a literal string, not a variable."
+    },
+    {
+     "q": "What do you get when two `module` blocks with different labels use the same source?",
+     "a": "Two independent copies of the module."
+    },
+    {
+     "q": "What version does Terraform take for a registry module with no `version` constraint?",
+     "a": "The latest release, which may contain breaking changes."
+    },
+    {
+     "q": "Which meta-arguments work on `module` blocks?",
+     "a": "`count`, `for_each`, `depends_on` and `providers`."
+    }
+   ]
   },
   {
    "domain": "6. State",
@@ -1012,7 +1298,65 @@
      "Renaming a resource label without a `moved` block, which plans destroy and create.",
      "Treating CLI workspaces as a security boundary or the same as HCP workspaces."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which backend is the default, and where does it write state?",
+     "a": "The `local` backend. It writes `terraform.tfstate` in the working directory."
+    },
+    {
+     "q": "When does Terraform lock state, and do you have to ask for it?",
+     "a": "Automatically, on every operation that could write state, if the backend supports locking. No message is shown."
+    },
+    {
+     "q": "Which command clears a stuck state lock, and whose lock should you use it on?",
+     "a": "`terraform force-unlock LOCK_ID`. Use it only for your own lock."
+    },
+    {
+     "q": "How many `backend` blocks can a configuration have, and how do you supply values left out of it?",
+     "a": "One. Leave values out and pass `-backend-config=FILE` or `KEY=VALUE` to `terraform init` (partial configuration)."
+    },
+    {
+     "q": "Which command copies existing state to a new backend after you change the `backend` block?",
+     "a": "`terraform init -migrate-state`."
+    },
+    {
+     "q": "Which command shows drift without changing anything, and which one writes reality into state?",
+     "a": "`terraform plan -refresh-only` shows drift; `terraform apply -refresh-only` writes reality into state without touching resources."
+    },
+    {
+     "q": "Which block renames a resource without recreating it, and which one drops it from state but keeps it running?",
+     "a": "`moved` (1.1+) renames without recreating; `removed` (1.7+) with `lifecycle { destroy = false }` forgets it without deleting."
+    },
+    {
+     "q": "Trap: can a `backend` block use variables, or can a configuration hold both `backend` and `cloud` blocks?",
+     "a": "No to both. A `cloud` block replaces `backend` for HCP Terraform, and a backend block cannot use variables."
+    },
+    {
+     "q": "Trap: what does the plan show if you rename a resource label without a `moved` block?",
+     "a": "A destroy and a create. With a `moved` block the plan shows a move and no change."
+    },
+    {
+     "q": "Trap: are CLI workspaces a security boundary, or the same as HCP Terraform workspaces?",
+     "a": "No to both. CLI workspaces only split state under one backend; they are unsuitable when environments need separate credentials or access control."
+    },
+    {
+     "q": "Which S3 backend setting enables state locking, and what is deprecated?",
+     "a": "`use_lockfile = true`. S3 locking through DynamoDB is deprecated in favour of the S3 lock file."
+    },
+    {
+     "q": "What is the default `-lock-timeout`, and what does `-lock-timeout=60s` do?",
+     "a": "The default `0s` fails immediately when state is locked; `-lock-timeout=60s` waits for the lock."
+    },
+    {
+     "q": "Drift found: how do you keep the manual change, and how do you reject it?",
+     "a": "Keep: update config, then `apply -refresh-only`. Reject: plain `terraform apply` reverts the drift to match config."
+    },
+    {
+     "q": "Which workspace can never be deleted, and which expression returns the current workspace name?",
+     "a": "The `default` workspace cannot be deleted; `terraform.workspace` returns the current name."
+    }
+   ]
   },
   {
    "domain": "7. Maintain",
@@ -1129,7 +1473,65 @@
      "Thinking `state rm` destroys the real resource; it only forgets it.",
      "Expecting CLI `terraform import` to generate configuration; it only writes state."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "Which two arguments does an `import` block take, and what do you run after writing it?",
+     "a": "`to` (the resource address) and `id` (the real object's ID). Then plan and apply to adopt the resource."
+    },
+    {
+     "q": "Which `plan` flag writes HCL for resources you are importing, and what is its status?",
+     "a": "`-generate-config-out=FILE`, e.g. `terraform plan -generate-config-out=generated.tf`. It is flagged experimental."
+    },
+    {
+     "q": "After importing a real object, what must the configuration still contain?",
+     "a": "A matching `resource` block, or the next apply plans to destroy it."
+    },
+    {
+     "q": "Which commands read state safely, and what does each print?",
+     "a": "`state list` prints resource addresses, `state show ADDR` one resource's attributes, and `terraform show` the whole state or a saved plan."
+    },
+    {
+     "q": "Which `terraform state` subcommands edit state, and what do they always write?",
+     "a": "`state mv` and `state rm` edit state and always write a backup."
+    },
+    {
+     "q": "List the `TF_LOG` levels from most to least verbose.",
+     "a": "`TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`."
+    },
+    {
+     "q": "Trap: you set only `TF_LOG_PATH=./tf.log`. What logs do you get?",
+     "a": "None. `TF_LOG` must also be set; `TF_LOG_PATH` appends logs to the file only when `TF_LOG` is set."
+    },
+    {
+     "q": "Trap: what does `terraform state rm` do to the real resource?",
+     "a": "Nothing. Terraform just forgets it; the resource keeps running and nothing is destroyed."
+    },
+    {
+     "q": "Trap: can CLI `terraform import ADDR ID` generate the resource configuration?",
+     "a": "No, it only writes state immediately. Since 1.5, `import` blocks with `-generate-config-out` are the preferred, CI-friendly route."
+    },
+    {
+     "q": "How many resource addresses can one real object be imported to?",
+     "a": "Only one."
+    },
+    {
+     "q": "Which state subcommand overwrites remote state and is dangerous?",
+     "a": "`terraform state push`. `state pull` only prints remote state."
+    },
+    {
+     "q": "What does `TF_LOG=JSON` do?",
+     "a": "It logs at `TRACE` level in a JSON format."
+    },
+    {
+     "q": "Which variables separate Terraform core logs from provider plugin logs?",
+     "a": "`TF_LOG_CORE` and `TF_LOG_PROVIDER`."
+    },
+    {
+     "q": "Trap: is a command's `-json` flag a way to turn on debug logging?",
+     "a": "No. `-json` is machine-readable output, not debug logging. Use `TF_LOG`."
+    }
+   ]
   },
   {
    "domain": "8. HCP Terraform",
@@ -1304,7 +1706,69 @@
      "Putting both a `cloud` block and a `backend` block in one configuration.",
      "Mixing up levels: OPA `mandatory` is overridable like soft-mandatory; hard-mandatory blocks unless the set allows overrides."
     ]
-   }
+   },
+   "cards": [
+    {
+     "q": "What does an HCP Terraform workspace hold, and how does it process runs?",
+     "a": "It holds config, variables and state. Each workspace keeps its own run queue and processes runs one at a time."
+    },
+    {
+     "q": "What does execution mode Local do to an HCP Terraform workspace?",
+     "a": "It turns the workspace into a plain state backend: HCP Terraform stores state only and you run Terraform yourself."
+    },
+    {
+     "q": "When do Sentinel or OPA policy sets run in an HCP Terraform run?",
+     "a": "After the plan and before the apply."
+    },
+    {
+     "q": "What do projects do in HCP Terraform, and how many projects can a workspace belong to?",
+     "a": "Projects group workspaces, so a team gets access to all of them at once. Every workspace belongs to exactly one project."
+    },
+    {
+     "q": "Which HCP Terraform feature shares values such as credentials across many workspaces or a project?",
+     "a": "Variable sets. Workspace variables override variable set values."
+    },
+    {
+     "q": "Which feature queues a run in one workspace after another workspace applies?",
+     "a": "Run triggers, with up to 20 sources. Triggered runs do not auto-apply unless you enable that setting."
+    },
+    {
+     "q": "What are the three steps to connect the CLI to HCP Terraform?",
+     "a": "Run `terraform login`, add a `cloud` block naming your organization and workspaces, then run `terraform init`."
+    },
+    {
+     "q": "What do dynamic provider credentials swap for short-lived cloud credentials on each run?",
+     "a": "An OIDC-compliant workload identity token. No static keys to store or rotate."
+    },
+    {
+     "q": "Trap: how do HCP Terraform workspaces differ from CLI workspaces?",
+     "a": "HCP workspaces are separate units with their own state, variables, runs and permissions. CLI workspaces only split state."
+    },
+    {
+     "q": "Trap: can one configuration contain both a `cloud` block and a `backend` block?",
+     "a": "No. A configuration cannot contain both. The `cloud` block needs Terraform 1.1+; older versions use the `remote` backend."
+    },
+    {
+     "q": "Trap: which policy failures can permitted users override?",
+     "a": "Sentinel soft-mandatory and OPA mandatory failures. Hard-mandatory cannot be overridden, unless its policy set allows overrides."
+    },
+    {
+     "q": "Name the enforcement levels for Sentinel and for OPA policies.",
+     "a": "Sentinel: advisory, soft-mandatory, hard-mandatory. OPA: advisory or mandatory."
+    },
+    {
+     "q": "What do HCP Terraform health assessments do, and which editions include them?",
+     "a": "Drift detection plus continuous validation of checks and conditions. They need the Standard or Premium edition."
+    },
+    {
+     "q": "How many managed resources does the HCP Terraform free plan cover?",
+     "a": "Up to 500."
+    },
+    {
+     "q": "Which HCP Terraform features need remote execution and so do not work in Local mode?",
+     "a": "Sentinel policies, cost estimation and notifications."
+    }
+   ]
   }
  ]
 }

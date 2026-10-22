@@ -42,6 +42,8 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Streamin
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import plan   # scheduler + study plan maths (pure functions over state.json)
+
 log = logging.getLogger("portal")
 ROOT = Path(__file__).resolve().parent
 SGT = timezone(timedelta(hours=8))
@@ -55,6 +57,11 @@ META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
         "cka": ("CKA", "Certified Kubernetes Administrator", 17, 120),   # ~17 hands-on tasks in 120 min
         "gitlabci": ("GitLab CI/CD", "GitLab Certified CI/CD Associate", 50, 75),
         "tfassoc": ("Terraform", "HashiCorp Terraform Associate (003)", 57, 60)}
+
+
+def hidden_source(src: str | None) -> bool:
+    """Paid banks stay off the public link: the env list, plus the Udemy mock sets (CCAR-P rows MF1/MF2/MF3, "Microsoft Forms mock (...)")."""
+    return bool(src) and (src in PUBLIC_HIDDEN or "Udemy" in src or src.startswith("Microsoft Forms mock"))
 
 
 # ── Exams: import each bot.py as its own module ──────────────────────────────
@@ -88,8 +95,9 @@ class Exam:
         self.short, self.name, self.n_exam, self.minutes = META.get(key, (key.upper(), key, 65, 130))
         os.environ["DATA_DIR"] = str(self.dir / "data")       # bot.py reads it at import
         self.mod = self._load(f"bot_{key}", self.dir / "bot.py")
-        if (self.dir / "scrape.py").exists():                  # CCAR-P: refresh_bank does `import scrape` lazily
-            sys.modules["scrape"] = self._load("scrape", self.dir / "scrape.py")   # ponytail: one scrape.py across exams
+        self.scrape = None
+        if (self.dir / "scrape.py").exists():                  # refresh_bank does `import scrape` lazily: act() points sys.modules at this exam's copy
+            self.scrape = sys.modules["scrape"] = self._load(f"scrape_{key}", self.dir / "scrape.py")
         if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks
             sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
         self.mod.vault_log = quiet_for_public(vault_writer(vault))
@@ -100,6 +108,11 @@ class Exam:
         self.lock = asyncio.Lock()
         sj = ROOT / "study" / f"{key}.json"
         self.study = json.loads(sj.read_text(encoding="utf-8")) if sj.exists() else {}
+        self.cards: dict[str, dict] = {}                       # flashcards by key (plan.card_key), see /card
+        for d in self.study.get("domains", []):
+            for cd in d.get("cards") or []:
+                cd["key"] = plan.card_key(cd["q"])
+                self.cards[cd["key"]] = cd
 
     @staticmethod
     def _own_state(mod) -> None:
@@ -165,7 +178,7 @@ class Exam:
     def questions(self, public: bool = False) -> dict:
         """The bank; on the public link without the paid sources."""
         Q = self.mod.QUESTIONS
-        return {i: q for i, q in Q.items() if q.get("source") not in PUBLIC_HIDDEN} if public else Q
+        return {i: q for i, q in Q.items() if not hidden_source(q.get("source"))} if public else Q
 
     def pool(self, state: dict, public: bool = False) -> dict:
         """Questions of the current mode (hands-on exams); everything otherwise."""
@@ -176,17 +189,17 @@ class Exam:
         return {i: q for i, q in Q.items() if (not q["letters"]) == want_tasks}
 
     def pick(self, state: dict, domain: str | None = None, public: bool = False) -> dict:
-        """bot.pick_question restricted to the current pool (same tiers: unseen, then missed, then any).
-        With `domain` (Study → "Quiz me on this topic"): only that domain, any mode if the current one has none."""
+        """Due reviews, then unseen from the weakest heavy domains, then missed, then any (plan.next_question), inside the
+        current pool. With `domain` (Study → "Quiz me on this topic"): only that domain, any mode if the current one has none."""
         Q = self.pool(state, public) or self.questions(public)
         if domain is not None:
             Q = ({i: q for i, q in Q.items() if q["domain"] == domain}
                  or {i: q for i, q in self.questions(public).items() if q["domain"] == domain})
             if not Q:
                 raise HTTPException(404, f"no questions in domain {domain}")
-        seen = set(state["ok"]) | set(state["bad"])
-        ids = [i for i in Q if i not in seen] or [i for i in Q if state["bad"].get(i, 0) > state["ok"].get(i, 0)] or list(Q)
-        return Q[random.choice(ids)]
+        now = datetime.now(SGT)
+        m = self.mod.metrics(state, now)
+        return plan.next_question(state, Q, getattr(self.mod, "WEIGHTS", {}), m["by_dom"], now.isoformat(timespec="minutes"))
 
     def progress(self, state: dict) -> dict:
         Q = self.mod.QUESTIONS
@@ -261,8 +274,12 @@ def options_of(q: dict) -> list[dict]:
 SOURCE_TAG = {"Tutorials Dojo": "TD"}   # known question sources get a small label on the card; add "source": "tag" to label more
 
 
+def tag_of(src: str | None) -> str:
+    return SOURCE_TAG.get(src or "") or ("UD" if hidden_source(src) else "")   # paid mock sets: one small label on the card
+
+
 def qview(q: dict) -> dict:
-    return {"id": q["id"], "tag": SOURCE_TAG.get(q.get("source"), ""), "domain": q["domain"], "question": q["question"], "options": options_of(q),
+    return {"id": q["id"], "tag": tag_of(q.get("source")), "domain": q["domain"], "question": q["question"], "options": options_of(q),
             "multi": len(q["answer"]) > 1, "task": not q["letters"]}
 
 
@@ -325,15 +342,20 @@ class Recorder:
 
 # ── State helpers shared by quiz, tasks and exam mode ────────────────────────
 
-def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = None) -> bool:
-    """Write ok/bad + log like bot.grade() does. Returns whether this was the first attempt."""
+def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = None, guess: bool = False) -> int:
+    """Write ok/bad + log like bot.grade() does, and schedule the next review. Returns the minutes until it is due."""
     bucket = "ok" if right else "bad"
     state[bucket][qid] = state[bucket].get(qid, 0) + 1
     first = state["ok"].get(qid, 0) + state["bad"].get(qid, 0) == 1
-    state.setdefault("log", []).append({"t": datetime.now(SGT).isoformat(timespec="minutes"), "id": qid,
-                                        "ok": right, "first": first, **(extra or {})})
+    now = datetime.now(SGT)
+    state.setdefault("log", []).append({"t": now.isoformat(timespec="minutes"), "id": qid, "ok": right, "first": first,
+                                        **({"guess": True} if guess else {}), **(extra or {})})
     state["log"] = state["log"][-5000:]
-    return first
+    return plan.schedule(state, qid, right, now, guess)[1]
+
+
+def when(mins: int) -> str:
+    return f"{mins} min" if mins < 60 else f"{mins // 1440} day{'s' if mins >= 2880 else ''}"
 
 
 # ── Actions (the bot's button vocabulary) ────────────────────────────────────
@@ -346,13 +368,12 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
     mod = exam.mod
     state = mod.load_state()
     if data == "next":
-        q = exam.pick(state, public=public) if (exam.has_tasks or public) else None
-        if q is not None and not q["letters"]:
+        q = exam.pick(state, public=public)
+        if not q["letters"]:
             await send_task(exam, rec, state, q)
-        elif q is not None:
-            await mod.send_question(rec, state, q)
         else:
-            await mod.send_question(rec, state)
+            await mod.send_question(rec, state, q)
+            prefetch(exam, q, public)
     elif data == "stats":
         await rec.send_message(mod.stats_text(state))
     elif data == "study":
@@ -375,23 +396,31 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
             raise HTTPException(404, "no questions available")
         await rec.send_message(f"🎯 <b>Weak topic</b> · {html.escape(dom)} ({why})")
         q = exam.pick(state, dom, public)
-        await (send_task(exam, rec, state, q) if not q["letters"] else mod.send_question(rec, state, q))
+        if not q["letters"]:
+            await send_task(exam, rec, state, q)
+        else:
+            await mod.send_question(rec, state, q)
+            prefetch(exam, q, public)
     elif data == "report":
         m = mod.metrics(state, datetime.now(SGT))
         rec.emit({"op": "meta", "metrics": {**m, "pass": mod.PASS, "verdict": mod.verdict(m)}})
         await mod.weekly_report(None, rec)
     elif data == "refresh":
+        if exam.scrape is not None:
+            sys.modules["scrape"] = exam.scrape               # the bot's refresh_bank does `import scrape` first thing, before any await
         await mod.refresh_bank(None, rec)
     elif data == "reset":
         mod.save_state({"ok": {}, "bad": {}})
         mod.vault_log("🔄 **reset**", "progress cleared")
-        await rec.send_message("🔄 Progress cleared.", reply_markup=mod.NEXT_KB)
+        await rec.send_message("🔄 Progress cleared · starting again from question 1.")
+        await act(exam, "next", rec, public)                 # straight into the first question, no extra click
     elif data.startswith("d|"):                           # Study → "Quiz me on this topic"
         q = exam.pick(state, data[2:], public)
         if not q["letters"]:
             await send_task(exam, rec, state, q)
         else:
             await mod.send_question(rec, state, q)
+            prefetch(exam, q, public)
     elif "|" in data:
         kind, qid, *rest = data.split("|")
         q = mod.QUESTIONS.get(qid)
@@ -402,6 +431,7 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
                 await send_task(exam, rec, state, q)
             else:
                 await mod.send_question(rec, state, q)
+                prefetch(exam, q, public)
         elif kind == "e":                                 # Explain more: the only place the portal draws a diagram
             await mod.explain(rec, q, set(filter(None, (rest[0] if rest else "").split(","))))
         else:
@@ -410,29 +440,119 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
         raise HTTPException(400, f"unknown action {data}")
 
 
-async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public: bool = False) -> None:
+async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public: bool = False, guess: bool = False) -> None:
+    """Grade like bot.grade() (same state writes, same verdict text) without its wrong-answer tutor call: the portal waits
+    for the "Explain more" button. Both outcomes go through record(), so the review schedule sees every answer."""
     q = exam.mod.QUESTIONS.get(qid)
     if not q or hidden(exam, qid, public):
         raise HTTPException(404, f"unknown question {qid}")
     letters = set(picked) & set(q["letters"])
     if not letters:
         raise HTTPException(400, "pick at least one option")
-    rec.emit({"op": "meta", "graded": {"id": q["id"], "picked": sorted(letters), "correct": sorted(q["answer"]),
-                                       "right": letters == q["answer"]}})
     mod, state = exam.mod, exam.mod.load_state()
     right = letters == q["answer"]
-    if right:
-        await mod.grade(rec, state, q, letters)          # right answers never call Claude in the bots
-        return
-    # Wrong: the bot's grade() would draw the tutor diagram now; the portal waits for the "Explain more" button.
     state["last"] = {"id": q["id"], "picked": sorted(letters)}
     state["pending"] = None
-    record(exam, state, q["id"], False)
+    mins = record(exam, state, q["id"], right, guess=guess)
     mod.save_state(state)
-    mod.vault_log(f"{mod.TITLE['bad']} **wrong**", f"{q['id']} picked {','.join(sorted(letters))} answer {q['correct']}")
-    head = (f"{mod.TITLE['bad']} <b>WRONG</b> · you picked <code>{html.escape(','.join(sorted(letters)))}</code>, "
+    rec.emit({"op": "meta", "graded": {"id": q["id"], "picked": sorted(letters), "correct": sorted(q["answer"]), "right": right,
+                                       "guess": guess, "due_min": mins}})
+    mod.vault_log(f"{mod.TITLE['ok' if right else 'bad']} **{'correct' if right else 'wrong'}**",
+                  f"{q['id']} picked {','.join(sorted(letters))} answer {q['correct']}{' (guessed)' if guess else ''}")
+    head = (f"{mod.TITLE['ok']} <b>CORRECT</b> · {html.escape(q['correct'])}" if right else
+            f"{mod.TITLE['bad']} <b>WRONG</b> · you picked <code>{html.escape(','.join(sorted(letters)))}</code>, "
             f"answer <code>{html.escape(q['correct'])}</code>")
+    head += f" · {'guessed, ' if guess and right else ''}back in {when(mins)}"
     await rec.send_message(f"{head}\n\n{html.escape(q['explanation'])}", reply_markup=mod.after_kb(q, letters))
+
+
+# ── Question decoder: clue words, why each option is right or wrong; one Claude call per question, cached forever ──
+
+DECODE = """You are a tutor for the {name} exam. The student has just answered a practice question. Using ONLY the question,
+its options, the correct answer, the bank's explanation and the study material supplied, explain how to read the question:
+"clues": 2 to 4 phrases copied verbatim from the question stem that decide the answer; "options": one entry per option
+letter, "why" under 25 words of plain text: for a correct option why it is right, for every other option why it is wrong
+(name the trap); "principle": one sentence to remember for the exam; "source": the study note's title and url exactly as
+supplied, or empty strings if none was supplied. Never invent a source or a fact that is not in the material."""
+# plain types only: `claude -p --json-schema` drops the schema silently on a ["object", "null"] union and answers free-form
+DECODE_SCHEMA = json.dumps({"type": "object", "required": ["clues", "options", "principle", "source"], "additionalProperties": False,
+                            "properties": {"clues": {"type": "array", "items": {"type": "string"}},
+                                           "options": {"type": "array", "items": {"type": "object", "required": ["letter", "why"], "additionalProperties": False,
+                                                                                  "properties": {"letter": {"type": "string"}, "why": {"type": "string"}}}},
+                                           "principle": {"type": "string"},
+                                           "source": {"type": "object", "required": ["title", "url"], "additionalProperties": False,
+                                                      "properties": {"title": {"type": "string"}, "url": {"type": "string"}}}}})
+DECODING: dict[str, asyncio.Task] = {}        # "<exam>/<qid>" -> running call
+
+
+def decode_path(exam: Exam, qid: str) -> Path:
+    return exam.mod.STATE_PATH.parent / "decode" / f"{qid}.json"
+
+
+def note_for(exam: Exam, q: dict) -> tuple[dict | None, dict | None]:
+    """The study domain (by name) and its note with the most stem words in its title + gist + points."""
+    dom = next((d for d in exam.study.get("domains", []) if d["domain"] == q["domain"]), None)
+    if not dom:
+        return None, None
+    words = set(re.findall(r"[a-z]{5,}", q["question"].lower()))
+    best, hits = None, 0
+    for n in dom.get("notes", []):
+        text = f"{n.get('title', '')} {n.get('gist', '')} {' '.join(n.get('points', []))}".lower()
+        h = sum(w in text for w in words)
+        if h > hits:
+            best, hits = n, h
+    return dom, best
+
+
+async def decode(exam: Exam, q: dict) -> dict:
+    dom, note = note_for(exam, q)
+    material = ""
+    if dom and dom.get("summary"):
+        material += "DOMAIN SUMMARY:\n" + "\n".join(f"- {x}" for x in dom["summary"].get("must_know", [])) + "\n\n"
+    if note:
+        material += (f"STUDY NOTE: {note['title']}\n{note.get('gist', '')}\n" + "\n".join(f"- {p}" for p in note.get("points", []))
+                     + f"\nSOURCE: {note['source']['title']} | {note['source']['url']}\n\n")
+    shape = ('{"clues": ["<2-4 phrases copied verbatim from the question>"], "options": [{"letter": "A", "why": "<under 25 words: why right, or why wrong and the trap>"}, '
+             '{"letter": "B", "why": "..."}, "...one entry per option letter"], "principle": "<one sentence to remember>", '
+             '"source": {"title": "<the study note title, or empty>", "url": "<its url, or empty>"}}')
+    prompt = (f"QUESTION {q['id']}:\n{q['question']}\n\nOPTIONS:\n{q['options']}\n\nCORRECT: {q['correct']}\n\n"
+              f"BANK EXPLANATION:\n{q['explanation']}\n\n{material}Reply with ONLY one JSON object of exactly this shape, no code fence:\n{shape}")
+    data = await exam.mod.run_claude(DECODE.format(name=exam.name), prompt, DECODE_SCHEMA)
+    out = data.get("structured_output")
+    if not isinstance(out, dict):
+        text = str(data.get("result") or "")
+        out = json.loads(text[text.find("{"):text.rfind("}") + 1])
+    src = out.get("source") if isinstance(out.get("source"), dict) else {}
+    out = {"clues": [str(x) for x in out.get("clues", [])][:4],
+           "options": [{"letter": str(o["letter"]).strip().upper()[:1], "why": str(o.get("why", ""))} for o in out.get("options", []) if isinstance(o, dict) and o.get("letter")],
+           "principle": str(out.get("principle", "")).strip(), "source": src if src.get("url") else None}
+    if not out["options"] and not out["principle"]:
+        raise RuntimeError("decoder returned no content")        # schema ignored or a refusal: do not cache it
+    if out["source"] and (not note or out["source"].get("url") != note["source"]["url"]):
+        out["source"] = {"title": note["source"]["title"], "url": note["source"]["url"]} if note else None   # the note's link or nothing
+    p = decode_path(exam, q["id"])
+    p.parent.mkdir(exist_ok=True)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+    return out
+
+
+def prefetch(exam: Exam, q: dict, public: bool) -> asyncio.Task | None:
+    """Start the decoder for an MCQ unless cached, running or on the public link. The task outlives the request."""
+    key = f"{exam.key}/{q['id']}"
+    if public or not q["letters"] or decode_path(exam, q["id"]).exists():
+        return DECODING.get(key)
+    if key not in DECODING or DECODING[key].done():
+        async def run():
+            try:
+                await decode(exam, q)
+            except Exception as exc:
+                log.warning("decoder failed for %s: %s", key, exc)
+            finally:
+                DECODING.pop(key, None)
+        DECODING[key] = asyncio.create_task(run())
+    return DECODING[key]
 
 
 def stream(exam: Exam, run) -> StreamingResponse:
@@ -506,7 +626,7 @@ async def grade_one(exam: Exam, q: dict, answer: str) -> dict:
     return out
 
 
-async def check_task(exam: Exam, qid: str, answer: str, rec: Recorder) -> None:
+async def check_task(exam: Exam, qid: str, answer: str, rec: Recorder, guess: bool = False) -> None:
     """Claude grades the typed commands, progress is recorded, the guideline and reference solution are shown."""
     mod = exam.mod
     q = mod.QUESTIONS.get(qid)
@@ -521,7 +641,7 @@ async def check_task(exam: Exam, qid: str, answer: str, rec: Recorder) -> None:
         return
     right = out["score"] >= PASS_TASK
     state = mod.load_state()
-    record(exam, state, qid, right, {"score": out["score"]})
+    record(exam, state, qid, right, {"score": out["score"]}, guess)
     state["pending"] = None
     state["last"] = {"id": qid, "picked": [], "teach": out["feedback"]}
     mod.save_state(state)
@@ -715,12 +835,24 @@ class Act(BaseModel):
 class Answer(BaseModel):
     id: str
     picked: list[str]
+    guess: bool = False     # "🤔 Guessing" was on: a right answer is still scheduled like a miss
 
 
 class TaskAnswer(BaseModel):
     id: str
     answer: str = ""
     result: str = ""        # self-mark: reveal | ok | bad
+    guess: bool = False
+
+
+class PlanBody(BaseModel):
+    exam_date: str | None = None
+    pace: int | None = None
+
+
+class Card(BaseModel):
+    key: str
+    ok: bool
 
 
 class Mode(BaseModel):
@@ -754,8 +886,14 @@ def api_exams(req: Request):
     return out
 
 
+def plan_of(e: Exam, state: dict, public: bool) -> dict:
+    m = e.mod.metrics(state, datetime.now(SGT))
+    return plan.plan(state, e.pool(state, public) or e.questions(public), getattr(e.mod, "WEIGHTS", {}), m["by_dom"],
+                     datetime.now(SGT), 0 if public else m["score"], e.mod.PASS)
+
+
 @app.get("/api/{key}/home")
-def api_home(key: str, req: Request):
+async def api_home(key: str, req: Request):
     e = exam_or_404(key)
     pub = is_public(req)
     state = e.mod.load_state()
@@ -764,13 +902,15 @@ def api_home(key: str, req: Request):
     if state.get("pending") in e.questions(pub):           # a question asked (web or Telegram) and not yet answered
         q = e.mod.QUESTIONS[state["pending"]]
         pending = {"html": task_html(q) if e.tasks else e.mod.question_text(q), "question": qview(q)}
+        if q["letters"]:
+            prefetch(e, q, pub)                            # asked in Telegram or before a restart: decode it now
     last = state.get("last") or {}
     if pub:                                                # the owner's score, readiness and week are not for the public link
         m = {**m, "score": 0, "week_n": 0, "week_ok": 0}
     return {"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,
             "mode": e.mode(state), "progress": e.progress(state) if e.has_tasks else None,
             "coverage": e.coverage(state, pub), "score": m["score"], "pass": e.mod.PASS, "verdict": "" if pub else e.mod.verdict(m),
-            "week": {"n": m["week_n"], "ok": m["week_ok"]}, "pending": pending,
+            "week": {"n": m["week_n"], "ok": m["week_ok"]}, "pending": pending, "plan": plan_of(e, state, pub),
             "last": {"id": last.get("id"), "has_teach": bool(last.get("teach"))} if last else None,
             "study_cards": len(getattr(e.mod, "NOTES", {}) or {}),
             "studied": len(set(state.get("studied", []))),
@@ -810,6 +950,63 @@ def api_study(key: str, req: Request):
     return {"reading": without_dead(e.study), "coverage": e.coverage(e.mod.load_state(), is_public(req)), "has_cards": e.has_study}
 
 
+@app.get("/api/{key}/plan")
+def api_plan(key: str, req: Request):
+    e = exam_or_404(key)
+    return plan_of(e, e.mod.load_state(), is_public(req))
+
+
+@app.post("/api/{key}/plan")
+def api_plan_set(key: str, body: PlanBody, req: Request):
+    """Set or clear the exam date and the daily pace (new questions a day)."""
+    e = exam_or_404(key)
+    state = e.mod.load_state()
+    if "exam_date" in body.model_fields_set:
+        if body.exam_date:
+            try:
+                datetime.strptime(body.exam_date, "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(400, "exam_date must be YYYY-MM-DD")
+            state["exam_date"] = body.exam_date
+        else:
+            state.pop("exam_date", None)
+    if body.pace is not None:
+        state["pace"] = max(1, min(200, body.pace))
+    e.mod.save_state(state)
+    e.mod.vault_log("📅 **plan**", f"exam {state.get('exam_date') or '-'} · pace {state.get('pace', plan.DEFAULT_PACE)}")
+    return plan_of(e, state, is_public(req))
+
+
+@app.post("/api/{key}/card")
+def api_card(key: str, body: Card):
+    """Flashcard review: Again (ok=false) or Got it (ok=true), scheduled on the same ladder as questions."""
+    e = exam_or_404(key)
+    if body.key not in e.cards:
+        raise HTTPException(404, "unknown card")
+    state = e.mod.load_state()
+    due, mins = plan.schedule(state, body.key, body.ok, datetime.now(SGT))
+    e.mod.save_state(state)
+    return {"due": due, "due_min": mins}
+
+
+@app.get("/api/{key}/decode/{qid}")
+async def api_decode(key: str, qid: str, req: Request, cached: int = 0):
+    """The decoder JSON for a question: 200 with it, 202 while Claude is working, 404 when there is none (public link,
+    `cached=1` for review cards, a task, or a failed call). The owner's request starts a missing one."""
+    e = exam_or_404(key)
+    pub = is_public(req)
+    q = e.questions(pub).get(qid)
+    if not q:
+        raise HTTPException(404, "unknown question")
+    p = decode_path(e, qid)
+    if p.exists():
+        return JSONResponse(json.loads(p.read_text(encoding="utf-8")), headers={"Cache-Control": "no-store"})
+    if pub or cached or not q["letters"]:
+        raise HTTPException(404, "not decoded")
+    prefetch(e, q, False)
+    return JSONResponse({"pending": True}, status_code=202, headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/{key}/act")
 async def api_act(key: str, body: Act, req: Request):
     e = exam_or_404(key)
@@ -821,7 +1018,7 @@ async def api_act(key: str, body: Act, req: Request):
 @app.post("/api/{key}/answer")
 async def api_answer(key: str, body: Answer, req: Request):
     e = exam_or_404(key)
-    return stream(e, functools.partial(answer, e, body.id, body.picked, public=is_public(req)))
+    return stream(e, functools.partial(answer, e, body.id, body.picked, public=is_public(req), guess=body.guess))
 
 
 @app.post("/api/{key}/task")
@@ -831,7 +1028,7 @@ async def api_task(key: str, body: TaskAnswer):
         raise HTTPException(400, "not a task exam")
     if body.result:
         return stream(e, functools.partial(self_mark, e, body.id, body.result))
-    return stream(e, functools.partial(check_task, e, body.id, body.answer))
+    return stream(e, functools.partial(check_task, e, body.id, body.answer, guess=body.guess))
 
 
 @app.post("/api/{key}/exam/start")
@@ -893,6 +1090,11 @@ async def visitors(req: Request, call_next):
     if req.url.path.startswith("/static/"):
         resp.headers["Cache-Control"] = "no-cache"
     return resp
+
+
+@app.get("/favicon.ico")
+def favicon():
+    return FileResponse(ROOT / "static" / "favicon.svg", media_type="image/svg+xml")
 
 
 @app.get("/")
