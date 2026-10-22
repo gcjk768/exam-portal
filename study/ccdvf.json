@@ -1,0 +1,2231 @@
+{
+ "exam": "Claude Certified Developer - Foundations (CCDV-F)",
+ "intro": "About 53 questions in about 120 minutes, USD 125 at Pearson VUE; the 720/1000 pass mark comes from the community blueprint, since Anthropic has published no cut score. It tests building on Claude: the Messages API and structured output, model choice and cost, agents, prompts and context, tool use and MCP, security, Claude Code and evals. Read each domain's summary and traps first, watch the video, then drill the notes and flashcards in weight order; a third of the paper is Applications and Integration.",
+ "start": [
+  {
+   "title": "Free timed mock exams (CCDV-F)",
+   "url": "https://claudearchitects.org/mockexams/CCDV-F",
+   "note": "Independent practice, not affiliated with Anthropic: timed mocks with a per-domain breakdown and written explanations; no sign-up.",
+   "kind": "free"
+  },
+  {
+   "title": "Blueprint: domains and objectives",
+   "url": "https://claudearchitects.org/resources#CCDV-F",
+   "note": "The eight domains, their official weights (33.1 down to 2.6 percent) and the objectives this page follows.",
+   "kind": "free"
+  },
+  {
+   "title": "Anthropic Academy",
+   "url": "https://academy.claude.com/",
+   "note": "Official free courses, including the Claude API, MCP, Agent Skills, Subagents and Claude Code in Action.",
+   "kind": "official"
+  },
+  {
+   "title": "Four role-based Claude certifications",
+   "url": "https://claude.com/resources/articles/four-role-based-claude-certifications",
+   "note": "Anthropic's announcement: who the Developer exam is for and how the four tracks relate.",
+   "kind": "official"
+  },
+  {
+   "title": "Exam policy (PDF)",
+   "url": "https://claudecode.sg/cca-f/cca-f-exam-policy.pdf",
+   "note": "Registration, Pearson VUE rules, retakes and renewal.",
+   "kind": "official"
+  },
+  {
+   "title": "Claude Developer Platform docs",
+   "url": "https://platform.claude.com/docs/en/intro",
+   "note": "The audience's home: Messages API, tool use, structured outputs and batches; the Agent SDK lives at code.claude.com.",
+   "kind": "official"
+  }
+ ],
+ "domains": [
+  {
+   "domain": "Applications and Integration",
+   "weight": 33.1,
+   "links": [
+    {
+     "title": "Using the Messages API",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/working-with-messages",
+     "note": "Stateless multi-turn calls, content blocks, image inputs.",
+     "kind": "official"
+    },
+    {
+     "title": "Structured outputs",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/structured-outputs",
+     "note": "output_config.format, strict tools, schema limits and the cases where output still misses the schema.",
+     "kind": "official"
+    },
+    {
+     "title": "Batch processing",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/batch-processing",
+     "note": "50 percent discount, request limits, custom_id and the four result types.",
+     "kind": "official"
+    },
+    {
+     "title": "Run Claude Code programmatically",
+     "url": "https://code.claude.com/docs/en/headless",
+     "note": "claude -p, --output-format json, --json-schema and --bare for CI.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "aqW68Is_Kj4",
+    "title": "Evolving Claude APIs for Agents (Katelyn Lesse, Anthropic)",
+    "channel": "AI Engineer",
+    "min": 13
+   },
+   "diagram": "flowchart LR\n  A[Document or PR diff] --> B[Messages API call with tool schema]\n  B --> C{stop_reason and schema ok?}\n  C -->|yes| D[Business rule checks]\n  C -->|no| E[Retry with error fed back]\n  D --> F[Backend system or PR comment]",
+   "summary": {
+    "tests": "Whether you can wire Claude into real software: stateless Messages API calls, tool-based structured output, CI/CD review, batch jobs and document pipelines with validation, routing and failure handling.",
+    "must_know": [
+     "The Messages API is stateless: resend the full history (with every `tool_use` and `tool_result` block), the system prompt and `max_tokens` on each call.",
+     "In CI run `claude -p --output-format json --json-schema`, read `structured_output` and branch on the exit code.",
+     "Force structure with a tool schema: `tool_choice` of `any` when the tool varies, a named `tool` to force one; nullable fields stop fabrication.",
+     "Batches: 50% cheaper, 100,000 requests or 256 MB, expire at 24 hours (usually under 1 hour), results kept 29 days, match on `custom_id`.",
+     "Schema-valid is not correct: read `stop_reason` (`max_tokens`, `refusal`), check business rules, retry with the error fed back, then escalate.",
+     "Retry 429, 5xx and 529 with exponential backoff, jitter and `retry-after`; never retry 400-class errors; the SDKs retry twice by default.",
+     "Tool failures go back as `tool_result` with `is_error: true`; a PDF is limited to 32 MB and 600 pages per request."
+    ],
+    "traps": [
+     "Fixing flaky JSON with regex, louder instructions or temperature instead of a schema plus validation and retry.",
+     "Sending a user-facing step through the Batches API (up to 24 hours) or matching batch results by position.",
+     "Making every field required so Claude invents team names, ticket ids or dates the document never states."
+    ]
+   },
+   "notes": [
+    {
+     "objective": "Integrate Claude into CI/CD pipelines to analyze code submissions and provide structured feedback on pull requests using tool use and the Messages API.",
+     "title": "Messages API calls are stateless",
+     "gist": "Every request must carry the whole conversation, so your code owns the history, the system prompt and the exact block structure.",
+     "points": [
+      "Stateless: send the full `messages` history and the `system` prompt on every call; earlier assistant turns may be synthetic, which is how you edit or truncate a conversation.",
+      "Replay assistant turns as content blocks, never flattened text: each `tool_use` needs its `tool_result` next, and `thinking` blocks must come back unmodified or the API returns a 400.",
+      "`max_tokens` is required; the reply `content` is an array of typed blocks, not a string, and carries `stop_reason` and `usage`.",
+      "Return every `tool_result` from one assistant turn in a single user message, `tool_result` blocks first, each with its `tool_use_id`; split messages cause a 400.",
+      "Raw HTTP needs the key, `anthropic-version` and `content-type: application/json`; the official SDKs add them, retry transient errors twice and stream for you."
+     ],
+     "tip": "A stem about rebuilding, editing or truncating a conversation, or about lost tool context, is answered by the stateless design: the client resends full structured history, never flattened text.",
+     "diagram": "flowchart LR\n  A[App stores history] --> B[Send system plus all messages]\n  B --> C[Reply as content blocks]\n  C --> D[Append reply and tool results]\n  D --> B",
+     "video": {
+      "id": "ba_vrnfalYE",
+      "title": "Claude API Crash Course #2 - Sending a Message",
+      "channel": "Net Ninja",
+      "min": 10
+     },
+     "source": {
+      "title": "Using the Messages API",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/working-with-messages"
+     }
+    },
+    {
+     "objective": "Integrate Claude into CI/CD pipelines to analyze code submissions and provide structured feedback on pull requests using tool use and the Messages API.",
+     "title": "CI pipeline: headless Claude with a JSON schema",
+     "gist": "In CI, run Claude Code non-interactively with a JSON schema so findings arrive as validated data, not prose to scrape.",
+     "points": [
+      "`claude -p` with a prompt runs non-interactively and exits 0 on success, non-zero on failure, so the job can branch on the status.",
+      "`--output-format json` returns the result plus session metadata; add `--json-schema` and the conforming object appears in `structured_output`, which is absent if Claude declined.",
+      "`--bare` skips hooks, plugins, MCP servers, auto memory and CLAUDE.md so every runner behaves the same; it needs `ANTHROPIC_API_KEY` and is the recommended mode for scripts.",
+      "`--allowedTools` pre-approves only what the job needs, with prefix rules such as `Bash(git diff *)`; in a non-interactive run anything that would prompt is denied.",
+      "GitHub Action `anthropics/claude-code-action@v1`: key in `secrets.ANTHROPIC_API_KEY`, `claude_args` for `--max-turns`; a `prompt` input means automation mode, none means it waits for `@claude`."
+     ],
+     "tip": "When posting fails because output switches between tables, bullets and renamed fields, choose JSON output with a schema plus validation; regex parsing, stricter wording or a second Claude pass are the distractors.",
+     "diagram": "flowchart LR\n  A[PR opened] --> B[claude -p with json-schema]\n  B --> C{structured_output present and valid?}\n  C -->|yes| D[Post inline comments]\n  C -->|no| E[Fail the job or retry once]",
+     "video": null,
+     "source": {
+      "title": "Run Claude Code programmatically",
+      "url": "https://code.claude.com/docs/en/headless"
+     }
+    },
+    {
+     "objective": "Implement tool use patterns in code review systems to generate structured findings with specific fields such as file path, line number, severity, and remediation suggestions.",
+     "title": "Structured findings through tool use",
+     "gist": "Model each finding as a tool's input_schema so Claude returns typed fields, then use tool_choice and nullable fields to keep the output complete and honest.",
+     "points": [
+      "A tool is `name` + detailed `description` + JSON `input_schema`; the reply is a `tool_use` block whose `input` is your object, such as findings with `file_path`, `line_number`, a `severity` enum and `remediation`.",
+      "`tool_choice`: `auto` (default, may answer in prose), `any` (must call one of the tools), `tool` (must call the named one), `none`; `any` and `tool` pre-fill the turn, so no prose precedes the call.",
+      "Use `any` when the tool is unknown at design time, such as routing a document to one of several extractors; force a named tool to run step one first, then call the next tool on the following turn.",
+      "Fields the source may not state (team, ticket id) should be nullable or optional with an instruction to return null; required fields push Claude to invent plausible values.",
+      "Current docs: Opus 5.5, Sonnet 5.5, Fable 5.1 and Mythos 5.1 reject `any` and `tool` with a 400; use `auto` with `strict: true` or `output_config.format` there."
+     ],
+     "tip": "'Sometimes returns an explanation instead of calling a tool' means tool_choice any; 'invented team names and ticket numbers' means nullable fields, not a sterner prompt; wrong tool order means force the first tool.",
+     "diagram": "flowchart TB\n  A[Finding schema as a tool] --> B{Must Claude call a tool every turn?}\n  B -->|Yes, tool varies| C[tool_choice any]\n  B -->|Yes, one specific tool| D[tool_choice tool with name]\n  B -->|No| E[tool_choice auto]",
+     "video": null,
+     "source": {
+      "title": "Define tools",
+      "url": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools"
+     }
+    },
+    {
+     "objective": "Use the Message Batches API to process multiple code review tasks efficiently while handling custom tool calls for validation and analysis.",
+     "title": "Message Batches API: cost, limits, custom_id",
+     "gist": "Batches trade latency for half price, so use them for bulk work nobody waits on, and match results by custom_id, never by position.",
+     "points": [
+      "50 percent off input and output tokens; up to 100,000 requests or 256 MB per batch; most finish within 1 hour, and a batch expires after 24 hours.",
+      "Each request is a unique `custom_id` (1 to 64 characters) plus `params`; results arrive in any order as `.jsonl`, so join on `custom_id`; results stay downloadable for 29 days.",
+      "Result types are `succeeded`, `errored`, `canceled` and `expired`; only succeeded requests are billed and one failure never affects the rest; fix 400s, resubmit 5xx.",
+      "Tool use is allowed but nothing runs your client tool: a result can end in `tool_use`; run the tool yourself (for example a build validator) and submit a follow-up request with the `tool_result`.",
+      "A submitted batch cannot be edited: cancel it (status `canceling`, partial results kept) and resubmit; `params` are validated only after processing, so dry-run one request on the Messages API first."
+     ],
+     "tip": "'Nightly', 'nobody waits' and 'tens of thousands of items' point to batches; 'a user waits for validation' or 'blocks the merge' point to the synchronous API.",
+     "diagram": "flowchart TB\n  A[Submit batch with custom_ids] --> B[Poll until processing_status is ended]\n  B --> C[Stream results and join on custom_id]\n  C --> D{Result ends in tool_use?}\n  D -->|Yes| E[Run tool then submit follow-up batch]\n  D -->|No| F[Store validated result]",
+     "video": null,
+     "source": {
+      "title": "Batch processing",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/batch-processing"
+     }
+    },
+    {
+     "objective": "Handle errors and unexpected outputs in extraction systems by implementing validation logic that ensures data quality before passing results to backend applications.",
+     "title": "Schema-valid is not the same as correct",
+     "gist": "Constrained decoding guarantees the shape of the JSON, so your code must still check meaning, stop_reason and failures before anything reaches a backend.",
+     "points": [
+      "`output_config.format` (JSON outputs) and `strict: true` (tool inputs) use constrained decoding: the reply parses and has the required keys and types, with no retry needed for shape.",
+      "Shape is not meaning: a wrong total, a swapped date or an invented vendor still validates, so add business-rule and cross-field checks in your own code.",
+      "The guarantee can fail: `stop_reason: refusal` returns HTTP 200 with off-schema text, `max_tokens` truncates, and enum values may differ in capitalization; read `stop_reason` before parsing.",
+      "Supported subset: `additionalProperties: false`, no recursive schemas, no `minimum` or `maxLength`; the SDK `parse()` helper moves unsupported limits into descriptions and re-validates in code.",
+      "On a failed check, retry with the validator's error message fed back, a bounded number of times, then queue the record for human review; if the source never states the value, a retry cannot help."
+     ],
+     "tip": "'Crashes one run in fifty on malformed JSON' wants schema enforcement, validation and retry with the error fed back; temperature 0, louder instructions and silently skipping bad records are the distractors.",
+     "diagram": "flowchart TB\n  A[Claude output] --> B{Schema and business rules ok?}\n  B -->|Yes| C[Write to backend]\n  B -->|No| D{Attempts left?}\n  D -->|Yes| E[Retry with error fed back]\n  D -->|No| F[Human review queue]\n  E --> A",
+     "video": {
+      "id": "xqXrBI_n9rI",
+      "title": "Claude API Crash Course #4 - Output Format (using Zod)",
+      "channel": "Net Ninja",
+      "min": 7
+     },
+     "source": {
+      "title": "Structured outputs",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/structured-outputs"
+     }
+    },
+    {
+     "objective": "Design document processing pipelines that extract structured data from unstructured documents using Claude and validate outputs against JSON schemas.",
+     "title": "Feeding documents in: PDFs, images, Files API",
+     "gist": "Know the input blocks and the size limits so large documents are split or counted before they fail at upload.",
+     "points": [
+      "PDFs go in `document` blocks as a URL, base64 (`application/pdf`) or a `file_id`; images use `image` blocks (jpeg, png, gif, webp); models take text and images, so audio needs transcribing first.",
+      "PDF limits: 32 MB per request and 600 pages (100 when the context window is under 1M tokens); dense pages can fill the context first, so split large files into sections.",
+      "A PDF page costs roughly 1,500 to 3,000 text tokens plus its page image; `POST /v1/messages/count_tokens` returns an estimate before you send, for base64 PDFs only.",
+      "Files API: upload once (500 MB per file), reuse the `file_id`, delete when done; files you upload cannot be downloaded back, and `.docx` or `.xlsx` are not accepted in document blocks, so convert them to text or PDF before sending.",
+      "Place PDFs before the question text in the request; past the limits, chunk the corpus, summarise each chunk, then synthesise the summaries."
+     ],
+     "tip": "A stem saying users must never see an upload failure for 50 to 1,200 page files wants a size and token check before submission, plus chunking, not a larger max_tokens.",
+     "diagram": "flowchart TB\n  A[Incoming file] --> B{Within 32 MB and page limit?}\n  B -->|Yes| C[Send document block or file_id]\n  B -->|No| D[Split into sections]\n  D --> C",
+     "video": null,
+     "source": {
+      "title": "PDF support",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/pdf-support"
+     }
+    },
+    {
+     "objective": "Route documents to specialized extraction workflows based on content classification and integrate validated results with downstream business systems.",
+     "title": "Classify, route, then extract per type",
+     "gist": "A cheap classification step picks the specialised prompt and schema for each document type, and only validated output reaches backend systems.",
+     "points": [
+      "Routing classifies the input, then hands it to a specialised follow-up with its own prompt, schema and tools; one shared prompt for every type lets tuning for one hurt the others.",
+      "Give the classifier one tool per workflow (`extract_invoice`, `extract_contract`) with `tool_choice` of `any`, so the reply is always a structured call, never an explanation; add an unknown route.",
+      "Send easy, high-volume classification to a small model such as Haiku and hard extraction to a larger one; routing only pays when classification is accurate.",
+      "Each branch has its own schema with nullable fields for absent values and its own validation rules; cross-field checks such as totals and dates run after extraction.",
+      "Hand backends only records that passed validation, with the document id and API `request-id` for tracing; low-confidence or unknown documents go to a human queue."
+     ],
+     "tip": "'About 5 percent of calls return an explanation instead of a tool call' while the type is unknown at runtime means tool_choice any: auto still allows prose, a named tool hard-codes one schema, prefill is fragile.",
+     "diagram": "flowchart TB\n  A[Incoming document] --> B[Classify with tool_choice any]\n  B --> C{Document type?}\n  C -->|Invoice| D[Invoice prompt and schema]\n  C -->|Contract| E[Contract prompt and schema]\n  C -->|Unknown| F[Human review queue]",
+     "video": null,
+     "source": {
+      "title": "Building effective agents",
+      "url": "https://www.anthropic.com/research/building-effective-agents"
+     }
+    },
+    {
+     "objective": "Handle errors and unexpected outputs in extraction systems by implementing validation logic that ensures data quality before passing results to backend applications.",
+     "title": "stop_reason, retries and tool errors",
+     "gist": "Read stop_reason on every 200 response, retry only transient HTTP errors with backoff, and report tool failures inside the tool loop.",
+     "points": [
+      "`stop_reason`: `end_turn` use it; `max_tokens` truncated, so raise the limit or continue; `tool_use` run the tool; `pause_turn` send the content back; `refusal` is a 200 with `stop_details`, not an error.",
+      "Retry only transient errors: 429 `rate_limit_error`, 500 `api_error`, 504 and 529 `overloaded_error`, with exponential backoff, jitter, the `retry-after` header and a retry cap.",
+      "Do not retry 400, 401, 403, 404 or 413: fix the request, key, permission or size (32 MB); a 429 without `retry-after` can be the monthly spend cap and keeps failing.",
+      "The SDKs already retry connection errors, 429 and 5xx twice with backoff (`max_retries`); a hand-written tight retry loop worsens an overload, and a queue absorbs bursts.",
+      "A tool failure goes back as a `tool_result` with `is_error: true` and an instructive message in the same turn; a search with no matches is a successful empty result, not an error."
+     ],
+     "tip": "'Truncated mid-sentence' means max_tokens; 'worked for months then 401' means an expired or rotated key; a retry storm calls for exponential backoff with jitter and a cap, never an immediate loop.",
+     "diagram": "flowchart TB\n  A[Response or error] --> B{HTTP status?}\n  B -->|200| C{stop_reason?}\n  B -->|429 or 5xx| D[Back off with jitter then retry]\n  B -->|400 401 403 404| E[Fix the request or credential]\n  C -->|max_tokens or tool_use| F[Raise limit or run the tool]",
+     "video": null,
+     "source": {
+      "title": "Claude API errors",
+      "url": "https://platform.claude.com/docs/en/api/errors"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "q": "Why must an app resend the whole conversation on every Messages API call?",
+     "a": "The API is stateless and keeps no history, so send every prior message, including tool_use and tool_result blocks, plus the system prompt, each time."
+    },
+    {
+     "q": "Claude returns three tool_use blocks in one turn. How do you send the results back?",
+     "a": "In one user message: one tool_result per tool_use_id, all placed before any text. Separate messages per result cause a 400."
+    },
+    {
+     "q": "In CI, which flags make `claude -p` return JSON that matches a schema, and where does the object appear?",
+     "a": "`--output-format json` with `--json-schema`; the object is in the `structured_output` field, which is missing if Claude declined, so check it first."
+    },
+    {
+     "q": "Which tool_choice setting fixes a pipeline that sometimes gets prose instead of a tool call when the tool varies?",
+     "a": "Type `any`: Claude must call one of the provided tools. A named `tool` forces one specific tool; `auto` still allows prose."
+    },
+    {
+     "q": "Code-review findings need a team and ticket id that the diff often lacks, and Claude invents them. What is the fix?",
+     "a": "Make those fields nullable or optional and tell Claude to return null when the source does not state them; required fields invite fabrication."
+    },
+    {
+     "q": "What are the Message Batches API discount, size limits and timing?",
+     "a": "50 percent off; 100,000 requests or 256 MB per batch; most finish within 1 hour, expiry at 24 hours; results kept 29 days."
+    },
+    {
+     "q": "Batch results return in a different order than submitted. How do you match them to requests?",
+     "a": "By `custom_id`, 1 to 64 characters of letters, digits, hyphen or underscore. Result order is never guaranteed."
+    },
+    {
+     "q": "A review task in a batch needs a client-side tool such as a build validator. How does it work?",
+     "a": "The batch only returns `tool_use`; you run the tool yourself and submit a follow-up request containing the `tool_result`."
+    },
+    {
+     "q": "What does structured output guarantee, and what can still break the schema?",
+     "a": "Valid JSON in the schema's shape. A refusal or `max_tokens` cut-off can still break it, and a wrong value still validates."
+    },
+    {
+     "q": "A schema-valid extraction has the wrong invoice total. What layer is missing, and what do you do on failure?",
+     "a": "Business-rule validation in your code. Retry with the validator's error fed back a bounded number of times, then send the record to human review."
+    },
+    {
+     "q": "Which HTTP errors should a client retry with backoff, and which should it never retry?",
+     "a": "Retry 429, 500, 504 and 529 with exponential backoff, jitter and retry-after. Never retry 400, 401, 403 or 404; fix the request."
+    },
+    {
+     "q": "A response ends with stop_reason max_tokens. What happened and what do you do?",
+     "a": "The output was cut off at your limit. Increase max_tokens or ask Claude to continue; a truncated tool_use block must be retried with a higher limit."
+    },
+    {
+     "q": "A tool call times out. How do you tell Claude without losing the conversation context?",
+     "a": "Return a `tool_result` for that tool_use_id with `is_error: true` and an instructive message. A search with no matches is a normal empty result."
+    },
+    {
+     "q": "What are the PDF limits for one Messages API request?",
+     "a": "32 MB per request and 600 pages, or 100 pages when the context window is under 1M tokens. Use the Files API for large files."
+    },
+    {
+     "q": "A classifier must route a document to one of four extraction tools, type unknown in advance. What routes reliably?",
+     "a": "Provide all four tools with tool_choice type `any`, so every reply is a tool call; add an unknown route for human review."
+    }
+   ]
+  },
+  {
+   "domain": "Model Selection and Optimization",
+   "weight": 16.8,
+   "links": [
+    {
+     "title": "Choosing the right model",
+     "url": "https://platform.claude.com/docs/en/about-claude/models/choosing-a-model",
+     "note": "Tier matrix, efficiency-first versus capability-first, and why effort is often a better lever than switching.",
+     "kind": "official"
+    },
+    {
+     "title": "Model IDs and versioning",
+     "url": "https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions",
+     "note": "Pinned IDs versus aliases, and why behavior can shift on a stable ID.",
+     "kind": "official"
+    },
+    {
+     "title": "Prompt caching",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
+     "note": "Breakpoints, 5-minute and 1-hour lifetimes, price multipliers, minimum lengths.",
+     "kind": "official"
+    },
+    {
+     "title": "Effort",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/effort",
+     "note": "Levels low to max, per-model defaults, and the effect on thinking and tool calls.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "tRi9g3urhyE",
+    "title": "Claude Haiku vs Sonnet vs Opus vs Fable Clearly Explained (and use cases)",
+    "channel": "Eliot Prince",
+    "min": 19
+   },
+   "diagram": "flowchart TB\n  A{User waiting?} -->|Yes| B[Streaming sync call]\n  A -->|No| C[Batch at 50 percent off]\n  B --> D{Hard reasoning?}\n  C --> D\n  D -->|Yes| E[Larger model or higher effort]\n  D -->|No| F[Haiku or Sonnet with caching]",
+   "summary": {
+    "tests": "Whether you can match model tier, effort, processing mode and caching to a task's latency, accuracy and cost needs, pin versions safely and tell a model change from a configuration or data change.",
+    "must_know": [
+     "Haiku is the lowest latency and price for classification, extraction, routing and subagents; Sonnet is the balanced everyday tier; Opus suits long agentic coding; Fable the hardest reasoning.",
+     "Decide by measuring on your own data: start efficiency-first or capability-first, and try lower effort before switching models.",
+     "Pin the exact model ID in production; aliases move, and a new release can change formatting, refusals or tool behavior, so migrate through your eval suite.",
+     "Batches are 50% off for work nobody waits on; streaming only improves perceived latency; a cache read costs a tenth of base input or less and a 5-minute write 1.25x.",
+     "Thinking tokens bill as output and count toward `max_tokens`; legacy `budget_tokens` is at least 1,024 and below `max_tokens`; newer models use adaptive thinking plus `effort`.",
+     "`max_tokens` is the only hard cap on a response; effort is a soft signal; temperature 0 is not determinism, and newer models reject sampling parameters.",
+     "Multi-agent systems use about 15x a chat's tokens, so they pay only for high-value, parallel, breadth-first work."
+    ],
+    "traps": [
+     "Leaving an alias or 'latest' in production, so a new snapshot changes formatting or refusals overnight.",
+     "Picking the biggest model, or a batch job, because it sounds safer instead of measured accuracy, latency and who is waiting.",
+     "Setting a thinking budget above `max_tokens`, or sending a budget to a model that only has adaptive thinking, or expecting a lower `max_tokens` to cut the bill."
+    ]
+   },
+   "notes": [
+    {
+     "objective": "Select between Claude models based on task complexity, latency requirements, and cost constraints to optimize system performance.",
+     "title": "Pick the model tier by the task",
+     "gist": "Match the tier to the job, start from the cheapest or the strongest, and let your own evals decide.",
+     "points": [
+      "Haiku 5.5 is the lowest latency and price (from $0.10 input and $0.50 output per million tokens) for classification, extraction, routing, real-time work and subagents.",
+      "Sonnet 5.5 ($2 and $10) is the speed-and-capability middle for everyday coding, analysis and tool use; Opus 5.5 ($4 and $20) for long agentic coding and refactors; Fable 5.1 ($10 and $50) for hours-long agents and the hardest reasoning.",
+      "Start efficiency-first (begin on Haiku, upgrade only for a capability gap) for prototypes, tight latency and high volume; start capability-first (begin on Opus, then trim) when accuracy outweighs cost.",
+      "Adjusting effort is frequently cheaper than changing models; to choose, build benchmark tests from your own prompts and data and compare accuracy, quality and edge cases, not vendor claims or what competitors picked.",
+      "Combine models: a small model does the bulk and escalates low-confidence cases, an orchestrator delegates bulk work to cheaper workers, and deterministic work such as unit conversion stays in plain code."
+     ],
+     "tip": "'Millions of simple labels, tight latency, minimal cost' means the smallest tier after a benchmark check; 'planning drift across many interacting constraints' means the most capable tier; 'two teams disagree' means test on your own sample.",
+     "diagram": "flowchart TB\n  A[New task] --> B{Simple and high volume?}\n  B -->|Yes| C[Start on Haiku and benchmark]\n  B -->|No| D{Reasoning heavy?}\n  D -->|Yes| E[Opus or Fable at higher effort]\n  D -->|No| F[Sonnet then tune effort]",
+     "video": null,
+     "source": {
+      "title": "Choosing the right model",
+      "url": "https://platform.claude.com/docs/en/about-claude/models/choosing-a-model"
+     }
+    },
+    {
+     "objective": "Select between Claude models based on task complexity, latency requirements, and cost constraints to optimize system performance.",
+     "title": "Prompt caching: pay once for the prefix",
+     "gist": "Cache the stable beginning of every request so repeated tokens are read at a fraction of the price and count less against rate limits.",
+     "points": [
+      "The cached prefix is built in the order `tools`, `system`, `messages`: put static content first and anything variable (user turn, timestamp) last, with `cache_control` at the end of the static part; a change before the breakpoint invalidates it.",
+      "A cache read costs 0.1x the base input price (0.05x on Opus 5.5 and Sonnet 5.5); a 5-minute write costs 1.25x and a 1-hour write 2x, so one reuse already repays the 5-minute write.",
+      "The default lifetime is 5 minutes and is refreshed every time the prefix is used; add `ttl` of `1h` when requests are further apart; a prefix reused rarely only adds write fees.",
+      "Prompts below the minimum length are silently not cached (512 tokens on the newest models, 1,024 to 4,096 on older ones); if `cache_creation_input_tokens` and `cache_read_input_tokens` are both 0, nothing was cached.",
+      "Cache reads do not count toward input-tokens-per-minute limits on most models, so caching also raises effective throughput; a request may carry up to 4 breakpoints."
+     ],
+     "tip": "The same 6,000-token policy text on every call with cost and latency climbing means static prefix first plus caching; 'cache never hits' means a prompt under the minimum, a changing prefix such as a timestamp, or gaps longer than the lifetime.",
+     "diagram": "flowchart LR\n  A[Static tools and system first] --> B[cache_control at end of prefix]\n  B --> C{Same prefix within lifetime?}\n  C -->|Yes| D[Cache read at 0.1x]\n  C -->|No| E[Cache write at 1.25x]",
+     "video": {
+      "id": "u57EnkQaUTY",
+      "title": "What is Prompt Caching? Optimize LLM Latency with AI Transformers",
+      "channel": "IBM Technology",
+      "min": 9
+     },
+     "source": {
+      "title": "Prompt caching",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-caching"
+     }
+    },
+    {
+     "objective": "Evaluate and apply model versioning strategies (pinned versions, aliases, or latest) to balance stability, feature access, and change management requirements.",
+     "title": "Pin model IDs; migrate on purpose",
+     "gist": "A model ID is a frozen snapshot and an alias is a moving pointer, so production pins the ID and upgrades are evaluated releases.",
+     "points": [
+      "Each model ID identifies a pinned version that stays constant for the life of that ID; updated weights ship under a new ID.",
+      "From the 4.6 generation the dateless ID (`claude-sonnet-4-6`, `claude-opus-5-5`) is itself the pinned snapshot; for earlier models the dated ID (`claude-sonnet-4-5-20250929`) is pinned and the short alias (`claude-sonnet-4-5`) follows the newest dated snapshot.",
+      "Pin the exact ID in production and read it from per-environment configuration, not code, so test, staging and production cannot drift; keep aliases and brand-new models for experiments.",
+      "Lifecycle is active, legacy, deprecated, retired; Anthropic gives at least 60 days' notice before retiring a public model, and the Console Usage export by API key and model finds calls still on it.",
+      "Migrate service by service: run your evaluation suite on the successor, compare, then switch traffic with checkpoints, because a new model can change formatting, instruction adherence or tool behavior."
+     ],
+     "tip": "'Output structure changed overnight with no code change' plus an alias means pin the exact ID and migrate deliberately; 'pinned model retires in 75 days' means validate the successor against the eval suite, then a controlled release.",
+     "diagram": "flowchart LR\n  A[Pinned model ID in config] --> B[Successor announced]\n  B --> C[Run eval suite on successor]\n  C --> D{Quality bar met?}\n  D -->|Yes| E[Controlled rollout]\n  D -->|No| F[Fix prompts and keep pinned]",
+     "video": null,
+     "source": {
+      "title": "Model IDs and versioning",
+      "url": "https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions"
+     }
+    },
+    {
+     "objective": "Implement asynchronous processing patterns (batching, streaming, or deferred execution) to meet throughput and cost requirements when latency constraints permit.",
+     "title": "Sync, streaming or batch: who is waiting?",
+     "gist": "Streaming improves perceived speed, batches cut cost for work nobody waits on, and neither replaces the other.",
+     "points": [
+      "A user is waiting: synchronous call with `stream: true` so text appears as it is generated, using server-sent events over the same HTTP connection; streaming changes perceived latency, not total cost.",
+      "Nobody is waiting (nightly job, backlog, evals): Message Batches at 50% of the price with results inside 24 hours; a mixed system keeps the interactive path synchronous and sends the archive to batch.",
+      "Deferred execution when work outlasts a request: acknowledge at once and deliver the result by callback or polling; a queue absorbs bursts and keeps traffic inside rate limits without dropping work.",
+      "Many independent calls: use the SDK's async client with a concurrency cap sized to the RPM, ITPM and OTPM limits instead of a sequential loop.",
+      "Stream events run `message_start`, then per block `content_block_start`, `content_block_delta`, `content_block_stop` (grouped by `index`), `message_delta` (final `stop_reason`, cumulative usage), `message_stop`; tool input arrives as partial JSON in `input_json_delta`."
+     ],
+     "tip": "'Results needed by morning' or '1.5 million invoices within 48 hours' means batches; 'first results in 500 ms' or 'users stare at a blank screen' means streaming, not a bigger model.",
+     "diagram": "flowchart TB\n  A{Who needs the answer?} -->|A user right now| B[Sync call with streaming]\n  A -->|Nobody before a deadline| C[Message Batches]\n  A -->|Caller moves on| D[Queue and callback]",
+     "video": null,
+     "source": {
+      "title": "Streaming messages",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/streaming"
+     }
+    },
+    {
+     "objective": "Configure conditional feature usage (extended thinking, code execution, agentic loops) based on task characteristics to optimize latency and cost trade-offs.",
+     "title": "Effort and thinking: spend tokens where they pay",
+     "gist": "Thinking and effort add reasoning tokens, so raise them for tasks that benefit and cap them for the rest.",
+     "points": [
+      "Reasoning tokens bill at the output rate and count toward `max_tokens` even when the thinking text is hidden; `max_tokens` is the hard ceiling, effort only a soft signal.",
+      "Newer models use adaptive thinking (Claude decides when and how much) steered by `output_config.effort` (`low`, `medium`, `high`, `xhigh`, `max`); `thinking` of type `enabled` with `budget_tokens` returns a 400 on Claude 4.7 and later.",
+      "Legacy extended thinking (4.5 and earlier): `budget_tokens` is at least 1,024 and below `max_tokens`; start near 1,024 for simple tasks and at 16,000 or more for complex ones; above 32k use batches.",
+      "To cut cost or latency lower `effort` first (it also means fewer, terser tool calls); defaults differ (medium on Opus 5.5 and Haiku 5.5, high elsewhere), and changing top-level effort mid-conversation invalidates the cache.",
+      "With tools, pass `thinking` blocks back unmodified, toggle thinking between turns not mid-turn, and remember manual extended thinking cannot be combined with forced `tool_choice` (`any` or `tool`)."
+     ],
+     "tip": "'Routine lookups take 5 to 10 seconds and burn tokens' means lower the effort or budget for those queries; 'a 400 after upgrading although the same request worked before' means the new model wants adaptive thinking plus effort, not a budget.",
+     "diagram": "flowchart TB\n  A{Task needs deep reasoning?} -->|No| B[Low effort or no thinking]\n  A -->|Yes| C[Adaptive thinking at high effort]\n  C --> D[Set max_tokens as hard cap]\n  B --> D",
+     "video": null,
+     "source": {
+      "title": "Thinking",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/thinking"
+     }
+    },
+    {
+     "objective": "Design multi-agent system architectures that distribute specialized tasks across agents while managing coordination, context, and output quality.",
+     "title": "When multi-agent systems earn their cost",
+     "gist": "Extra agents buy parallelism and capacity at roughly 15 times the tokens of a chat, so reserve them for valuable, breadth-first work.",
+     "points": [
+      "Orchestrator-worker: a lead agent plans, spawns subagents that search at the same time, each in its own context window, then synthesises; an Opus lead with Sonnet subagents beat single-agent Opus by 90.2% on Anthropic's research eval.",
+      "Cost: agents use about 4x the tokens of a chat and multi-agent systems about 15x, so the task's value must pay for it; token usage alone explained 80% of the variance on BrowseComp.",
+      "Poor fit: work where agents must share one context or depend heavily on each other, such as most coding tasks; good fit: heavy parallelization, information beyond one window, many complex tools.",
+      "Scale effort to the query: 1 agent and 3 to 10 tool calls for a fact, 2 to 4 subagents with 10 to 15 calls each for a comparison, more than 10 subagents for complex research.",
+      "Manage context and quality: brief each subagent with objective, output format, tool guidance and boundaries, save the plan to memory before the window fills, and let subagents store artifacts and return references."
+     ],
+     "tip": "A stem asking whether to split a tightly coupled coding task across agents wants no, because coordination cost beats the parallel gain; a wide, independent research sweep wants parallel subagents.",
+     "diagram": "flowchart TB\n  A[Lead agent plans and saves plan] --> B[Spawn 3 to 5 subagents in parallel]\n  B --> C[Subagents search in own contexts]\n  C --> D{Enough coverage?}\n  D -->|No| B\n  D -->|Yes| E[Lead writes final answer]",
+     "video": null,
+     "source": {
+      "title": "How we built our multi-agent research system",
+      "url": "https://www.anthropic.com/research/multi-agent-research-system"
+     }
+    },
+    {
+     "objective": "Diagnose model behavior changes and performance degradation by distinguishing between model updates, configuration drift, and prompt/data variations.",
+     "title": "Diagnosing a behavior change",
+     "gist": "Separate the suspects (model, serving layer, configuration, prompt or data) by changing one at a time against a fixed eval set.",
+     "points": [
+      "Check the model string first: an alias or unpinned ID can move to a new snapshot; a pinned ID keeps its weights, but the router, safety classifiers and sampling logic around it can change and shift behavior slightly.",
+      "Diff the request configuration: model, system prompt, tools, `tool_choice`, `max_tokens`, effort and thinking; defaults differ per model, and newer ones reject `temperature`, `top_p`, `top_k` (400), prefill and `thinking` of type `enabled`.",
+      "Claude 4.7 and later use a tokenizer that yields roughly 30% extra tokens on identical input, so cost and limits shift with no prompt change; count tokens with the target model's ID.",
+      "Check prompt and data drift: longer or different inputs, context growing each turn, retrieval returning other chunks; quality falls as irrelevant context piles up.",
+      "Reproduce with a fixed evaluation set run on old and new versions; temperature 0 does not guarantee identical output, so judge by pass rates, not a single diff."
+     ],
+     "tip": "'Accuracy dropped, nobody changed code, prompt or config' with an alias in use points to a model update; 'the same request now returns 400' points to a removed parameter; identical input giving different text is normal variance.",
+     "diagram": "flowchart TB\n  A[Behavior changed] --> B{Model ID pinned?}\n  B -->|No| C[Pin the ID and rerun evals]\n  B -->|Yes| D{Config or prompt diff?}\n  D -->|Yes| E[Revert the diff and retest]\n  D -->|No| F[Check data drift and serving changes]",
+     "video": null,
+     "source": {
+      "title": "Model deprecations",
+      "url": "https://platform.claude.com/docs/en/about-claude/model-deprecations"
+     }
+    },
+    {
+     "objective": "Match document processing workflows to appropriate Claude capabilities (extraction, structured output, batch processing) based on latency, accuracy, and volume requirements.",
+     "title": "Match the document workflow to the feature",
+     "gist": "Choose the capability by the constraint that binds: structure, volume, latency, repeated context or accuracy.",
+     "points": [
+      "Typed fields for a database: structured outputs (`output_config.format` or strict tools) so the shape is guaranteed, plus validation for meaning.",
+      "High volume with no waiting user: Message Batches at 50% off; the same document queried many times: cache the document, and the cache discount stacks with the batch discount.",
+      "Interactive intake forms: a synchronous call on a fast tier such as Haiku, streamed if text is shown, with larger models reserved for cases that fail validation.",
+      "PDFs and scans go in `document` blocks that give Claude text and page images, so charts and tables are read; put the PDF before the question and split very long files.",
+      "Citations ground answers in the source but cannot be combined with `output_config.format`; context beyond the window means chunk and summarise, or retrieve only the relevant sections."
+     ],
+     "tip": "Pick the feature that removes the stated constraint: 'must finish while staff wait' is sync, 'backlog of 35,000 documents' is batch, 'inconsistent field names' is a schema or examples, 'same manual asked repeatedly' is caching.",
+     "diagram": "flowchart TB\n  A[Document workload] --> B{Binding constraint?}\n  B -->|Typed fields| C[Structured output and validation]\n  B -->|Volume, nobody waiting| D[Batch plus caching]\n  B -->|Live user| E[Sync on a small tier with streaming]",
+     "video": null,
+     "source": {
+      "title": "Features overview",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/overview"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "q": "Which Claude tier fits a high-volume classification or routing workload with tight latency and cost limits?",
+     "a": "Haiku, the fastest and cheapest tier, after confirming accuracy on a benchmark of your own data; escalate only hard or low-confidence cases."
+    },
+    {
+     "q": "Two teams disagree on Haiku versus Sonnet for document analysis, citing industry reports and benchmarks. How do you decide?",
+     "a": "Test both on a representative sample of your own documents against your quality bar, then weigh accuracy against cost and latency."
+    },
+    {
+     "q": "What is the difference between a pinned model ID and an alias, and which belongs in production?",
+     "a": "A pinned ID is a fixed snapshot; an alias moves to the newest snapshot. Pin the exact ID in production and migrate through your eval suite."
+    },
+    {
+     "q": "A pipeline that references an alias started returning a different JSON structure overnight. What fixes it?",
+     "a": "Pin the exact model ID, read from per-environment config, and move to new versions only after the evaluation suite passes."
+    },
+    {
+     "q": "How much notice does Anthropic give before retiring a public model, and how do you find your usage?",
+     "a": "At least 60 days. Export usage by API key and model from the Console Usage page to find calls still on the old model."
+    },
+    {
+     "q": "Which workloads belong in the Batches API and which stay synchronous?",
+     "a": "Batches for non-urgent bulk work, such as nightly or backlog jobs, at 50% off. Anything with a user waiting stays synchronous, usually streamed."
+    },
+    {
+     "q": "Users stare at a blank screen for several seconds before the full answer appears. What is the fix?",
+     "a": "Stream the response so tokens display as they are generated. It improves perceived latency, not total cost."
+    },
+    {
+     "q": "What does prompt caching cost compared with normal input tokens?",
+     "a": "A cache read costs 0.1x the base input price (0.05x on Opus 5.5 and Sonnet 5.5); a 5-minute write costs 1.25x, a 1-hour write 2x."
+    },
+    {
+     "q": "A cache_control marker on a 650-token system prompt never produces cache hits or writes. Why?",
+     "a": "The prompt is below the minimum cacheable length and is silently skipped; the newest models need 512 tokens, older ones 1,024 to 4,096."
+    },
+    {
+     "q": "Cache writes happen on almost every request but cache reads are rare. What are the likely causes?",
+     "a": "The prefix changes (timestamps, reordered blocks), requests arrive further apart than the 5-minute lifetime, or the breakpoint sits on varying content."
+    },
+    {
+     "q": "How are thinking tokens billed, and what limit must exceed the legacy thinking budget?",
+     "a": "They bill as output tokens and count toward max_tokens. `budget_tokens` must be at least 1,024 and below max_tokens."
+    },
+    {
+     "q": "Sending `thinking` of type enabled with `budget_tokens` to a Claude 4.7 or later model returns a 400. What replaces it?",
+     "a": "Adaptive thinking, steered by `output_config.effort` (low, medium, high, xhigh, max). Lower effort first to cut cost or latency."
+    },
+    {
+     "q": "Do `max_tokens` and effort cap spending in the same way?",
+     "a": "No. `max_tokens` is the hard ceiling on output, and billing counts tokens actually generated. Effort is only a soft signal."
+    },
+    {
+     "q": "How many times a chat's tokens does a multi-agent research system use, and when is it worth it?",
+     "a": "About 15x (a single agent about 4x). Worth it for high-value, parallel, breadth-first work; poor for tightly coupled tasks such as most coding."
+    },
+    {
+     "q": "Costs and token counts rose after moving to Claude 4.7 or later with no prompt change. Why?",
+     "a": "A newer tokenizer yields roughly 30% extra tokens on identical input. Re-count tokens with the target model's ID before forecasting."
+    }
+   ]
+  },
+  {
+   "domain": "Agents and Workflows",
+   "weight": 14.7,
+   "links": [
+    {
+     "title": "Building effective agents",
+     "url": "https://www.anthropic.com/research/building-effective-agents",
+     "note": "Workflows versus agents and the five composable patterns.",
+     "kind": "official"
+    },
+    {
+     "title": "How we built our multi-agent research system",
+     "url": "https://www.anthropic.com/research/multi-agent-research-system",
+     "note": "Orchestrator-worker in production: delegation briefs, effort scaling, parallel calls, token cost.",
+     "kind": "official"
+    },
+    {
+     "title": "Subagents in the SDK",
+     "url": "https://code.claude.com/docs/en/agent-sdk/subagents",
+     "note": "AgentDefinition fields, the Agent tool, context isolation, depth and spend caps.",
+     "kind": "official"
+    },
+    {
+     "title": "How the agent loop works",
+     "url": "https://code.claude.com/docs/en/agent-sdk/agent-loop",
+     "note": "Turns, tool execution, max_turns and budget, result subtypes.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "LP5OCa20Zpg",
+    "title": "Tips for building AI agents",
+    "channel": "Anthropic",
+    "min": 18
+   },
+   "diagram": "flowchart TB\n  A[Incoming request] --> B{Steps known up front?}\n  B -->|Yes| C[Workflow with a fixed code path]\n  B -->|No| D[Coordinator decomposes the task]\n  D --> E[Specialist subagents in parallel]\n  E --> F[Coordinator synthesizes and validates]",
+   "summary": {
+    "tests": "Whether you can choose between a fixed workflow and an agent, and build a coordinator with scoped subagents that get explicit context, run in parallel, return structured findings and are gated by deterministic checks.",
+    "must_know": [
+     "Workflows follow predefined code paths; agents let the model direct its own steps. Known, fixed steps mean a deterministic workflow; unpredictable steps mean an agent with a stop condition.",
+     "The agent loop repeats while `stop_reason` is `tool_use`: run every tool, return all results in one user message, finish on `end_turn`; cap it with `max_turns` and `max_budget_usd`.",
+     "A subagent starts with fresh context: only the Agent tool's prompt string reaches it, so put findings, IDs and constraints in it; only its final message comes back.",
+     "The coordinator needs `Agent` (formerly `Task`) in `allowedTools`; give each subagent only the `tools` its role needs.",
+     "Independent subtasks go out in one turn and run in parallel; dependent ones wait; the coordinator reconciles results and keeps source attribution.",
+     "Enforce ordering and approvals in code (hooks, prerequisite gates), not in prompts; route every handoff through the coordinator.",
+     "Resume continues a session, fork branches it, and a fresh session with a summary beats resuming stale context; MCP tools are named `mcp__server__tool`."
+    ],
+    "traps": [
+     "Assuming a subagent sees the coordinator's history or an earlier subagent's findings instead of passing them in its prompt.",
+     "Letting workers message each other or spawn their own workers, which removes coordinator visibility, instead of routing through the coordinator.",
+     "Relying on a system-prompt instruction for a must-happen step (audit, approval, ordering) instead of a hook or gate."
+    ]
+   },
+   "notes": [
+    {
+     "objective": "Design a multi-agent system architecture where a coordinator agent delegates specialized tasks to subagents and orchestrates their contributions toward a unified goal.",
+     "title": "Workflow or agent: who controls the path?",
+     "gist": "Use fixed code for known steps and an agent only when the path depends on what it finds.",
+     "points": [
+      "Workflows run LLMs and tools along predefined code paths; agents let the LLM direct its own process and tool use; start with the simplest design and add complexity only when it measurably helps.",
+      "Five patterns: prompt chaining (fixed subtasks with gates), routing (classify, then specialize), parallelization (sectioning or voting), orchestrator-workers (subtasks decided at run time), evaluator-optimizer (generate, critique, loop).",
+      "Fixed, known steps in a fixed order with checkable output, such as parse, validate, report, belong in a deterministic workflow: cheaper, testable and auditable.",
+      "Choose an agent when steps cannot be known until intermediate results are seen (open-ended research, multi-file coding); give it an explicit success condition, a step ceiling and sandboxed testing.",
+      "Agents trade latency and cost for flexibility and can compound errors; frameworks can hide the prompts, so start with direct API calls."
+     ],
+     "tip": "'The same five steps for every input' means a deterministic workflow, not an autonomous agent; 'the number of subtasks depends on the input' means orchestrator-workers; 'different ticket types need different prompts' means routing.",
+     "diagram": "flowchart TB\n  A{Steps known in advance?} -->|Yes| B[Workflow: chain, route or parallelize]\n  A -->|No| C[Agent or orchestrator-workers]\n  C --> D[Success condition plus step ceiling]",
+     "video": {
+      "id": "D7_ipDqhtwk",
+      "title": "How We Build Effective Agents: Barry Zhang, Anthropic",
+      "channel": "AI Engineer",
+      "min": 15
+     },
+     "source": {
+      "title": "Building effective agents",
+      "url": "https://www.anthropic.com/research/building-effective-agents"
+     }
+    },
+    {
+     "objective": "Design a multi-agent system architecture where a coordinator agent delegates specialized tasks to subagents and orchestrates their contributions toward a unified goal.",
+     "title": "The agent loop: tool_use until end_turn",
+     "gist": "An agent is a loop that runs the tools Claude requests and feeds results back until Claude stops asking for tools.",
+     "points": [
+      "Raw Messages API loop: call, and while `stop_reason` is `tool_use` execute every `tool_use` block, append the assistant turn and one user message holding all `tool_result` blocks, then call again; stop on `end_turn`.",
+      "Stop conditions belong in code: end when a response has no `tool_use` blocks, with a ceiling (`max_turns`, `max_budget_usd`) as a backstop; an agent that keeps calling tools usually lacks that check.",
+      "The Agent SDK runs this loop for you, with built-in tools, permissions, automatic compaction and sessions; the Client SDK leaves the loop to you or to its beta tool runner.",
+      "`ResultMessage.subtype` says how it ended: `success`, `error_max_turns`, `error_max_budget_usd` or `error_during_execution`; the `result` text exists only on success.",
+      "Read-only tools may run concurrently while state-changing ones (Edit, Write, Bash) run in sequence; `max_turns` counts tool-use turns only, and the budget cap includes subagent spend."
+     ],
+     "tip": "'The agent keeps calling tools after the answer' means the loop never checks for a response without `tool_use`; 'the bill exploded on a vague prompt' means set `max_turns` and `max_budget_usd` and inspect the result subtype.",
+     "diagram": "flowchart LR\n  A[Send messages and tools] --> B{stop_reason is tool_use?}\n  B -->|Yes| C[Run every tool call]\n  C --> D[Append results in one user message]\n  D --> A\n  B -->|No| E[Return the final answer]",
+     "video": null,
+     "source": {
+      "title": "How the agent loop works",
+      "url": "https://code.claude.com/docs/en/agent-sdk/agent-loop"
+     }
+    },
+    {
+     "objective": "Configure specialized subagents to perform domain-specific analysis tasks such as document review, data auditing, research synthesis, or code examination.",
+     "title": "Define scoped subagents with AgentDefinition",
+     "gist": "A subagent is a separate agent with its own prompt, tools and model, invoked through the Agent tool and isolated from the parent's context.",
+     "points": [
+      "`AgentDefinition` needs a `description` (when Claude should delegate) and a `prompt` (its system prompt); optional fields include `tools`, `disallowedTools`, `model`, `skills`, `mcpServers`, `maxTurns`, `effort` and `permissionMode`.",
+      "Claude delegates through the `Agent` tool (called `Task` in older versions), so `Agent` must be in the coordinator's `allowedTools` or no subagent runs; naming the subagent in the prompt forces its use.",
+      "Least privilege: list only the `tools` a role needs, such as `Read`, `Grep`, `Glob` for a reviewer; if you omit the field the subagent inherits every tool, and a tool left out is simply absent.",
+      "Context isolation: the subagent works in its own window, intermediate tool calls stay inside, and only its final message returns, so exploring dozens of files adds a summary, not a transcript, to the parent.",
+      "Match model and effort to the role (a small model or low effort for lookups, a stronger one for high-stakes review); Claude Code also ships read-only `Explore` and `Plan` helpers for search and planning."
+     ],
+     "tip": "'Delegation is announced but no subagent runs' means `Agent` is missing from `allowedTools`; 'the subagent edited files it should only read' means its `tools` list was omitted or too broad.",
+     "diagram": "flowchart TB\n  A[Coordinator with Agent in allowedTools] --> B[Agent tool call with a prompt string]\n  B --> C[Subagent with own prompt and tools]\n  C --> D[Final message returns to coordinator]",
+     "video": null,
+     "source": {
+      "title": "Subagents in the SDK",
+      "url": "https://code.claude.com/docs/en/agent-sdk/subagents"
+     }
+    },
+    {
+     "objective": "Implement agent-to-agent communication patterns that enable subagents to receive delegated tasks from a coordinator and return findings for synthesis.",
+     "title": "Handoffs: pass context in, get findings out",
+     "gist": "Subagents see only what the coordinator writes into the delegation prompt, so every handoff must carry the facts, constraints and output format.",
+     "points": [
+      "A non-fork subagent receives its own system prompt, the Agent tool's prompt string and project CLAUDE.md, but never the parent's history, tool results or system prompt.",
+      "A good brief states the objective, upstream findings with source metadata, IDs and file paths, constraints, success criteria and the output format; vague briefs make subagents duplicate or miss work.",
+      "Sequential dependencies: the coordinator accumulates earlier findings and threads them into the next subagent's prompt; a later agent without them contradicts the earlier ones.",
+      "Return structured findings (claim, source, date, evidence, confidence) instead of prose or whole transcripts; large artifacts go to files or storage with a lightweight reference passed back.",
+      "Route every handoff through the coordinator so it keeps visibility, control and logging; peer-to-peer messages between workers bypass it."
+     ],
+     "tip": "'The third subagent contradicts the first two' means the findings were not passed into its prompt; 'quality dropped after adding a subagent' means the handoff lost context the main agent held.",
+     "diagram": "flowchart LR\n  A[Coordinator gathers facts] --> B[Prompt with context and format]\n  B --> C[Subagent works in fresh context]\n  C --> D[Structured findings returned]\n  D --> A",
+     "video": null,
+     "source": {
+      "title": "How we built our multi-agent research system",
+      "url": "https://www.anthropic.com/research/multi-agent-research-system"
+     }
+    },
+    {
+     "objective": "Develop coordination logic that aggregates, synthesizes, or processes outputs from multiple subagents to produce final results or recommendations.",
+     "title": "Fan out in parallel, then synthesize",
+     "gist": "Split independent work across subagents in one turn, then reconcile the structured results while keeping provenance and conflicts visible.",
+     "points": [
+      "Decompose into independent streams (sector, jurisdiction, document) and issue all subagent calls in one turn so they run concurrently; in Anthropic's research system 3 to 5 parallel subagents plus parallel tool calls cut time by up to 90%.",
+      "Dependent steps stay sequential: run a discovery phase first, then let the coordinator build follow-up subtasks from what it found instead of a fixed script.",
+      "Synthesize only structured outputs, keep each claim's source, date and method, and annotate conflicting values with both sources instead of silently picking one.",
+      "Validate before finishing: the coordinator checks the draft against the original request, finds unaddressed parts and sends targeted follow-ups; per-document passes then a cross-document reconciliation pass beat one giant pass.",
+      "`SubagentStart` and `SubagentStop` hooks fire as workers spawn and finish, which is where you track and collect parallel results."
+     ],
+     "tip": "'Slow because the subagents run one after another' means issue the independent calls in one coordinator turn; 'two sources give conflicting statistics' means preserve both with attribution and flag the conflict.",
+     "diagram": "flowchart TB\n  A[Coordinator decomposes the request] --> B[Parallel subagents one per stream]\n  B --> C[Structured findings with sources]\n  C --> D{Gaps or conflicts?}\n  D -->|Yes| E[Targeted follow-up subagent]\n  D -->|No| F[Synthesized answer]",
+     "video": {
+      "id": "uhJJgc-0iTQ",
+      "title": "Building more effective AI agents",
+      "channel": "Anthropic",
+      "min": 19
+     },
+     "source": {
+      "title": "How we built our multi-agent research system",
+      "url": "https://www.anthropic.com/research/multi-agent-research-system"
+     }
+    },
+    {
+     "objective": "Build multi-tier agent hierarchies where a primary coordinator validates inputs, distributes work to specialized subagents, and manages task dependencies.",
+     "title": "Hierarchies: validate, gate, order",
+     "gist": "The primary coordinator validates input, activates only the relevant specialists and enforces order and approvals in code.",
+     "points": [
+      "The top tier validates and triages: verify identity and inputs first, classify the request, then activate only the relevant specialist workers, each with a focused scope.",
+      "Enforce prerequisites programmatically: a gate or `PreToolUse` hook blocks `process_refund` until the customer and order lookups return matching, eligible results; prompt instructions fail some of the time.",
+      "Risky tools such as `submit_refund_request` or `route_to_specialist` stay coordinator-controlled, while a read-only lookup can be delegated to a specialist.",
+      "Hooks give deterministic control: `PreToolUse` returns `allow`, `deny`, `ask` or `defer` (deny wins), `PostToolUse` can replace output with `updatedToolOutput`, `SubagentStop` collects results.",
+      "Subagents can spawn their own (default depth 3, set by `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`), up to 20 run at once and `max_budget_usd` caps the whole tree; keep trees shallow so the coordinator keeps visibility."
+     ],
+     "tip": "'Skips the audit about 5 percent of the time' or 'sometimes calls payment before verification' means a deterministic hook or gate, not a stronger prompt; 'unwanted deep chains of agents' means cap the depth.",
+     "diagram": "flowchart TB\n  A[Primary coordinator] --> B{Input valid and verified?}\n  B -->|No| C[Escalate or ask for more]\n  B -->|Yes| D[Activate relevant specialists only]\n  D --> E[Gate blocks tool until checks pass]\n  E --> F[Coordinator reviews all results]",
+     "video": null,
+     "source": {
+      "title": "Intercept and control agent behavior with hooks",
+      "url": "https://code.claude.com/docs/en/agent-sdk/hooks"
+     }
+    },
+    {
+     "objective": "Integrate MCP tools and backend service connections into agents to enable access to external systems, databases, and APIs required for task execution.",
+     "title": "Connect agents to MCP servers",
+     "gist": "Register servers by transport, allow their tools by name, and keep credentials in the environment.",
+     "points": [
+      "Pick the transport from the server's docs: a command to run means stdio, a URL means HTTP or SSE (with `headers` for auth), and your own in-process tools mean an SDK MCP server.",
+      "Register servers in code (`mcpServers`) or in a project-root `.mcp.json` that the team shares through version control, with `${ENV_VAR}` expansion for secrets; personal or experimental servers stay in user or local scope.",
+      "MCP tools are named `mcp__<server>__<tool>`; allow them in `allowedTools` with a wildcard such as `mcp__github__*` or one exact name, and check the init message for `connected`, `failed` or `needs-auth`.",
+      "Tool descriptions drive selection: state purpose, inputs, outputs, limits and how the tool differs from similar ones; a read-only database server config limits the damage of a wrong query.",
+      "Many MCP tools bloat context, so tool search defers their schemas by default; static catalogs fit MCP resources, while actions that change state stay tools."
+     ],
+     "tip": "'The shared server config must live in the repo without secrets' means `.mcp.json` with environment-variable references; 'the agent cannot reach the backend' means check the server status in the init message first.",
+     "diagram": "flowchart LR\n  A[Server documentation] --> B{Command or URL?}\n  B -->|Command| C[stdio server]\n  B -->|URL| D[HTTP or SSE with headers]\n  C --> E[Allow mcp__server__tool names]\n  D --> E",
+     "video": null,
+     "source": {
+      "title": "Connect to external tools with MCP",
+      "url": "https://code.claude.com/docs/en/agent-sdk/mcp"
+     }
+    },
+    {
+     "objective": "Build multi-tier agent hierarchies where a primary coordinator validates inputs, distributes work to specialized subagents, and manages task dependencies.",
+     "title": "Sessions and state: resume, fork, restart",
+     "gist": "Resume to continue, fork to branch, and start fresh with a summary when the old context is stale.",
+     "points": [
+      "`continue` reopens whichever session in the working directory is newest and `resume` takes a session ID; both restore the full history, and `resume` is needed when several sessions exist, such as one per user.",
+      "`fork_session` copies the history into a new session with its own ID and leaves the original unchanged, so you can compare two approaches from one baseline; it branches the conversation, not the files.",
+      "When earlier findings are stale (changed policies or sources), start a fresh session seeded with a structured summary of what is still valid and a flag for what to re-check, rather than resuming.",
+      "A session is a file on the machine that ran it; for CI or serverless attach a session store, or pass the results you need as application state into a new session's prompt.",
+      "Long-running agents persist plans and decisions to files or a database so they survive compaction and restarts, and make steps idempotent so work resumes from a known point."
+     ],
+     "tip": "'Test two competing approaches without losing the baseline' means fork; 'the agent restarts from scratch after an infrastructure restart' means external checkpoints and idempotent steps.",
+     "diagram": "flowchart TB\n  A{Need prior context?} -->|Yes, same path| B[Resume the session id]\n  A -->|Yes, new branch| C[Fork the session]\n  A -->|Context is stale| D[Fresh session with a summary]",
+     "video": null,
+     "source": {
+      "title": "Work with sessions",
+      "url": "https://code.claude.com/docs/en/agent-sdk/sessions"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "q": "What separates a workflow from an agent?",
+     "a": "In a workflow the control flow is fixed in code in advance; in an agent the model chooses its next step and tools."
+    },
+    {
+     "q": "When is a deterministic workflow better than an autonomous agent?",
+     "a": "When the steps and their order are known and each output is checkable: it is cheaper, testable and auditable. Use an agent when steps depend on intermediate results."
+    },
+    {
+     "q": "Name the five workflow patterns in Anthropic's Building effective agents.",
+     "a": "Prompt chaining, routing, parallelization (sectioning or voting), orchestrator-workers, and evaluator-optimizer."
+    },
+    {
+     "q": "In a hand-written agent loop, when does it continue and when does it stop?",
+     "a": "Continue while stop_reason is tool_use: run all tools, return results in one user message. Stop on end_turn, with a turn or budget ceiling as backstop."
+    },
+    {
+     "q": "Which two SDK options cap a runaway agent, and how do you see which one fired?",
+     "a": "`max_turns` and `max_budget_usd`. The ResultMessage subtype is error_max_turns or error_max_budget_usd; the result text exists only on success."
+    },
+    {
+     "q": "A coordinator announces delegation but no subagent ever runs. What is missing?",
+     "a": "The `Agent` tool (formerly `Task`) is not in the coordinator's `allowedTools`, so Claude cannot invoke any subagent."
+    },
+    {
+     "q": "What does a subagent receive from its parent, and what does it not?",
+     "a": "Its own prompt, the Agent tool's prompt string and project CLAUDE.md. Not the parent's conversation history, tool results or system prompt."
+    },
+    {
+     "q": "A third subagent contradicts the findings of the first two. What is the fix?",
+     "a": "The coordinator accumulates the earlier findings and includes them explicitly in the third subagent's prompt; findings do not propagate automatically."
+    },
+    {
+     "q": "What four things belong in every delegation brief to a subagent?",
+     "a": "Its goal, the format of the answer, which tools and sources to use, and where the task stops."
+    },
+    {
+     "q": "How do you run independent subtasks concurrently with subagents?",
+     "a": "Have the coordinator issue all the independent Agent calls in one turn, then collect and reconcile; wall time is the slowest subagent, not the sum."
+    },
+    {
+     "q": "How should a synthesis step treat conflicting values from two subagents?",
+     "a": "Keep both with their sources, dates and methods and flag the conflict; never silently choose one or drop attribution."
+    },
+    {
+     "q": "An agent sometimes skips a required audit or approval despite prompt instructions. What is the reliable fix?",
+     "a": "A deterministic gate or hook, such as PreToolUse, that blocks the action until the prerequisite passes. Prompts only influence the model."
+    },
+    {
+     "q": "When several PreToolUse hooks disagree, which decision wins?",
+     "a": "Deny takes priority over defer, then ask, then allow."
+    },
+    {
+     "q": "How does `resume` differ from `fork_session` in the Agent SDK?",
+     "a": "Resume continues the same session; fork copies its history into a new session with its own ID and leaves the original unchanged. Files are not branched."
+    },
+    {
+     "q": "How do MCP tools appear to an SDK agent, and how do you allow every tool of one server?",
+     "a": "As `mcp__<server>__<tool>`. Allow a whole server with a wildcard such as `mcp__github__*` in `allowedTools`."
+    }
+   ]
+  },
+  {
+   "domain": "Prompt and Context Engineering",
+   "weight": 11,
+   "links": [
+    {
+     "title": "Prompting best practices",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices",
+     "note": "Clear instructions, examples, XML tags, roles, long-context ordering, migrating away from prefill.",
+     "kind": "official"
+    },
+    {
+     "title": "Effective context engineering for AI agents",
+     "url": "https://www.anthropic.com/research/effective-context-engineering-for-ai-agents",
+     "note": "Right-altitude system prompts, just-in-time retrieval, compaction, notes and sub-agents.",
+     "kind": "official"
+    },
+    {
+     "title": "Context windows",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows",
+     "note": "What counts toward the window, context rot, overflow behavior, compaction.",
+     "kind": "official"
+    },
+    {
+     "title": "How Claude remembers your project",
+     "url": "https://code.claude.com/docs/en/memory",
+     "note": "CLAUDE.md scopes, path-scoped rules, imports, what to keep short.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "ysPbXH0LpIE",
+    "title": "Prompting 101 | Code w/ Claude",
+    "channel": "Anthropic",
+    "min": 25
+   },
+   "diagram": "flowchart TB\n  A[System prompt: role and rules] --> B[Examples in XML tags]\n  B --> C[Long documents first, question last]\n  C --> D[Schema or tool for the output]\n  D --> E{Valid and complete?}\n  E -->|No| F[Retry with the error fed back]",
+   "summary": {
+    "tests": "Whether you can write prompts and manage context so extraction, code review and multi-step agent work stay accurate: standing rules in the system prompt, examples, measurable criteria, document-first ordering and lean, curated context.",
+    "must_know": [
+     "Stable role and rules go in the `system` prompt and per-request data in the user turn; repeating guidelines in every user message wastes tokens and drifts.",
+     "Two to five diverse examples in `<example>` tags fix inconsistent format and edge cases better than more rules; an instruction that contradicts an example gives unpredictable output.",
+     "Replace vague words (concise, professional, be conservative) with measurable criteria: categories, severity levels, thresholds and code examples.",
+     "Put long documents first and the question last (up to 30% better), separate parts with XML tags, and ask for quotes before analysis.",
+     "Input, output, tools and thinking all count toward the window (1M tokens on current models); accuracy falls as irrelevant tokens pile up, so retrieve only what the question needs.",
+     "Long sessions: compaction, tool-result clearing (default trigger 100,000 input tokens), notes outside the window, subagents that return 1,000 to 2,000 token summaries.",
+     "CLAUDE.md is advisory context kept under about 200 lines; path-scoped `.claude/rules/` and skills load on demand; a hook is what guarantees an action."
+    ],
+    "traps": [
+     "Fixing inconsistent output by adding more rules or capital letters instead of two to four concrete examples.",
+     "Stuffing everything into the prompt in case it helps, instead of retrieving only the sections the question needs.",
+     "Asking a review prompt to be 'conservative' or 'high-confidence' instead of listing exactly what is reportable."
+    ]
+   },
+   "notes": [
+    {
+     "objective": "Design prompts that extract structured data from unstructured documents and validate outputs against formal schemas.",
+     "title": "Extraction prompts: examples, nulls, enums",
+     "gist": "Show the exact output you want, let the schema admit missing data, and give categories an honest escape hatch.",
+     "points": [
+      "Give 2 to 4 diverse input and ideal-output pairs (the docs suggest 3 to 5) wrapped in `<example>` tags, covering awkward layouts such as footnotes, tables and inline citations; examples beat prose rules for format consistency.",
+      "Define the output as a tool `input_schema` or `output_config.format`; mark fields the document may not contain as nullable and say to return null instead of guessing.",
+      "Closed enums need an escape hatch: add `other` or `unclear` plus a free-text detail field (payment type `other` with a `payment_detail` string) so odd values are captured, not forced into a wrong label.",
+      "Prefilling an opening brace to force JSON works only on older models; Claude 4.6 and later return a 400, so use structured outputs, a tool schema or a system instruction; strip stray markdown fences before parsing if they appear.",
+      "Wrap each source document in tags with a `source` field, put documents above the instructions, and ask for quoted evidence per extracted field to cut guessing on long inputs."
+     ],
+     "tip": "Inconsistent field names or formats point to examples and a schema; invented values point to nullable fields; 'a new document type does not fit the categories' points to an enum escape hatch. Re-prompting harder is rarely the answer.",
+     "diagram": "flowchart LR\n  A[Source document in tags] --> B[Prompt with 2 to 4 examples]\n  B --> C[Schema with nullable fields]\n  C --> D[Claude output]\n  D --> E[Validate against the schema]",
+     "video": null,
+     "source": {
+      "title": "Prompting best practices",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+     }
+    },
+    {
+     "objective": "Build extraction pipelines that consolidate information from multiple source documents into unified, validated structured outputs.",
+     "title": "Consolidating many documents into one record",
+     "gist": "Extract per document or section first, then reconcile in a separate pass that keeps every fact's source.",
+     "points": [
+      "Process each document or section in its own focused pass with structured output, then run a dedicated cross-document reconciliation pass; one giant pass loses details in the middle.",
+      "Tag every extracted fact with source document id, section and a supporting excerpt, and carry that evidence through synthesis so each final row stays traceable.",
+      "Reconciliation merges duplicates, normalizes entity names, checks schema compliance and flags conflicting values with both sources instead of choosing one.",
+      "Independent categories in one large document can be extracted in parallel with shared document context, then merged and validated; dependent steps are chained with a programmatic gate between them (prompt chaining).",
+      "Have a fresh Claude session review the result: it receives only the source, the extracted fields and a rubric, not the extraction reasoning, so it is not biased toward its own output."
+     ],
+     "tip": "'Stakeholders cannot trace a row back to its source' means carry excerpts and locations through the pipeline; 'values from different documents disagree' means annotate the conflict; 'quality drops on long multi-section packets' means per-section passes plus reconciliation.",
+     "diagram": "flowchart TB\n  A[Documents or sections] --> B[Per-item extraction with sources]\n  B --> C[Reconciliation pass]\n  C --> D{Conflicts or gaps?}\n  D -->|Yes| E[Flag with both sources]\n  D -->|No| F[Validated unified record]",
+     "video": null,
+     "source": {
+      "title": "Building effective agents",
+      "url": "https://www.anthropic.com/research/building-effective-agents"
+     }
+    },
+    {
+     "objective": "Construct system prompts and context windows that balance comprehensive instruction coverage with token efficiency and clarity.",
+     "title": "System prompt versus user message",
+     "gist": "Standing role and rules belong in the system prompt, variable data in the user turn, and every instruction should be clear and measurable.",
+     "points": [
+      "Put role, tone and standing constraints in `system` (applies to every turn, outside user control, no repeated tokens); per-request data and the question go in `messages`. claude.ai wraps a chat in its own system prompt and features; through the API you supply the system prompt yourself, so copy over any instructions you rely on.",
+      "Be clear and direct: state the output format and constraints, replace vague words (professional, concise) with measurable limits such as sentence counts, and apply the colleague test.",
+      "Say what to do, not only what not to do, and give the reason (the text is read aloud, so avoid ellipses); positive wording plus a sample beats a list of prohibitions.",
+      "Use XML tags to separate instructions, context, examples and inputs, with consistent tag names; one sentence of role in the system prompt focuses tone and expertise.",
+      "Keep instructions consistent: a rule that contradicts an example gives unpredictable behavior; aim for the right altitude, specific enough to guide without brittle if-else logic."
+     ],
+     "tip": "Guidelines pasted into every user message that drift over long conversations belong in the system prompt; 'drafts vary wildly in length' wants measurable limits; 'follows the examples but ignores a rule' hints at a contradiction.",
+     "diagram": "flowchart LR\n  A[System prompt: role, rules, format] --> C[Claude]\n  B[User turn: data and question] --> C\n  C --> D[Output]",
+     "video": null,
+     "source": {
+      "title": "Prompting best practices",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+     }
+    },
+    {
+     "objective": "Craft prompts for code review systems that deliver specific, actionable feedback on code quality, security, and test coverage.",
+     "title": "Code review prompts that get acted on",
+     "gist": "Developers ignore vague or noisy reviews, so define what is reportable, show examples and keep the output structured.",
+     "points": [
+      "Replace abstract language such as 'be conservative' or 'only high-confidence findings' with explicit categories, severity levels and a concrete code example of each finding type.",
+      "Define reportable criteria per area: performance (unbounded input processing, hot paths, repeated database calls in loops), security (injection, authentication, secrets), tests (changed branches without coverage).",
+      "Cut false positives by saying what to skip (style preferences, unchanged code) and to report only findings that change correctness or break a stated requirement; a reviewer asked to find problems will otherwise invent some.",
+      "Different file types need different rules: path-scoped files in `.claude/rules/` (migrations, generated clients, frontend) load only for matching paths, instead of one global review prompt.",
+      "Review in a fresh session or subagent that is shown just the diff and the criteria (Writer/Reviewer), return findings as schema-conforming JSON, and on re-runs pass prior findings so only new or unresolved issues are reported."
+     ],
+     "tip": "'Developers ignore most comments' or 'too many false positives' means explicit reportable criteria with examples, not a stricter confidence threshold; 'the same review for every file type' means path-scoped rules.",
+     "diagram": "flowchart TB\n  A[Diff plus review criteria] --> B[Fresh reviewer context]\n  B --> C[Findings as JSON with severity]\n  C --> D{Matches reportable criteria?}\n  D -->|Yes| E[Post inline comment]\n  D -->|No| F[Drop as noise]",
+     "video": null,
+     "source": {
+      "title": "Best practices for Claude Code",
+      "url": "https://code.claude.com/docs/en/best-practices"
+     }
+    },
+    {
+     "objective": "Construct system prompts and context windows that balance comprehensive instruction coverage with token efficiency and clarity.",
+     "title": "Context window: budget, rot and counting",
+     "gist": "The whole request, output included, uses up the window, and more context is not better context.",
+     "points": [
+      "The window holds the system prompt, every message with its tool results, images and documents, the tool definitions and the reply including thinking; current models have 1M tokens and up to 128k output tokens.",
+      "Input alone over the window returns a 400 'prompt is too long'; on Claude 4.5 and later, input plus `max_tokens` over the window is accepted and may end with `model_context_window_exceeded`, while older models return a validation error.",
+      "Context rot: as tokens grow, accuracy and recall fall, so curate; retrieve only the relevant sections (the top few excerpts, not 100) instead of pasting a whole catalog or knowledge base.",
+      "Count before sending with the token counting endpoint (an estimate); tokenizers differ by model and language, and images and PDF pages add tokens.",
+      "Order matters in long prompts: documents first, question last (up to 30% better), important instructions at the edges rather than buried mid-prompt; a stable prefix first also enables caching."
+     ],
+     "tip": "'Request rejected although the document fits' hints that input and `max_tokens` share the window on older models; 'answers got worse after adding more documents' means context rot, so retrieve less; 'upload failure for long documents' means count tokens first.",
+     "diagram": "flowchart LR\n  A[System, tools, messages] --> B[Count tokens before sending]\n  B --> C{Fits window with max_tokens?}\n  C -->|Yes| D[Send the request]\n  C -->|No| E[Trim, retrieve or chunk]",
+     "video": {
+      "id": "Qx0fCqpkBus",
+      "title": "What Is Context Engineering? Why It Matters for AI Agents",
+      "channel": "IBM Technology",
+      "min": 10
+     },
+     "source": {
+      "title": "Context windows",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/context-windows"
+     }
+    },
+    {
+     "objective": "Construct system prompts and context windows that balance comprehensive instruction coverage with token efficiency and clarity.",
+     "title": "Keeping long sessions lean",
+     "gist": "Prune, summarize or offload context before it rots: compaction, tool-result clearing, notes and subagents.",
+     "points": [
+      "Compaction summarizes a conversation near its limit and restarts with the summary (server-side compaction is in beta, Claude Code compacts automatically); aggressive compaction can lose subtle details, so tune what to keep.",
+      "Tool result clearing (`clear_tool_uses_20250919`) drops old tool results past a trigger (default 100,000 input tokens) and keeps the last 3 tool uses; `clear_at_least` and `exclude_tools` tune it, and clearing invalidates cached prefixes.",
+      "Structured notes (NOTES.md, a task list, a progress log) written outside the window survive resets and let the agent resume; a persistent fact store beats relying on a compressed history.",
+      "Subagents absorb noisy exploration in their own windows and return a distilled summary (often 1,000 to 2,000 tokens); tools should return only high-signal fields, not 50,000-token payloads.",
+      "Unrelated tasks get a new session (`/clear` in Claude Code) so earlier cases do not leak into later answers; retrieval tools load documents just in time instead of up front."
+     ],
+     "tip": "'Slowly degrading, repeating itself, window full of verbose tool output' means prune and summarize tool output, compact history and isolate subtasks; 'resets lose the plan' means notes outside the window.",
+     "diagram": "flowchart TB\n  A[Context near its limit] --> B{What is filling it?}\n  B -->|Old tool results| C[Clear tool results]\n  B -->|Long history| D[Compact into a summary]\n  B -->|Noisy exploration| E[Move it to a subagent]",
+     "video": null,
+     "source": {
+      "title": "Effective context engineering for AI agents",
+      "url": "https://www.anthropic.com/research/effective-context-engineering-for-ai-agents"
+     }
+    },
+    {
+     "objective": "Construct system prompts and context windows that balance comprehensive instruction coverage with token efficiency and clarity.",
+     "title": "Standing instructions: CLAUDE.md, rules, skills",
+     "gist": "Advisory files that load every session should be short; load specialist guidance only when it applies.",
+     "points": [
+      "CLAUDE.md is context, not enforced configuration: Claude usually follows it, but only a hook guarantees an action; keep each file under about 200 lines and cut anything Claude can infer from the code.",
+      "Scopes: managed policy (organization), user (`~/.claude/CLAUDE.md`), project (`./CLAUDE.md` or `.claude/CLAUDE.md`, shared in git) and `CLAUDE.local.md` (personal, gitignored); `/init` drafts one and `/context` shows which memory files loaded.",
+      "`@path` imports tidy a long file but save no tokens, since the imported text loads at launch too.",
+      "`.claude/rules/*.md` files with `paths` globs in YAML frontmatter load only when Claude touches matching files, which suits migrations, tests or frontend code; rules without `paths` load at launch.",
+      "Skills (`SKILL.md` plus supporting files) load on demand through progressive disclosure, so reference workflows and house style cost tokens only when used."
+     ],
+     "tip": "'A 1,500-line root file and instructions ignored' means split into path-scoped rules or skills and keep the root short; 'a guideline must never be skipped' means a hook, not CLAUDE.md.",
+     "diagram": "flowchart TB\n  A{Instruction scope?} -->|Every session| B[Short CLAUDE.md]\n  A -->|Only some file paths| C[Rule file with paths glob]\n  A -->|Occasional workflow| D[Skill loaded on demand]\n  A -->|Must always happen| E[Hook]",
+     "video": null,
+     "source": {
+      "title": "How Claude remembers your project",
+      "url": "https://code.claude.com/docs/en/memory"
+     }
+    },
+    {
+     "objective": "Implement multi-turn agent workflows that coordinate specialized subagents to handle complex, multi-part user requests.",
+     "title": "Prompts for multi-part requests",
+     "gist": "A coordinator prompt decomposes the request, gives each worker one concern with shared facts, then checks the draft against every part.",
+     "points": [
+      "Decompose a request with several issues (a return, a duplicate charge, an address change) into one concern per subagent, and pass pre-verified shared facts such as customer identity and transaction records in each prompt.",
+      "Frame delegations around the goal: objective, context, constraints, success criteria and required output format, leaving the worker free to choose its approach instead of a rigid step script.",
+      "Route only to relevant specialists: classify intent and complexity first, then synthesize their findings into one response.",
+      "After synthesis the coordinator validates the draft against the original message, finds unaddressed concerns and sends targeted follow-up work before replying.",
+      "Interdependent checks run as a sequential chain (each item alone, then a final reconciliation); independent items run in parallel."
+     ],
+     "tip": "'The reply ignores one of the customer's issues' means the coordinator should validate the draft against the original request and follow up; 'subagents duplicate each other' means non-overlapping scopes and shared facts in each prompt.",
+     "diagram": "flowchart TB\n  A[Multi-part request] --> B[Decompose by concern]\n  B --> C[Specialists get shared facts]\n  C --> D{Draft covers every part?}\n  D -->|No| E[Targeted follow-up work]\n  D -->|Yes| F[Send one unified reply]",
+     "video": {
+      "id": "XSZP9GhhuAc",
+      "title": "Prompting for Agents | Code w/ Claude",
+      "channel": "Anthropic",
+      "min": 29
+     },
+     "source": {
+      "title": "How we built our multi-agent research system",
+      "url": "https://www.anthropic.com/research/multi-agent-research-system"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "q": "Where do standing role, tone and rules belong, and why not in every user message?",
+     "a": "In the system prompt. It applies to every turn, sits outside user control, and avoids repeating tokens that also drift over long conversations."
+    },
+    {
+     "q": "Output format and edge cases are inconsistent. What does Anthropic recommend adding?",
+     "a": "Three to five diverse, relevant examples wrapped in `<example>` tags that show the exact output, rather than more rules."
+    },
+    {
+     "q": "An instruction contradicts an example in the same prompt. What happens?",
+     "a": "Behavior becomes unpredictable between the two. Keep instructions and examples consistent."
+    },
+    {
+     "q": "Drafts vary wildly in length although the prompt says professional and concise. What fixes it?",
+     "a": "Replace vague terms with measurable constraints such as sentence or word limits."
+    },
+    {
+     "q": "In a long-document prompt, where do the documents and the question go?",
+     "a": "Documents first, the question and instructions last; this can improve quality by up to 30%. Ask for relevant quotes before the analysis."
+    },
+    {
+     "q": "A closed enum forces odd documents into the wrong category. What is the schema fix?",
+     "a": "Add `other` or `unclear` values plus a free-text detail field, and explain in the prompt when each applies."
+    },
+    {
+     "q": "Prefilling an opening brace forces JSON on older models. What happens on Claude 4.6 and later?",
+     "a": "The request returns a 400. Use structured outputs, a tool schema or system-prompt instructions instead."
+    },
+    {
+     "q": "A multi-document extraction cannot be traced back to its sources. How do you redesign it?",
+     "a": "Tag each fact with document id, section and supporting excerpt, and carry that evidence through synthesis to every final row."
+    },
+    {
+     "q": "Why review extraction output in a separate, fresh Claude session?",
+     "a": "It sees only the source, extracted fields and a rubric, not the original reasoning, so it is not biased toward its own output."
+    },
+    {
+     "q": "A review prompt says to be conservative, yet developers ignore the comments. What is the fix?",
+     "a": "Explicit reportable criteria: categories, severity levels and concrete code examples, such as unbounded input or repeated database calls in loops."
+    },
+    {
+     "q": "What is context rot, and what is the remedy?",
+     "a": "Accuracy and recall fall as the window fills with tokens. Curate: retrieve only relevant sections and prune old tool output."
+    },
+    {
+     "q": "Input is 190,000 tokens and max_tokens is 20,000 on a 200,000-token window. What happens on older versus 4.5-and-later models?",
+     "a": "Older models return a validation error. On 4.5 and later the request is accepted and may stop with `model_context_window_exceeded`."
+    },
+    {
+     "q": "What does tool result clearing do, and what is its default trigger?",
+     "a": "It drops old tool results once input passes 100,000 tokens, keeping the last 3 tool uses; it invalidates cached prefixes."
+    },
+    {
+     "q": "A CLAUDE.md of 1,500 lines is being ignored. How do you restructure it?",
+     "a": "Keep a short root file under about 200 lines and move topic or path guidance into `.claude/rules/` files with `paths` globs, or into skills."
+    },
+    {
+     "q": "A coordinator's reply ignores one of the customer's several issues. What should the coordinator do?",
+     "a": "Validate the draft against the original message, identify unaddressed concerns and send targeted follow-up work before replying."
+    }
+   ]
+  },
+  {
+   "domain": "Tools and MCPs",
+   "weight": 10.6,
+   "links": [
+    {
+     "title": "Connect Claude Code to tools via MCP",
+     "url": "https://code.claude.com/docs/en/mcp",
+     "note": "Transports, scopes, .mcp.json, headers and OAuth, resources and prompts.",
+     "kind": "official"
+    },
+    {
+     "title": "Writing effective tools for agents",
+     "url": "https://www.anthropic.com/research/writing-tools-for-agents",
+     "note": "Consolidate, namespace, return high-signal context, write descriptions, evaluate.",
+     "kind": "official"
+    },
+    {
+     "title": "MCP connector",
+     "url": "https://platform.claude.com/docs/en/agents-and-tools/mcp-connector",
+     "note": "Reach remote MCP servers straight from the Messages API.",
+     "kind": "official"
+    },
+    {
+     "title": "Tool use with Claude",
+     "url": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview",
+     "note": "Client versus server tools, tool_choice, tool results.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "CQywdSdi5iA",
+    "title": "The Model Context Protocol (MCP)",
+    "channel": "Anthropic",
+    "min": 20
+   },
+   "diagram": "flowchart LR\n  A[Agent or app] --> B{Where does the server run?}\n  B -->|Local subprocess| C[stdio server]\n  B -->|Remote and shared| D[Streamable HTTP server]\n  C --> E[Tools, resources, prompts]\n  D --> E",
+   "summary": {
+    "tests": "Whether you can connect and secure MCP servers, design tool sets that agents choose between correctly, and make tools fail in ways the agent can recover from.",
+    "must_know": [
+     "An MCP server exposes tools (actions the model calls), resources (data you reference) and prompts (user-run templates), and one server serves every MCP client.",
+     "stdio is a local subprocess that speaks over stdout, so log to stderr; shared remote servers use Streamable HTTP, SSE is deprecated, and the Messages API connector reaches only public HTTPS servers.",
+     "Project scope stores `.mcp.json` in the repo with `${ENV_VAR}` placeholders; local (default) and user scope live in `~/.claude.json`; secrets never go into version control.",
+     "Bearer tokens go in an `Authorization` header; remote servers that need sign-in use OAuth 2.0 through `/mcp`; the connector takes `authorization_token`.",
+     "Tool descriptions drive selection: purpose, when to use, inputs, outputs and how it differs from similar tools; merge overlapping tools and namespace by service.",
+     "Selection accuracy drops past 30 to 50 tools; tool search with `defer_loading` loads 3 to 5 on demand and cuts definition tokens by over 85%.",
+     "Failures return `is_error: true` with category, retryable flag and next steps; an empty search is a success; client tools run in your app, server tools on Anthropic's side."
+    ],
+    "traps": [
+     "Fixing wrong-tool selection with a longer system prompt or a bigger model instead of sharper descriptions and fewer overlapping tools.",
+     "Returning an empty string or a generic failure message, so the agent invents data or retries the same call.",
+     "Hard-coding bearer tokens or API keys in a committed config instead of environment-variable references or OAuth."
+    ]
+   },
+   "notes": [
+    {
+     "objective": "Design multi-tool agent workflows that coordinate access to specialized MCP tools for distinct operational domains (e.g., CRM, billing, code repositories).",
+     "title": "MCP servers: primitives and transports",
+     "gist": "One MCP server exposes tools, resources and prompts to any MCP client, and the transport follows where the server runs.",
+     "points": [
+      "Tools are model-invoked actions; resources are data you reference by URI (`@server:protocol://path`) that Claude Code fetches as attachments; prompts are user-run templates that appear as `/mcp__server__prompt` commands.",
+      "Use resources for static catalogs, policy libraries or schemas that applications inject as context, and tools for actions that change state or need parameters (submit a report, process a refund).",
+      "stdio runs the server as a local subprocess over stdin and stdout, so diagnostics must go to stderr or they corrupt the protocol stream; choose HTTP when one central server serves many remote users.",
+      "Streamable HTTP is the recommended remote transport; SSE is deprecated, and a WebSocket server supports header authentication only.",
+      "A capability needed by Claude Desktop, Claude Code and in-house apps belongs in one maintained MCP server, not a copy per application; a Skill packages instructions and scripts but is not a persistent authenticated connection."
+     ],
+     "tip": "'Three apps need the same inventory service' means one MCP server exposing tools; 'logging breaks a local server' means print to stderr; 'users launch parameterized queries from a menu' means MCP prompts.",
+     "diagram": "flowchart TB\n  A[MCP server] --> B[Tools: actions]\n  A --> C[Resources: data to reference]\n  A --> D[Prompts: user templates]\n  B --> E[Any MCP client]\n  C --> E\n  D --> E",
+     "video": {
+      "id": "eur8dUO9mvE",
+      "title": "What is MCP? Integrate AI Agents with Databases and APIs",
+      "channel": "IBM Technology",
+      "min": 4
+     },
+     "source": {
+      "title": "Connect Claude Code to tools via MCP",
+      "url": "https://code.claude.com/docs/en/mcp"
+     }
+    },
+    {
+     "objective": "Configure and authenticate custom MCP servers with Claude agents, including bearer token authentication and API credential management.",
+     "title": "Configure and authenticate MCP servers",
+     "gist": "Pick the scope, keep tokens out of version control, and use headers or OAuth for remote authentication.",
+     "points": [
+      "`claude mcp add --transport http` or `stdio` registers a server; the default local scope lives in `~/.claude.json` (private, current project), project scope writes a shared `.mcp.json` at the repo root, user scope spans all your projects.",
+      "Share team servers with `--scope project` and commit `.mcp.json`; `${VAR}` and `${VAR:-default}` expand environment variables, so `Authorization: Bearer ${GITHUB_TOKEN}` keeps the token in CI and developer environments, not in git.",
+      "Bearer or API-key auth for HTTP servers goes in `headers` (or `--header`); servers that answer 401 or 403 and support OAuth 2.0 are signed in per user through `/mcp`, which beats everyone pasting personal keys.",
+      "Through the Messages API, the MCP connector takes `mcp_servers` entries (`type` of `url`, an `https://` URL, a `name`, optional `authorization_token`) plus an `mcp_toolset` in `tools` to allow or deny tools; only tool calls work, and the server must be publicly reachable, not stdio.",
+      "Debug with `/mcp` status and the MCP Inspector, which calls tools directly and shows protocol messages; a server marked failed or needing auth can leave Claude quietly falling back to built-in tools."
+     ],
+     "tip": "'The config must be shared without secrets' means `--scope project` plus `${ENV}` placeholders; 'only one developer can see the server' means it sits in local scope; 'the API should handle the connection, no MCP client of ours' means the connector's `mcp_servers` field.",
+     "diagram": "flowchart TB\n  A{Who needs the server?} -->|Only me| B[Local scope, private]\n  A -->|Whole team| C[Project scope in .mcp.json]\n  A -->|All my projects| D[User scope]\n  C --> E[Secrets via env var placeholders]",
+     "video": {
+      "id": "kkBFmwkDzdo",
+      "title": "MCP in Claude Code",
+      "channel": "Claude",
+      "min": 4
+     },
+     "source": {
+      "title": "Connect Claude Code to tools via MCP",
+      "url": "https://code.claude.com/docs/en/mcp"
+     }
+    },
+    {
+     "objective": "Design multi-tool agent workflows that coordinate access to specialized MCP tools for distinct operational domains (e.g., CRM, billing, code repositories).",
+     "title": "Design tools agents choose correctly",
+     "gist": "Selection quality comes from clear, distinct tools and descriptions, not from longer system prompts.",
+     "points": [
+      "The description is the biggest lever: say what the tool does, in which situations to call it and when not to, what each parameter means and what comes back, in enough detail to separate it from similar tools (three or four sentences is the floor).",
+      "Consolidate and namespace: replace `list_users`, `list_events` and `create_event` with one `schedule_event`, prefix by service (`asana_search`, `jira_search`), and delete overlapping tools; overlap makes the model pick the wrong one.",
+      "Constrain inputs in the schema: `enum` for allowed states, `required` for must-have fields, unambiguous names such as `user_id`; strict mode guarantees conformance, and schema rules beat prompt warnings.",
+      "Return high-signal output: names beside IDs, only the fields the next step needs, pagination or truncation (Claude Code caps tool output at 25,000 tokens by default) and a `response_format` switch between concise and detailed.",
+      "Prove it with evaluations: realistic multi-step tasks with verifiable answers, tracking accuracy, tool-call counts, errors and tokens; when a new MCP server lowers success, check overlap with existing tools first."
+     ],
+     "tip": "'Claude keeps calling the account tool for billing questions' means rewrite both descriptions with boundaries; 'forty overlapping tools' means consolidate; 'invalid status strings' means an enum in the schema.",
+     "diagram": "flowchart TB\n  A[Wrong tool chosen] --> B{Why?}\n  B -->|Vague descriptions| C[Rewrite purpose, limits, parameters]\n  B -->|Overlapping tools| D[Merge and namespace]\n  B -->|Free-text values| E[Enum and required fields]",
+     "video": null,
+     "source": {
+      "title": "Writing effective tools for agents",
+      "url": "https://www.anthropic.com/research/writing-tools-for-agents"
+     }
+    },
+    {
+     "objective": "Implement error handling and fallback strategies when MCP tools return incomplete or unreliable data in production agent systems.",
+     "title": "Tool errors and unreliable data",
+     "gist": "Tell the agent what failed and what to do next, and keep empty results distinct from failures.",
+     "points": [
+      "Report a failed call as a `tool_result` with `is_error: true` (MCP `isError: true`) and an instructive message; the model adapts in the same turn, whereas a fresh user message about the failure derails the loop.",
+      "Return structure the agent can act on: error category (transient, validation, business rule, permission), a retryable flag, what was attempted and a customer-safe message; a generic 'failed' or an empty string pushes the agent to invent data or retry blindly.",
+      "A confirmed empty search is a successful result and a timeout is an error; keep them distinct so an outage is not read as 'no records'.",
+      "Retry only transient failures, with backoff and a cap; fix arguments for validation errors, explain the policy for business-rule errors, escalate permission errors; Claude retries an invalid call 2 to 3 times with corrections before apologizing.",
+      "With incomplete or conflicting data, return what was found plus the explicit gap, mark the claim unverified, use a fallback source or cached summary, and escalate to a person below your confidence threshold; with parallel calls return the successes and flag only the failed one."
+     ],
+     "tip": "'The agent invents data or repeats the same failed query' usually traces to a tool returning an empty string on failure; the fix is a detailed error with category and retry guidance, not a stronger prompt.",
+     "diagram": "flowchart TB\n  A[Tool call fails or data incomplete] --> B{Failure type?}\n  B -->|Transient| C[Retry with backoff, then fallback]\n  B -->|Validation| D[Return error with fix hints]\n  B -->|Permission or policy| E[Explain and escalate]",
+     "video": null,
+     "source": {
+      "title": "Handle tool calls",
+      "url": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls"
+     }
+    },
+    {
+     "objective": "Develop agent-based solutions that decompose complex customer service requests into independent sub-tasks and route them to appropriate MCP tools.",
+     "title": "Decompose and route to the right tools",
+     "gist": "Split a multi-issue request into independent concerns, give each the tools it needs, and keep large catalogs out of context.",
+     "points": [
+      "Verify the customer first, then decompose the request into independent concerns (a return, a billing error, an account problem), investigate them in parallel with the verified context shared, and merge the findings into one reply.",
+      "Route by domain: billing tools to a billing specialist, CRM tools to an account specialist; the coordinator activates only the specialists whose tool descriptions match the issue.",
+      "Parallel tool calls arrive as several `tool_use` blocks in one turn; set `disable_parallel_tool_use: true` inside `tool_choice` when two calls could modify the same record.",
+      "Past 30 to 50 tools, selection accuracy drops and definitions bloat context (a five-server setup can cost about 55k tokens); tool search with `defer_loading: true` loads 3 to 5 relevant tools on demand and cuts definition tokens by over 85%.",
+      "Dependent steps (lookup, then refund) stay sequential and the refund tool is gated until verification passes; `tool_choice` of `any` guarantees some tool call when a request must be routed to a tool."
+     ],
+     "tip": "'Several independent issues in one message' means decompose and run in parallel with shared context; 'two tool_use blocks update the same record' means `disable_parallel_tool_use`; 'ninety integrations and wrong picks' means merge them and use tool search.",
+     "diagram": "flowchart TB\n  A[Verify the customer] --> B[Split into independent concerns]\n  B --> C[Specialist per domain in parallel]\n  C --> D[Combine findings]\n  D --> E[One unified reply]",
+     "video": null,
+     "source": {
+      "title": "Tool search tool",
+      "url": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool"
+     }
+    },
+    {
+     "objective": "Build multi-agent systems using the Claude Agent SDK where specialized sub-agents delegate tasks to a coordinator agent and integrate with MCP servers.",
+     "title": "Subagents with scoped MCP access",
+     "gist": "Give each subagent only its own domain's MCP tools and keep high-risk tools with the coordinator.",
+     "points": [
+      "Scope MCP access per subagent: its `tools` list names `mcp__server__tool` entries, `mcpServers` on the definition attaches servers to that agent, and `disallowedTools` can remove a whole server with `mcp__server__*`.",
+      "Keep high-risk tools such as `submit_refund_request` or `route_to_specialist` with the coordinator, and delegate read-only lookups to specialists.",
+      "Results flow up, not sideways: subagents return structured findings to the coordinator, which decides the next step; workers do not message peers or build deep chains.",
+      "Compose servers by source: a community MCP server for standard needs (a bug tracker) plus a small custom one for proprietary logic; register shared servers in `.mcp.json` and personal ones per user.",
+      "In-process tools are MCP too: `create_sdk_mcp_server` wraps `tool()` handlers; `readOnlyHint: true` lets Claude run them in parallel, while `destructiveHint`, `idempotentHint` and `openWorldHint` are informational only."
+     ],
+     "tip": "'The subagent can call tools it should not' means list its `tools` explicitly, because omitting the field inherits everything; 'delegation announced but nothing happens' means `Agent` is missing from `allowedTools`.",
+     "diagram": "flowchart LR\n  A[Coordinator] --> B[Billing subagent, billing tools]\n  A --> C[Account subagent, CRM tools]\n  B --> D[Findings back to coordinator]\n  C --> D",
+     "video": null,
+     "source": {
+      "title": "Subagents in the SDK",
+      "url": "https://code.claude.com/docs/en/agent-sdk/subagents"
+     }
+    },
+    {
+     "objective": "Integrate Claude agents with code analysis and repository navigation tools via MCP to enable automated code review, architecture understanding, and template generation.",
+     "title": "Code and repo tools via MCP",
+     "gist": "Let the agent find files by pattern, read only what it needs, and reach repository systems through MCP.",
+     "points": [
+      "Navigate cheaply: `Glob` finds files by name pattern (for example `**/*.config.yaml`), `Grep` finds content by regex, then `Read` only the matches; reading the whole repository exhausts the token budget.",
+      "Search before changing: grep for the exact string (such as a renamed field) across the repo, trace callers and imports, and read the tests, instead of guessing from file names.",
+      "Delegate exploration: the built-in `Explore` subagent, a fast read-only agent, searches in its own context and returns a summary, keeping the main window for the change.",
+      "Reach repository systems through MCP servers (GitHub for pull requests and issues, a code-search or docs server); give the review agent read-only tools and a schema for its findings.",
+      "For templates and refactors, read existing examples first, plan before multi-file changes, and use `Edit` for targeted replacements; when the anchor text is not unique, read the file and rewrite it with `Write`."
+     ],
+     "tip": "'Locate every config file under any directory' wants `Glob`; 'find where customer_identifier is used' wants `Grep` for the exact string; 'exploration fills the main context' wants an Explore subagent.",
+     "diagram": "flowchart LR\n  A[Understand or change code] --> B[Glob candidate files]\n  B --> C[Grep exact strings]\n  C --> D[Read only the matches]\n  D --> E[Summarize or edit]",
+     "video": null,
+     "source": {
+      "title": "Create custom subagents",
+      "url": "https://code.claude.com/docs/en/sub-agents"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "q": "What are the three MCP primitives?",
+     "a": "Tools are actions the model calls; resources are data you reference by URI; prompts are parameterized templates a user runs."
+    },
+    {
+     "q": "A local stdio MCP server breaks after print statements are added. Why, and what is the fix?",
+     "a": "A stdio server speaks the protocol over stdout, so stray output corrupts it. Send diagnostics to stderr."
+    },
+    {
+     "q": "Which MCP transport serves dozens of remote team members from one central server?",
+     "a": "Streamable HTTP. stdio is a local subprocess, and SSE is deprecated."
+    },
+    {
+     "q": "Where do the local, project and user MCP scopes store servers, and which is shared with the team?",
+     "a": "Local and user live in `~/.claude.json`. Project uses `.mcp.json` in the repo root, committed and shared."
+    },
+    {
+     "q": "How do you share an authenticated MCP server config in git without leaking the token?",
+     "a": "Use project scope with `Authorization: Bearer ${GITHUB_TOKEN}` in `.mcp.json`, and set the variable in CI and in each developer's environment."
+    },
+    {
+     "q": "How do remote MCP servers that need sign-in authenticate each user?",
+     "a": "With OAuth 2.0 through `/mcp` (servers answering 401 or 403 are flagged), rather than everyone pasting personal API keys into config."
+    },
+    {
+     "q": "What does the Messages API MCP connector need, and what can it not do?",
+     "a": "An `mcp_servers` entry (HTTPS URL, name, optional `authorization_token`) plus an `mcp_toolset` in `tools`. Tool calls only; no local stdio servers."
+    },
+    {
+     "q": "What matters most for whether Claude calls the right tool?",
+     "a": "Clear descriptions: what it does, when to use it and when not, and what each parameter means, distinct from similar tools."
+    },
+    {
+     "q": "An MCP server exposes forty overlapping tools and the model picks wrongly. What is the fix?",
+     "a": "Consolidate and namespace the tools so each has a distinct purpose, and sharpen the descriptions."
+    },
+    {
+     "q": "A backend accepts five action states but Claude sends free text. How do you stop that?",
+     "a": "Define the parameter as a schema enum of the allowed states, mark must-have fields required, and add strict mode for guaranteed conformance."
+    },
+    {
+     "q": "How should a tool report that its backend call timed out?",
+     "a": "A `tool_result` with `is_error: true` plus category, retryable flag and next steps. Never an empty string; a confirmed empty search stays a success."
+    },
+    {
+     "q": "Two parallel tool_use blocks try to modify the same record. What setting prevents this?",
+     "a": "`disable_parallel_tool_use: true` inside the `tool_choice` object, which limits Claude to one tool call per turn under auto."
+    },
+    {
+     "q": "At what tool count does selection accuracy degrade, and what is the fix?",
+     "a": "Beyond about 30 to 50 tools. Use tool search with `defer_loading: true`; it loads 3 to 5 tools on demand and cuts definition tokens by over 85%."
+    },
+    {
+     "q": "Which tool types run on Anthropic's infrastructure and which run in your application?",
+     "a": "Server tools (web search, web fetch, code execution, tool search) run on Anthropic's side. Custom tools, bash, text editor and computer use run in your app."
+    },
+    {
+     "q": "Which built-in tools find repository files cheaply before anything is read?",
+     "a": "`Glob` matches file names by pattern, `Grep` searches content by regex, then `Read` only the matches; an Explore subagent can do the searching."
+    }
+   ]
+  },
+  {
+   "domain": "Security and Safety",
+   "weight": 8.1,
+   "links": [
+    {
+     "title": "Configure permissions",
+     "url": "https://code.claude.com/docs/en/agent-sdk/permissions",
+     "note": "Evaluation order, allow and deny rules, permission modes, subagent inheritance.",
+     "kind": "official"
+    },
+    {
+     "title": "Mitigate jailbreaks and prompt injections",
+     "url": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks",
+     "note": "Screening, tool_result handling of untrusted content, least privilege, red-teaming.",
+     "kind": "official"
+    },
+    {
+     "title": "Intercept and control agent behavior with hooks",
+     "url": "https://code.claude.com/docs/en/agent-sdk/hooks",
+     "note": "PreToolUse decisions, matchers, updatedInput, SubagentStop.",
+     "kind": "official"
+    },
+    {
+     "title": "Handle approvals and user input",
+     "url": "https://code.claude.com/docs/en/agent-sdk/user-input",
+     "note": "canUseTool callback, approve or reject, defer, clarifying questions.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "5ZA1lTxTH3c",
+    "title": "Securing AI Agents: How to Prevent Hidden Prompt Injection Attacks",
+    "channel": "IBM Technology",
+    "min": 10
+   },
+   "diagram": "flowchart TB\n  A[Agent wants to act] --> B{Hook or gate allows it?}\n  B -->|No| C[Blocked with a reason]\n  B -->|Yes| D{High risk or low confidence?}\n  D -->|Yes| E[Human approval and escalation]\n  D -->|No| F[Run and write audit log]",
+   "summary": {
+    "tests": "Whether you can keep an agent inside safe bounds: least-privilege tools, deterministic hooks, injection-resistant design, human approval for risky actions, honest handling of uncertain data and audit trails.",
+    "must_know": [
+     "Make forbidden actions impossible: remove the tool or credential; permissions run hooks, deny, ask, mode, allow, then `canUseTool`, and a hook deny holds even in `bypassPermissions`.",
+     "Hard rules (refund limits, identity match, protected paths, destructive commands) belong in `PreToolUse` hooks or tool code, never only in prompts or CLAUDE.md.",
+     "Third-party content is untrusted data: put it in `tool_result`, label and delimit it, and remove or gate the dangerous tool; model output is untrusted too, so escape, parameterize and validate it.",
+     "Irreversible or financial actions go to a human through `canUseTool`, a hook `ask` or `defer`, or a threshold queue, with a structured handoff of customer, root cause and actions tried.",
+     "Missing values are null and conflicts are escalated with both sources; ambiguous identity means asking for an identifier, not guessing.",
+     "Audit every tool call with `tool_use_id`, the API `request-id`, the decision source and blocked attempts; OpenTelemetry events redact prompts by default.",
+     "Keys stay on the backend in a secrets manager, one per environment or service; a leaked key is revoked and rotated; workspaces isolate teams with their own limits."
+    ],
+    "traps": [
+     "Adding a stronger system-prompt warning to stop an injection or a risky action instead of removing the capability or adding a hook.",
+     "Putting an API key in the system prompt, client app or URL so Claude can pass it to a tool.",
+     "Letting an agent resolve conflicting or missing data by guessing, or escalating on customer frustration alone."
+    ]
+   },
+   "notes": [
+    {
+     "objective": "Implement access controls and tool permissions to restrict agent capabilities to only necessary functions and prevent unauthorized operations on sensitive systems.",
+     "title": "Least privilege for agent tools",
+     "gist": "Give an agent only the tools and credentials its job needs, and make forbidden capabilities absent rather than discouraged.",
+     "points": [
+      "Naming a whole tool such as `Bash` in `disallowedTools` takes it out of the request, so Claude cannot even attempt it; a scoped rule like `Bash(rm *)` is denied in every mode, including `bypassPermissions`.",
+      "Pair `allowedTools` of read-only tools with `permissionMode` of `dontAsk` for a locked-down headless agent: listed tools run and everything else is denied; `allowedTools` does not constrain `bypassPermissions`, which approves every tool.",
+      "Split a catch-all tool (arbitrary SQL with admin rights) into narrow tools that expose only the read operations needed, backed by a least-privilege credential; an agent that summarizes URLs must simply not hold the refund tool.",
+      "Pre-approve with scoped rules, not bare tool names: `Bash(npm test *)` approves only matching commands and everything else still falls through to the mode, `canUseTool` or a denial.",
+      "Run unattended jobs in a sandbox or disposable environment with limited filesystem and network access; managed settings enforce organization policy that developers cannot weaken locally."
+     ],
+     "tip": "'Must never be able to' calls for removing the capability (no tool, no credential, a deny rule), not an instruction in the prompt; 'subagents bypass the safety constraints' points to per-subagent `tools` and coordinator oversight.",
+     "diagram": "flowchart TB\n  A[Job description] --> B[List only the tools it needs]\n  B --> C[Scope credentials narrowly]\n  C --> D[Deny everything else]\n  D --> E[Sandbox unattended runs]",
+     "video": null,
+     "source": {
+      "title": "Configure permissions",
+      "url": "https://code.claude.com/docs/en/agent-sdk/permissions"
+     }
+    },
+    {
+     "objective": "Design multi-agent systems with clear delegation boundaries and coordinator oversight to ensure subagents operate within approved scopes and cannot bypass safety constraints.",
+     "title": "Delegation boundaries and coordinator oversight",
+     "gist": "Each subagent gets a narrow scope in code, and the coordinator keeps sight of everything it delegates.",
+     "points": [
+      "Scope each subagent in its definition: `tools` is the allowlist (omit it and the subagent inherits every tool), `disallowedTools` removes more, and `mcpServers` attaches only its own servers; a tool left out is absent, not merely discouraged.",
+      "Permission mode flows down: a subagent runs in the parent's mode, can be made stricter with `permissionMode` when the parent is in default, `dontAsk` or `plan`, and never receives `bypassPermissions` unless the parent has it.",
+      "Hooks fire inside subagents too (hook inputs carry `agent_id` and `agent_type`), so one `PreToolUse` guard covers the whole tree, and `SubagentStart` and `SubagentStop` record who was spawned and what came back.",
+      "Cap the tree: nesting depth (default 3 layers, `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` of 1 stops it), concurrency (default 20) and `max_budget_usd`; at a limit new spawns are refused.",
+      "Coordinator oversight: risky tools stay with the coordinator, workers return findings and errors to it instead of messaging each other, and Claude Code scans a subagent's final message for instruction-shaped text before the parent reads it."
+     ],
+     "tip": "'Subagents bypass the safety constraints' points to per-subagent `tools`, inherited permissions and hooks that run everywhere; 'a worker spawned its own children' points to depth caps and coordinator-only spawning.",
+     "diagram": "flowchart TB\n  A[Coordinator holds risky tools] --> B[Subagent with allowlisted tools]\n  B --> C[Hooks and deny rules still apply]\n  C --> D[Findings return to the coordinator]\n  A --> E[Depth, concurrency and budget caps]",
+     "video": null,
+     "source": {
+      "title": "Subagents in the SDK",
+      "url": "https://code.claude.com/docs/en/agent-sdk/subagents"
+     }
+    },
+    {
+     "objective": "Implement access controls and tool permissions to restrict agent capabilities to only necessary functions and prevent unauthorized operations on sensitive systems.",
+     "title": "Enforce hard rules in hooks and tool code",
+     "gist": "Anything that must always or never happen belongs in code that runs on every tool call.",
+     "points": [
+      "Permissions are checked in this order: hooks, deny rules, ask rules, the permission mode, allow rules, then `canUseTool`; a `PreToolUse` hook runs first and its `deny` holds even in `bypassPermissions`.",
+      "`PreToolUse` returns `allow`, `deny`, `ask` or `defer` (deny beats defer beats ask beats allow) plus a reason Claude reads; use it to block forced pushes, `rm -rf`, writes to `.env` or protected paths, secrets in file content, and Bash commands outside a safe zone.",
+      "Hard business limits live in tool code or middleware: reject `process_refund` over a threshold and tell the agent to call `escalate_to_human`, require the customer ID to equal the order owner ID, and end with a catch-all that denies anything not explicitly approved.",
+      "A matcher scopes a hook to named tools (`Write|Edit`), so a Bash write to the same file bypasses it; cover Bash as well or sandbox it.",
+      "Validate arguments inside the tool: parameterize SQL, resolve and check file paths, and pass the authenticated user's ID from the session to every tool so authorization is not left to the model."
+     ],
+     "tip": "'Skips the check about 5 percent of the time' or 'ignored the documented rule' means deterministic enforcement in a hook or tool; 'a crafted amount reaches the database query' means parameterize inside the tool.",
+     "diagram": "flowchart TB\n  A[Tool call requested] --> B{PreToolUse hook}\n  B -->|deny| C[Blocked with a reason]\n  B -->|ask| D[Wait for human confirmation]\n  B -->|allow| E[Deny and allow rules, then run]",
+     "video": null,
+     "source": {
+      "title": "Intercept and control agent behavior with hooks",
+      "url": "https://code.claude.com/docs/en/agent-sdk/hooks"
+     }
+    },
+    {
+     "objective": "Validate and sanitize all inputs and outputs in agent workflows to prevent injection attacks, data leakage, and misuse of tool results across agent handoffs.",
+     "title": "Prompt injection and untrusted content",
+     "gist": "Third-party text is data, never instructions: separate it, label it, and make sure a successful injection can do little.",
+     "points": [
+      "Direct injection and jailbreaks come from the user; indirect injection hides instructions in emails, web pages, documents, database rows or tool results while the user is trusted.",
+      "Deliver third-party content only inside `tool_result` blocks, state what it is and where it came from, JSON-encode or tag-delimit it, and tell Claude in the system prompt that such content is data that never overrides instructions.",
+      "Do not rely on wording alone: least privilege (remove or gate the email or refund tool), sandboxes, approval for high-risk actions, and an optional small-model screen (Haiku with structured output) of tool results before Claude acts.",
+      "Against direct attacks pre-screen input with a lightweight classifier or pattern validation, harden the system prompt with refusal rules, throttle or ban repeat offenders, and red-team with injected documents before launch.",
+      "Treat model output as untrusted too: escape it before rendering in a page, parameterize any SQL, validate against a schema, and redact patterns such as account numbers in a post-generation filter."
+     ],
+     "tip": "'Hidden text in a page or email makes the agent act' is a capability problem: remove or gate the dangerous tool and separate data from instructions; 'write a stricter system prompt' alone is the distractor.",
+     "diagram": "flowchart TB\n  A[Email or web page] --> B[Inside tool_result, labeled untrusted]\n  B --> C[Claude reads it as data]\n  C --> D{Action needs a sensitive tool?}\n  D -->|Yes| E[Gate or deny the tool]\n  D -->|No| F[Answer the user]",
+     "video": {
+      "id": "jrHRe9lSqqA",
+      "title": "What Is a Prompt Injection Attack?",
+      "channel": "IBM Technology",
+      "min": 11
+     },
+     "source": {
+      "title": "Mitigate jailbreaks and prompt injections",
+      "url": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/mitigate-jailbreaks"
+     }
+    },
+    {
+     "objective": "Implement human escalation checkpoints and approval workflows for high-risk agent actions such as financial transactions, refunds, and account modifications.",
+     "title": "Human checkpoints for high-risk actions",
+     "gist": "Pause irreversible or financial actions for a person, in code, with a structured handoff.",
+     "points": [
+      "Gate refunds, transfers, account changes, instance termination and firewall edits behind human approval; threshold rules (refunds over a limit, expenses over $5,000) intercept the `tool_use` and send it to a human queue instead of executing it.",
+      "The `canUseTool` callback asks a person (approve, approve with changed input, reject with a message), a `PreToolUse` hook can return `ask` or `defer` to wait or resume later, and `plan` mode proposes changes without executing them.",
+      "Prefer `ask` over a hard block when legitimate work needs sensitive access, so a person can confirm instead of the session failing; a `PermissionRequest` hook can notify Slack or email while Claude waits.",
+      "Hand off through a required-schema escalation tool: customer ID, verified status, root cause, actions already tried, recommended next step; escalate on explicit request, policy gaps or no progress, not on customer frustration alone.",
+      "Earn autonomy: start in read-only or simulation mode that logs intended actions, review approval rates by output type, and cut review only for categories that stay reliable."
+     ],
+     "tip": "'Policy mandates review above a threshold but the agent sometimes approves anyway' means intercept in code and route to a queue; 'legitimate reports need access to sensitive tables' means ask for confirmation rather than terminate.",
+     "diagram": "flowchart TB\n  A[Agent proposes an action] --> B{High risk or over threshold?}\n  B -->|No| C[Run and log it]\n  B -->|Yes| D[Pause for human approval]\n  D --> E{Approved?}\n  E -->|Yes| C\n  E -->|No| F[Escalate with structured handoff]",
+     "video": null,
+     "source": {
+      "title": "Handle approvals and user input",
+      "url": "https://code.claude.com/docs/en/agent-sdk/user-input"
+     }
+    },
+    {
+     "objective": "Configure agents to detect and handle discrepancies, conflicts, and anomalies in data before taking autonomous action, with escalation when confidence thresholds are not met.",
+     "title": "Detect conflicts and uncertainty before acting",
+     "gist": "Let the agent say it does not know, flag discrepancies, and stop for review instead of guessing.",
+     "points": [
+      "Allow 'I don't know': explicit permission to admit uncertainty cuts false information; for long documents extract word-for-word quotes first, and make claims auditable with citations, retracting any claim without a supporting quote.",
+      "Missing data is null, not invented: tell Claude absent values must be null, and stop retrying when validation shows the source lacks the field; mark the record incomplete and request the document.",
+      "Treat ambiguous identity as unresolved: ask for an account number or email before lookups or actions, and keep the refund tool blocked until the verified customer ID matches the order owner.",
+      "Flag conflicts instead of resolving them silently: when form data disagrees with the record, return a schema-validated escalation packet naming both values and sources; mark a claim with no textual support as unverified.",
+      "Raise confidence with checks: best-of-N runs that disagree signal hallucination, an independent reviewer session sees only the source and a rubric, and below a set confidence threshold the case escalates."
+     ],
+     "tip": "'The model invents a phone number or ticket id' means null plus an instruction (and a nullable schema); 'form and record disagree' means escalate with both values, never merge; 'confidence below threshold' means a human queue.",
+     "diagram": "flowchart TB\n  A[Extracted or retrieved data] --> B{Missing, ambiguous or conflicting?}\n  B -->|Missing| C[Null and request the source]\n  B -->|Ambiguous| D[Ask for an identifier]\n  B -->|Conflicting| E[Escalate with both values]\n  B -->|Clean| F[Proceed to the action]",
+     "video": null,
+     "source": {
+      "title": "Reduce hallucinations",
+      "url": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations"
+     }
+    },
+    {
+     "objective": "Establish audit logging and monitoring for all agent tool calls and decisions to enable post-incident analysis and compliance verification of autonomous system behavior.",
+     "title": "Audit logging and monitoring",
+     "gist": "Record every tool call and decision with enough identifiers to reconstruct what the agent did and why.",
+     "points": [
+      "Log each tool call with tool name, inputs, result or error, duration, who or what approved it, session and agent IDs and timestamps; blocked attempts count too, so a denying `PreToolUse` hook should persist the attempt.",
+      "Hooks are the deterministic capture points: `PreToolUse` and `PostToolUse` for every call, `SubagentStart` and `SubagentStop` for delegation, `PermissionRequest` for approvals; an async hook can ship events to a logging service without slowing the loop.",
+      "Correlate with identifiers: the API `request-id` header, the `tool_use_id` (also passed to hooks) and, in Claude Code OpenTelemetry events, `tool_result` with its `decision_source` (config, hook or user).",
+      "Claude Code exports metrics and events through OpenTelemetry; prompt text and tool details stay redacted unless you opt in (`OTEL_LOG_USER_PROMPTS`, `OTEL_LOG_TOOL_DETAILS`), and managed settings can pin the collector so developers cannot redirect it.",
+      "Track cost and access per workspace with separate keys and spend limits, and send an opaque `metadata.user_id` so abuse can be traced; keep prompts in version control and record the model version per environment."
+     ],
+     "tip": "'Post-incident analysis' or 'compliance verification' wants durable per-call records with IDs and decisions, including denials; never log secrets or raw sensitive prompts.",
+     "diagram": "flowchart LR\n  A[Agent tool call] --> B[PreToolUse and PostToolUse hooks]\n  B --> C[Structured audit event with IDs]\n  C --> D[Central log store]\n  D --> E[Alerts and incident review]",
+     "video": null,
+     "source": {
+      "title": "Monitoring - Claude Code Docs",
+      "url": "https://code.claude.com/docs/en/monitoring-usage"
+     }
+    },
+    {
+     "objective": "Validate and sanitize all inputs and outputs in agent workflows to prevent injection attacks, data leakage, and misuse of tool results across agent handoffs.",
+     "title": "Secrets, data handling and tenant isolation",
+     "gist": "Keep keys and sensitive data out of prompts and clients, and keep each tenant's context separate.",
+     "points": [
+      "API keys never go in client-side code, URLs or the system prompt: call Claude from a backend, send the key in a header, load it from a secrets manager at runtime, and use separate keys per environment and per service so one leak is contained.",
+      "A leaked key stays valid even after the commit is rolled back: deactivate it in the Console and issue a new one; ZDR organizations cannot use CORS, so browser apps must go through a backend proxy.",
+      "Isolate by workspace: one workspace per business unit or contractor group, each with its own keys, spend and rate limits and role assignments; the default workspace cannot have spend limits.",
+      "Keep sensitive data out of the model's reach: mask or remove identifiers client-side before the request, keep proprietary formulas and secrets in backend logic, and use ZDR or a cloud-provider route where policy requires data to stay inside.",
+      "Tenant isolation: separate stored conversations, retrieved documents and caches per tenant, derive the user from the authenticated session (never from the prompt), and tag requests with an opaque `metadata.user_id`."
+     ],
+     "tip": "'The key was embedded in the mobile app' means a backend service plus revoke and rotate; 'one team's burst depleted the shared quota' means separate workspaces with limits; 'another organization's details appeared' means tenant-scoped storage and retrieval.",
+     "diagram": "flowchart TB\n  A[Client app] --> B[Your backend with a secrets manager]\n  B --> C[Claude API with a per-service key]\n  B --> D[Tenant-scoped data only]\n  C --> E[Workspace limits and logs]",
+     "video": null,
+     "source": {
+      "title": "API and data retention",
+      "url": "https://platform.claude.com/docs/en/manage-claude/api-and-data-retention"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "q": "What happens when a deny rule names a bare tool such as `Bash` in `disallowedTools`?",
+     "a": "The tool is stripped from the request, so Claude cannot see or attempt it. A scoped rule like `Bash(rm *)` is denied in every mode."
+    },
+    {
+     "q": "In what order does the Agent SDK evaluate permissions?",
+     "a": "Hooks first, then deny rules, ask rules, the permission mode, allow rules and finally the `canUseTool` callback. A hook deny holds even in `bypassPermissions`."
+    },
+    {
+     "q": "Does `allowedTools` with only `Read` restrict an agent running in `bypassPermissions` mode?",
+     "a": "No. Unlisted tools fall through to the mode, which approves everything. Use `disallowedTools` or a hook to block tools there."
+    },
+    {
+     "q": "What does a subagent inherit about permissions, and how do you keep it inside its scope?",
+     "a": "It runs in the parent's permission mode and never gets `bypassPermissions` unless the parent has it. List only its own tools; omitting the field inherits every tool."
+    },
+    {
+     "q": "An agent sometimes processes refunds above policy despite instructions. What is the fix?",
+     "a": "Intercept `process_refund` in a hook or middleware, reject amounts over the limit and route the case to `escalate_to_human`. Prompts alone are unreliable."
+    },
+    {
+     "q": "A hook with matcher `Write|Edit` blocks writes to `.env`. How can Claude still change the file?",
+     "a": "With a Bash command, which that matcher does not cover. Cover Bash as well or run commands in a sandbox."
+    },
+    {
+     "q": "How do you keep third-party content from acting as instructions?",
+     "a": "Deliver it only in `tool_result` blocks, label its source, JSON-encode or tag-delimit it, say in the system prompt it is data, and gate sensitive tools."
+    },
+    {
+     "q": "A fetched web page tells the agent to email the conversation to an address. What is the effective defense?",
+     "a": "Treat the page as untrusted data and remove or approval-gate the email tool, so injected text cannot trigger sending."
+    },
+    {
+     "q": "Model output is rendered into a web page or used in a SQL query. What must the application do?",
+     "a": "Treat it as untrusted: escape or sanitize it before rendering, and parameterize arguments inside the tool before any database query."
+    },
+    {
+     "q": "How do you enforce human review for expenses over $5,000?",
+     "a": "Intercept the `tool_use` above the threshold in code and route it to a human queue before execution. A prompt rule is not enough."
+    },
+    {
+     "q": "Name the fields of a good escalation handoff.",
+     "a": "Customer ID, verified status, root cause, actions already tried and a recommended next step, passed through a required-schema escalation tool."
+    },
+    {
+     "q": "A form lacks a phone number and the model fabricates one. What is the fix?",
+     "a": "Instruct Claude that missing values must be null and make the field nullable; stop retrying when the source lacks the data and request the document."
+    },
+    {
+     "q": "Where should API keys live, and what do you do after one leaks?",
+     "a": "On a backend, loaded from a secrets manager, one key per environment or service. After a leak, deactivate it in the Console and issue a new one."
+    },
+    {
+     "q": "How do you isolate cost and access for several business units in one organization?",
+     "a": "Give each unit its own workspace with its own API keys, spend and rate limits, and role assignments."
+    },
+    {
+     "q": "Which identifiers correlate an incident across API logs, hooks and Claude Code telemetry?",
+     "a": "The API `request-id`, the `tool_use_id` (also passed to hooks and present on `tool_result` events), and the decision source."
+    }
+   ]
+  },
+  {
+   "domain": "Claude Code",
+   "weight": 3.1,
+   "links": [
+    {
+     "title": "Best practices for Claude Code",
+     "url": "https://code.claude.com/docs/en/best-practices",
+     "note": "Verification, plan mode, CLAUDE.md, subagents, context management, fan-out.",
+     "kind": "official"
+    },
+    {
+     "title": "How Claude remembers your project",
+     "url": "https://code.claude.com/docs/en/memory",
+     "note": "CLAUDE.md scopes, path-scoped rules, imports, what to keep short.",
+     "kind": "official"
+    },
+    {
+     "title": "Extend Claude with skills",
+     "url": "https://code.claude.com/docs/en/skills",
+     "note": "SKILL.md frontmatter, locations, context fork, allowed-tools.",
+     "kind": "official"
+    },
+    {
+     "title": "Hooks reference",
+     "url": "https://code.claude.com/docs/en/hooks",
+     "note": "PreToolUse and PostToolUse, matchers, exit codes, JSON decisions.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "6eBSHbLKuN0",
+    "title": "Mastering Claude Code in 30 minutes",
+    "channel": "Anthropic",
+    "min": 28
+   },
+   "diagram": "flowchart TB\n  A{Change size and risk?} -->|One-sentence diff| B[Direct execution, run the tests]\n  A -->|Multi-file or unfamiliar| C[Plan mode: explore and plan]\n  C --> D[Approve the plan]\n  D --> E[Implement and verify]",
+   "summary": {
+    "tests": "Whether you can configure and drive Claude Code and the Agent SDK for real engineering work: shared conventions, headless CI, economical code search, plan versus direct mode, structured review output and safe refactors.",
+    "must_know": [
+     "Shared conventions go in a committed `CLAUDE.md` (root or `.claude/`), personal ones in `~/.claude/CLAUDE.md` or `CLAUDE.local.md`; path-scoped `.claude/rules/` and skills load on demand.",
+     "Reusable commands live in `.claude/commands/` or `.claude/skills/<name>/SKILL.md` (frontmatter `context: fork`, `allowed-tools`, `argument-hint`) and are committed so CI and teammates get them.",
+     "CLAUDE.md is advisory while hooks are deterministic: a PostToolUse hook runs the formatter, a PreToolUse hook blocks, and only exit code 2 (or a deny decision) stops an action.",
+     "Find code with Glob, then Grep exact strings, then Read only the matches; delegate exploration to a subagent so the main context stays small.",
+     "Use plan mode for multi-file, architectural or unfamiliar work, and direct execution when the diff fits in one sentence.",
+     "In CI use `claude -p` with `--output-format json` and `--json-schema`; `--resume` and `--continue` restore sessions and `fork_session` branches one.",
+     "Before refactoring thin-coverage code write characterization tests, then refactor one subsystem per branch and verify after each step."
+    ],
+    "traps": [
+     "Relying on CLAUDE.md or a prompt for a step that must always run, instead of a hook.",
+     "Letting Claude read whole directories to find a string instead of using Glob and Grep.",
+     "Entering plan mode for a one-line fix, or skipping it for a cross-service refactor."
+    ]
+   },
+   "notes": [
+    {
+     "objective": "Build code assistance agents using the Claude Agent SDK that integrate with MCP services and execute tools like file reading, writing, code search, and test execution.",
+     "title": "Build a code assistant with the Agent SDK",
+     "gist": "The Agent SDK gives you Claude Code's loop, tools and context handling as a library, so you configure rather than rebuild them.",
+     "points": [
+      "`query()` runs the agent loop with built-in tools (`Read`, `Write`, `Edit`, `Glob`, `Grep`, `Bash`, `WebSearch`), permissions, hooks, subagents, MCP and sessions; the Client SDK leaves the loop to you.",
+      "Options that matter: `allowedTools` to auto-approve, `mcpServers` for external systems, `agents` for subagents (add `Agent` to `allowedTools`), `settingSources` to load CLAUDE.md, rules and skills, and `max_turns` plus `max_budget_usd` as limits.",
+      "Test execution runs through `Bash`; give the agent a check it can run (tests, linter, build) and have it iterate until the check passes, showing the output as evidence.",
+      "Project guidance reaches an SDK agent only through loaded setting sources, so a `CLAUDE.md` is ignored when the `project` source is off; custom tools run as in-process MCP tools.",
+      "From other languages or scripts, drive the same loop as a subprocess with `claude -p`; authenticate with an API key, since third parties may not offer claude.ai login."
+     ],
+     "tip": "'An agent that reads files, searches code and runs tests' points to the Agent SDK with built-in tools rather than a hand-built Messages API loop; 'the agent ignores our CLAUDE.md' means the setting sources were not loaded.",
+     "diagram": "flowchart LR\n  A[Prompt] --> B[query with allowedTools and mcpServers]\n  B --> C[Agent loop runs the tools]\n  C --> D[Tests run as the check]\n  D --> E[ResultMessage]",
+     "video": null,
+     "source": {
+      "title": "Agent SDK overview",
+      "url": "https://code.claude.com/docs/en/agent-sdk/overview"
+     }
+    },
+    {
+     "objective": "Design agents that navigate and comprehend large, complex codebases by strategically reading files and gathering context without exhausting token budgets.",
+     "title": "Read a large codebase economically",
+     "gist": "Search narrowly first, read only the matches, and push noisy exploration into subagents.",
+     "points": [
+      "`Glob` finds candidate files by name pattern (`*refund*.yaml`, `**/*.config.yaml`), `Grep` finds an exact error string or function name by regex across contents, and `Read` opens only those files; never read whole directories.",
+      "Go from broad to narrow: an overview, then the key data models, then one feature's flow; reference files with `@`, and tell Claude what you see, where you think it lives and how you will know it is fixed.",
+      "Delegate research: 'use subagents to investigate X' runs it in a separate context and returns a summary; the built-in Explore agent is a fast read-only searcher.",
+      "Persist findings outside the window: a short findings or progress file the agent re-reads each step; `/clear` between unrelated tasks, `/compact` with instructions, and `--continue` or `--resume` to return to a session.",
+      "The failure pattern is an unscoped 'investigate': hundreds of files read, context full and quality falling; scope the question or use a subagent."
+     ],
+     "tip": "'Locate every file matching a naming convention' wants Glob; 'find callers of a renamed function' wants Grep with the exact string; 'exploration is filling the context' wants a subagent or a notes file.",
+     "diagram": "flowchart LR\n  A[Question] --> B[Glob by name pattern]\n  B --> C[Grep the exact string]\n  C --> D[Read only the matches]\n  D --> E[Notes or summary]",
+     "video": null,
+     "source": {
+      "title": "Best practices for Claude Code",
+      "url": "https://code.claude.com/docs/en/best-practices"
+     }
+    },
+    {
+     "objective": "Configure Claude Code with custom commands and CLAUDE.md settings to enforce team-specific patterns for testing, error handling, module organization, and code review workflows.",
+     "title": "Team conventions: CLAUDE.md, rules, commands",
+     "gist": "Commit shared guidance to the repo, keep personal preferences local, and load specialist guidance only where it applies.",
+     "points": [
+      "A committed `CLAUDE.md` (root or `.claude/`) is the team standard for testing, error handling and module layout, and every clone loads it; `~/.claude/CLAUDE.md` holds personal style and `CLAUDE.local.md` project-local preferences.",
+      "In a monorepo keep the root file small, give each service a short CLAUDE.md that `@path`-imports the authoritative standards, and use `.claude/rules/*.md` with `paths` globs for test files, migrations or generated clients so they load only when matching files are touched.",
+      "Custom slash commands live in `.claude/commands/` (committed with the repo); skills in `.claude/skills/<name>/SKILL.md` are the richer form, with `description`, `argument-hint`, `allowed-tools`, `disable-model-invocation` and `context: fork` frontmatter, and personal skills go in `~/.claude/skills/`.",
+      "A skill with `context: fork` does its heavy reading in its own subagent context and returns a concise summary; a skill beats a command of the same name, and enterprise beats personal beats project.",
+      "`/init` drafts a CLAUDE.md and `/context` lists the memory files that loaded; keep each file under about 200 lines and review it like code."
+     ],
+     "tip": "'New hires get different suggestions than seniors' means a committed project CLAUDE.md; 'the command must exist in CI' means commit it under `.claude/`, not `~/.claude`; 'investigate a ticket in isolation with read-only tools' means a skill with `context: fork`.",
+     "diagram": "flowchart TB\n  A{Who needs the guidance?} -->|Whole team| B[Committed CLAUDE.md]\n  A -->|Only me| C[User CLAUDE.md or local file]\n  A -->|Some file paths| D[Rules file with paths]\n  A -->|A repeatable workflow| E[Command or skill]",
+     "video": {
+      "id": "gv0WHhKelSE",
+      "title": "Claude Code best practices | Code w/ Claude",
+      "channel": "Anthropic",
+      "min": 26
+     },
+     "source": {
+      "title": "How Claude remembers your project",
+      "url": "https://code.claude.com/docs/en/memory"
+     }
+    },
+    {
+     "objective": "Configure Claude Code with custom commands and CLAUDE.md settings to enforce team-specific patterns for testing, error handling, module organization, and code review workflows.",
+     "title": "Hooks and settings: make it deterministic",
+     "gist": "CLAUDE.md is advisory; hooks and settings are enforced, and each has a scope and a precedence.",
+     "points": [
+      "A `PostToolUse` hook on `Edit|Write` runs a formatter or linter after every modification; a `PreToolUse` hook can block edits to a protected directory or dangerous Bash patterns.",
+      "Hook exit codes: 0 succeeds, 2 is a blocking error whose stderr is the reason Claude reads, and any other code (including 1) is a non-blocking error that does not stop the action.",
+      "Settings scopes: `.claude/settings.json` is shared and committed (team permissions and hooks), `.claude/settings.local.json` is personal and git-ignored, `~/.claude/settings.json` applies to all your projects.",
+      "Precedence from highest: managed settings, the `--settings` flag, project local, shared project, user; list keys such as `permissions.allow` merge across files, and nothing local overrides a managed key.",
+      "Permission rules live in settings: a `deny` rule for `Bash(docker push *)` blocks that command and an `allow` rule for `Bash(npm run build)` pre-approves one."
+     ],
+     "tip": "'Must lint after every change' or 'must never touch this directory' means hooks, not CLAUDE.md; 'the hook prints a warning but the command still runs' means it exited 1 instead of 2.",
+     "diagram": "flowchart TB\n  A[Claude edits a file] --> B[PostToolUse hook runs the formatter]\n  B --> C{Exit code?}\n  C -->|0| D[Continue]\n  C -->|2| E[Blocking error, stderr to Claude]",
+     "video": {
+      "id": "IkaPHiMDazM",
+      "title": "Hooks in Claude Code",
+      "channel": "Claude",
+      "min": 3
+     },
+     "source": {
+      "title": "Hooks reference",
+      "url": "https://code.claude.com/docs/en/hooks"
+     }
+    },
+    {
+     "objective": "Implement agents that perform code analysis and debugging by correlating production errors with source code to identify root causes in complex systems.",
+     "title": "Debug by correlating errors with code",
+     "gist": "Give Claude the exact symptom, search for its literal string, trace the path and prove the fix with a failing test.",
+     "points": [
+      "Provide the error text, the command that reproduces it, the stack trace and whether it is intermittent; a bare 'fix the bug' wastes turns.",
+      "Grep the exact error string and the handler or function names, then Read the matching files; follow callers and service or queue boundaries instead of guessing from file names.",
+      "Trace the path end to end (front end to database, producer to consumer) and compare code, configuration and recent changes; filter logs rather than loading them whole.",
+      "Write a test that fails because of the bug, fix the root cause rather than suppressing the error, and rerun the test so the check closes the loop.",
+      "In distributed systems give each subagent one service or log source and require findings with file paths, line ranges and excerpts, then correlate them in the coordinator; report blocked paths separately from empty results."
+     ],
+     "tip": "'DatabaseConnectionPoolExhausted in production logs' wants Grep on that exact string plus the function names; 'the fix suppresses the error' is the trap; success needs a test that fails before and passes after.",
+     "diagram": "flowchart TB\n  A[Error message and repro steps] --> B[Grep the exact string]\n  B --> C[Read matching files and callers]\n  C --> D[Failing test reproduces it]\n  D --> E[Fix the root cause and rerun]",
+     "video": null,
+     "source": {
+      "title": "Common workflows",
+      "url": "https://code.claude.com/docs/en/common-workflows"
+     }
+    },
+    {
+     "objective": "Generate structured code review outputs including severity levels, affected line numbers, remediation guidance, and deployment impact assessments in JSON format.",
+     "title": "Structured review output in JSON",
+     "gist": "Machine-readable findings need a schema, validation against the diff and calibrated confidence, not prettier prose.",
+     "points": [
+      "`claude -p` with `--output-format json` and `--json-schema` returns findings in `structured_output`: file, line, severity, category, remediation and deployment impact; check that the field exists before using it.",
+      "Schema-valid is not correct: add a validation layer that checks line numbers against the diff, applies severity rules and verifies that the cited code exists before comments are posted.",
+      "Include the pattern that triggered each finding and track how often developers dismiss each pattern, then refine or disable the noisy categories; measure precision and recall per category.",
+      "Per-field confidence scores with routing thresholds calibrated on a labeled set of reviewed changes send uncertain findings to human review; an overall accuracy figure hides weak categories.",
+      "Few-shot examples showing both flagged and unflagged cases, with the reason, define the decision boundary; putting existing tests in the prompt stops suggested test cases from duplicating coverage."
+     ],
+     "tip": "'Output alternates between tables and bullets so the poster fails' means JSON schema output; 'accurate on average but wrong on one category' means precision and recall per category.",
+     "diagram": "flowchart LR\n  A[Diff] --> B[claude -p with json-schema]\n  B --> C[Validate against diff metadata]\n  C --> D{Confidence above threshold?}\n  D -->|Yes| E[Post inline comment]\n  D -->|No| F[Human review]",
+     "video": null,
+     "source": {
+      "title": "Run Claude Code programmatically",
+      "url": "https://code.claude.com/docs/en/headless"
+     }
+    },
+    {
+     "objective": "Develop refactoring agents that identify outdated patterns, suggest modernization replacements, and generate implementation code while managing dependencies across multiple services.",
+     "title": "Refactoring agents: plan, characterize, migrate",
+     "gist": "Plan large changes before editing, pin current behavior with tests, and move in small verified steps.",
+     "points": [
+      "Plan mode (`--permission-mode plan` or Shift+Tab) explores and proposes without edits; use it for multi-file, architectural or unfamiliar-code changes and for dependencies across services, then switch to direct execution for the agreed steps.",
+      "Skip planning when the diff fits in one sentence (a typo, a log line, a rename): ask for the change directly and run the test.",
+      "With thin coverage, first write characterization tests that document existing behavior, then refactor in small testable increments and rerun the tests after each step.",
+      "Scale out safely: one subsystem per branch for reviewable pull requests, `/batch` or a `claude -p` loop with `--allowedTools` for many files, and `fork_session` to compare two modernization strategies from one baseline.",
+      "Record confirmed dependencies in a findings file, force the dependency scan as the first tool call with `tool_choice` in custom agents, and have a fresh Reviewer session check the Writer's result."
+     ],
+     "tip": "'380 files and reviewers must stay manageable' means one subsystem per branch with tests before review; 'unknown wrapper layers across 12 services' means plan mode first; 'rename a variable' means direct execution.",
+     "diagram": "flowchart TB\n  A{Change size and risk?} -->|One-sentence diff| B[Direct execution plus tests]\n  A -->|Multi-file or unfamiliar| C[Plan mode and review the plan]\n  C --> D[Characterization tests]\n  D --> E[Small verified steps per branch]",
+     "video": null,
+     "source": {
+      "title": "Best practices for Claude Code",
+      "url": "https://code.claude.com/docs/en/best-practices"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "q": "Where should a team's shared testing and error-handling conventions live so every clone gets them?",
+     "a": "In a committed CLAUDE.md at the repo root or `.claude/CLAUDE.md`. Personal style goes in `~/.claude/CLAUDE.md`."
+    },
+    {
+     "q": "How do you stop test-file guidance from loading for every task?",
+     "a": "Put it in `.claude/rules/testing.md` with `paths` globs matching test files; it loads only when matching files are in play."
+    },
+    {
+     "q": "Where do committed custom slash commands and skills live?",
+     "a": "Commands in `.claude/commands/`, skills in `.claude/skills/<name>/SKILL.md`. Commit them so CI and teammates get them; `~/.claude` is personal."
+    },
+    {
+     "q": "Which skill frontmatter runs a workflow in an isolated subagent and limits its tools?",
+     "a": "`context: fork` for isolation and `allowed-tools` (for example Read Grep) for tools; `argument-hint` documents the arguments."
+    },
+    {
+     "q": "Which exit code makes a Claude Code hook block an action, and what does exit 1 do?",
+     "a": "Exit 2 blocks, and stderr becomes the reason Claude sees. Exit 1 or any other non-zero code is a non-blocking error; the action still runs."
+    },
+    {
+     "q": "How do you guarantee a linter runs after every file edit?",
+     "a": "A `PostToolUse` hook matching `Edit|Write` that runs the linter. A CLAUDE.md instruction is advisory and can be skipped."
+    },
+    {
+     "q": "What is the settings precedence order, highest first?",
+     "a": "Managed settings, command-line `--settings`, project local, shared project, user. List keys such as `permissions.allow` merge across files."
+    },
+    {
+     "q": "Which file holds personal project overrides that must stay out of git?",
+     "a": "`.claude/settings.local.json`. Shared team permissions and hooks go in the committed `.claude/settings.json`."
+    },
+    {
+     "q": "How do you find every file that handles refunds in a large repository without filling the context?",
+     "a": "Glob with a name pattern such as `*refund*.yaml`, Grep exact strings, then Read only the matches; or delegate the search to an Explore subagent."
+    },
+    {
+     "q": "When do you use plan mode, and when direct execution?",
+     "a": "Plan mode for multi-file, architectural or unfamiliar-code changes; direct execution when the change fits in one sentence, like a typo or rename."
+    },
+    {
+     "q": "A production log shows a specific exception. What is the first move to find its cause?",
+     "a": "Grep the exact error string and the related handler names across the codebase, then Read the matching files and trace the callers."
+    },
+    {
+     "q": "How do you run Claude Code in a CI job and get parseable findings?",
+     "a": "`claude -p` with `--output-format json` and `--json-schema`; read the `structured_output` field. `stream-json` gives event-by-event output."
+    },
+    {
+     "q": "Which options reopen the previous Claude Code session, and how do you branch one?",
+     "a": "`claude --continue` reopens the most recent session and `--resume` picks one. Fork a session to branch it without changing the original."
+    },
+    {
+     "q": "Why write characterization tests before refactoring a thin-coverage billing module?",
+     "a": "They record and lock in current behavior, so any behavior change introduced by automated edits shows up as a failing test."
+    },
+    {
+     "q": "A refactor touches 380 files and reviewers need manageable pull requests. What do you do?",
+     "a": "Refactor one subsystem per branch, run its tests before review, and record dependencies and findings between steps."
+    }
+   ]
+  },
+  {
+   "domain": "Eval, Testing, and Debugging",
+   "weight": 2.6,
+   "links": [
+    {
+     "title": "Demystifying evals for AI agents",
+     "url": "https://www.anthropic.com/research/demystifying-evals-for-ai-agents",
+     "note": "Tasks, trials and graders, capability versus regression evals, pass@k, a roadmap from zero.",
+     "kind": "official"
+    },
+    {
+     "title": "Define success criteria and build evaluations",
+     "url": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests",
+     "note": "Measurable criteria, eval design principles, code, LLM and human grading.",
+     "kind": "official"
+    },
+    {
+     "title": "How we built our multi-agent research system",
+     "url": "https://www.anthropic.com/research/multi-agent-research-system",
+     "note": "LLM-as-judge rubric, end-state evaluation, production tracing, resilient agents.",
+     "kind": "official"
+    },
+    {
+     "title": "Claude Code GitHub Actions",
+     "url": "https://code.claude.com/docs/en/github-actions",
+     "note": "claude-code-action, automation mode, claude_args, cost controls.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "pDp8Gm64EmY",
+    "title": "How Anthropic Actually Writes AI Evals for Agents",
+    "channel": "LiftoffPM",
+    "min": 7
+   },
+   "diagram": "flowchart LR\n  A[Collect real failures] --> B[Write tasks and graders]\n  B --> C[Run evals in CI]\n  C --> D{Pass rate ok in every segment?}\n  D -->|Yes| E[Ship gradually and monitor]\n  D -->|No| F[Fix prompt, tools or data]",
+   "summary": {
+    "tests": "Whether you can prove an LLM system works and find out why it does not: layered validation, eval design, segment-level measurement, graceful degradation, independent review and CI-friendly tests.",
+    "must_know": [
+     "Schema-valid is not correct: add business-rule, cross-field and source cross-checks in code, retry with the specific errors, then quarantine or escalate.",
+     "Do arithmetic, counting and date math in application code, not in the model.",
+     "Start evals early with 20 to 50 tasks from real failures; grade with code first, LLM rubrics next and humans sparingly, using a different or stronger model as the judge.",
+     "Evaluate a prompt change on a held-out set that mirrors real inputs, one change at a time; a regression suite protects behavior that already worked.",
+     "Overall accuracy hides weak segments: use stratified sampling by document type, field and confidence, with per-category precision, recall and dismissal rates.",
+     "A fresh session reviews generated code and extractions; the session that wrote them is biased toward its own output.",
+     "Debug with full traces, `stop_reason`, `usage` and the `request-id`; temperature 0 is not deterministic, so assert structure or meaning in tests."
+    ],
+    "traps": [
+     "Trusting one overall accuracy figure or high confidence scores instead of per-segment, stratified checks.",
+     "Letting the generating session or the same model grade its own work.",
+     "Rerunning a whole batch or failing a whole pipeline for a few bad items instead of isolating and retrying only the failures."
+    ]
+   },
+   "notes": [
+    {
+     "objective": "Implement validation layers that check extracted or generated output against business rules, JSON schemas, and domain-specific constraints to catch semantic errors that pass syntactic validation.",
+     "title": "Layered validation: shape, rules, meaning",
+     "gist": "Check shape first, then business rules and cross-references in code, then meaning with an independent reviewer.",
+     "points": [
+      "Layer the checks: schema (types, required fields), then business rules (totals add up, dates in range, IDs exist), then cross-field and cross-document consistency, then a semantic review by a separate call or a person.",
+      "A schema-valid record can still be wrong: cross-check quoted passages and references against the source text, and verify line numbers, file paths and counts against the diff or database with deterministic code.",
+      "Compute in code: have Claude output the line items and do sums, conversions and date math in the application, because model arithmetic over long ledgers drifts by a few percent.",
+      "On failure retry with the original document, the failed output and the specific validation errors, cap the attempts, stop when the source lacks the data, then quarantine or escalate instead of silently dropping the record.",
+      "Make verification independent: the second request receives the source, the extraction and explicit discrepancy rules, not the first pass's reasoning, and a stronger model than the generator is a better judge."
+     ],
+     "tip": "'Valid JSON but the totals are wrong' means business-rule validation in code; 'sums are off by 2 to 3 percent' means move arithmetic out of the model; 'self-review misses its own mistakes' means an independent reviewer.",
+     "diagram": "flowchart TB\n  A[Model output] --> B{Schema valid?}\n  B -->|No| F[Retry with errors fed back]\n  B -->|Yes| C{Rules and cross-checks pass?}\n  C -->|No| F\n  C -->|Yes| D[Independent semantic review]\n  D --> E[Load into the backend]",
+     "video": null,
+     "source": {
+      "title": "Reduce hallucinations",
+      "url": "https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations"
+     }
+    },
+    {
+     "objective": "Design and execute evaluation methodologies to measure accuracy, identify failure patterns, and audit system performance across diverse document types and use cases.",
+     "title": "Build evals: criteria, tasks, graders",
+     "gist": "Write measurable criteria, collect realistic balanced tasks, and grade with the cheapest reliable method.",
+     "points": [
+      "Success criteria must be specific and measurable (F1 of at least 0.85 on a held-out set, 99.5% non-toxic outputs, 95% of responses under 200 ms); one metric rarely covers fidelity, consistency, tone, safety and latency.",
+      "Start early and small: 20 to 50 tasks drawn from real failures and manual checks beat waiting for hundreds; each task is unambiguous (two experts would agree on pass or fail) with a reference solution, and a 0% pass rate on many trials usually means a broken task.",
+      "Balance the set with cases where a behavior should and should not occur plus edge cases (irrelevant, very long, ambiguous input), and run every trial from a clean, identical environment.",
+      "Grade with code first (exact or string match, unit tests: fast and reliable), then LLM graders with a clear rubric and an 'Unknown' option, calibrated against humans, one judge per dimension and a different or stronger model than the generator; humans sparingly. Grade the outcome, not the path, and give partial credit.",
+      "Capability evals start at a low pass rate as a hill to climb, regression evals sit near 100% to protect existing behavior; run several trials (pass@k is at least one success, pass^k all k succeed: 75% per trial gives about 42% for three) and read transcripts to check the graders are fair."
+     ],
+     "tip": "'A prompt change looks better on five examples' needs a held-out set that mirrors real inputs and defined criteria; 'the same model grades its own output' is a flaw; 'a fix broke another behavior' is what a regression suite catches.",
+     "diagram": "flowchart TB\n  A[Real failures and manual checks] --> B[Clear tasks with reference answers]\n  B --> C[Run in a clean environment]\n  C --> D[Grade: code, LLM rubric, human]\n  D --> E[Read transcripts, fix tasks or agent]",
+     "video": {
+      "id": "trfUBIDeI1Y",
+      "title": "LLM as a Judge: Scaling AI Evaluation Strategies",
+      "channel": "IBM Technology",
+      "min": 6
+     },
+     "source": {
+      "title": "Demystifying evals for AI agents",
+      "url": "https://www.anthropic.com/research/demystifying-evals-for-ai-agents"
+     }
+    },
+    {
+     "objective": "Design and execute evaluation methodologies to measure accuracy, identify failure patterns, and audit system performance across diverse document types and use cases.",
+     "title": "Measure by segment, not just overall",
+     "gist": "An average hides weak document types and fields, so sample, segment and calibrate before reducing human review.",
+     "points": [
+      "Overall accuracy (for example 97.4%) hides weak segments: break it down by document type, field and source before automating anything, and set a validated threshold per segment.",
+      "Sample high-confidence outputs too: stratified random sampling across document type, source and section finds errors that the confidence score misses, and error rates are monitored inside each stratum.",
+      "Add a category or pattern field to every flagged item and track approval or dismissal rates by it; a category with high dismissal is paused or refined, not the whole system.",
+      "Calibrate confidence: produce per-field confidence scores, set routing thresholds per field on labeled pilot data, and send low-confidence fields to reviewers.",
+      "Pilot on a representative, diverse batch before the full run, analyze validation failures and missing-field patterns, refine the prompt, then scale; report precision and recall per category, not one blended number."
+     ],
+     "tip": "'99% schema compliance and high confidence yet errors reach customers' means stratified sampling and per-segment accuracy; 'developers dismiss one kind of comment' means track dismissal by category.",
+     "diagram": "flowchart TB\n  A[Pilot batch with mixed document types] --> B[Accuracy per type and field]\n  B --> C{Segment meets its threshold?}\n  C -->|Yes| D[Automate that segment]\n  C -->|No| E[Keep review and refine the prompt]",
+     "video": null,
+     "source": {
+      "title": "Define success criteria and build evaluations",
+      "url": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests"
+     }
+    },
+    {
+     "objective": "Build error handling and graceful degradation mechanisms that allow systems to process incomplete or malformed inputs without failing entirely.",
+     "title": "Graceful degradation for bad inputs",
+     "gist": "Isolate failures per item, return partial results with context, and retry only what can succeed.",
+     "points": [
+      "A failing worker returns partial results with context: section ID, failure category, what it retrieved, the queries tried and suggested recovery, so the coordinator can retry, reassign or proceed without it.",
+      "Handle each item on its own: in a batch one failed request never affects the others, so retry only the `errored` or `expired` custom_ids and keep the succeeded results instead of rerunning everything.",
+      "Match the response to the cause: `max_tokens` truncation means raise the limit or stream, an oversized payload (413) means shrink before resubmitting, `invalid_request_error` means fix the request, and 429, 5xx or 529 mean backoff with `retry-after`.",
+      "Tell the agent when a tool is failing so it can adapt, and pair that with deterministic safeguards (retry logic, checkpoints) and resumable state so an error resumes where the agent stopped instead of restarting.",
+      "Categorize bad input explicitly: legitimately absent optional data becomes null, unreadable required data is retried or escalated, and corrupted documents go to human review, each with rules and examples."
+     ],
+     "tip": "'One bad document fails the whole run' means isolate failures and return structured partial results; 'the whole batch is rerun for three failures' means retry only the failed custom_ids.",
+     "diagram": "flowchart TB\n  A[Item fails] --> B{Failure cause?}\n  B -->|Transient| C[Backoff and retry]\n  B -->|Bad or missing data| D[Mark incomplete with a reason]\n  B -->|Unreadable| E[Human review queue]\n  C --> F[Continue with the other items]\n  D --> F\n  E --> F",
+     "video": null,
+     "source": {
+      "title": "How we built our multi-agent research system",
+      "url": "https://www.anthropic.com/research/multi-agent-research-system"
+     }
+    },
+    {
+     "objective": "Construct multi-agent architectures that route tasks to specialized Claude agents and aggregate their outputs while maintaining consistency and quality.",
+     "title": "Multi-agent consistency and quality control",
+     "gist": "Keep the coordinator in control, validate in two phases and keep conflicts visible through synthesis.",
+     "points": [
+      "Route by specialty through a coordinator that keeps control: follow-ups, error handling and recovery all pass through it rather than between workers.",
+      "Validate in two phases: granular checks on each paper or section first, then a unified cross-item consistency review before synthesis; independent per-section reviewers plus an integration reviewer catch cross-section contradictions.",
+      "A coordinator validation loop assesses synthesis completeness, issues targeted redelegations for the gaps and reruns until the quality bar is met.",
+      "Keep conflicts visible: retain both projections with full source attribution and a transparency note instead of averaging or picking one; workers return structured claim-and-evidence records.",
+      "Start the synthesis prompt with a structured index of findings and organize details into labeled subsections, because long mixed context buries findings; judge agents by end state with a rubric (accuracy, citation accuracy, completeness, source quality, efficiency)."
+     ],
+     "tip": "'The final report mixes contradictory statistics' means preserve both with attribution; 'quality drops when many findings are pasted together' means an index first and labeled sections; 'an agent took a different valid path' means grade the end state.",
+     "diagram": "flowchart TB\n  A[Coordinator routes to specialists] --> B[Per-item quality checks]\n  B --> C[Cross-item consistency review]\n  C --> D{Complete and consistent?}\n  D -->|No| E[Redelegate the gaps]\n  D -->|Yes| F[Final synthesis]",
+     "video": null,
+     "source": {
+      "title": "How we built our multi-agent research system",
+      "url": "https://www.anthropic.com/research/multi-agent-research-system"
+     }
+    },
+    {
+     "objective": "Identify and address systematic gaps in AI-generated code by analyzing reviewer feedback, test failures, and domain-specific requirements to improve generation quality.",
+     "title": "Closing systematic gaps in generated code",
+     "gist": "Group reviewer feedback and failures into patterns, then fix the cause with tests, rules and an independent check.",
+     "points": [
+      "Mine the feedback for patterns: add an `issue_category` field to review findings and measure approval or dismissal by category and module or contract type; recurring categories are systematic gaps.",
+      "Write tests first (expected behavior, edge cases, performance) or build a reference suite, have Claude generate code, and iterate on specific failures: failing test names, inputs, expected versus actual output and stack traces.",
+      "Review in a fresh session that sees only the diff, repository context and guidelines; a same-session review is biased toward the code and reasoning it just produced.",
+      "Encode the missing domain knowledge: standards, high-value test criteria and fixtures in a shared CLAUDE.md or rule file, and have Claude ask engineers targeted questions (tenant isolation, observability conventions, exception handling) before generating.",
+      "Verify in the real environment before the agent declares success, and add runtime checks such as allowing `approve_invoice` only after `validate_invoice` has passed for that invoice."
+     ],
+     "tip": "'Generated code compiles but reviewers keep finding the same omissions' means encode the conventions and questions the generator lacked; 'the same session reviews its own code' means a fresh reviewer session.",
+     "diagram": "flowchart TB\n  A[Reviewer feedback and test failures] --> B[Group by category]\n  B --> C[Add tests, rules or examples]\n  C --> D[Regenerate in a clean session]\n  D --> E[Independent review and a real run]",
+     "video": null,
+     "source": {
+      "title": "Best practices for Claude Code",
+      "url": "https://code.claude.com/docs/en/best-practices"
+     }
+    },
+    {
+     "objective": "Integrate Claude into CI/CD pipelines and automated workflows using the Claude Agent SDK, including session management and tool integration for code generation and review tasks.",
+     "title": "Claude in CI: sessions and test strategy",
+     "gist": "Run Claude from the pipeline with capped cost and test the surrounding system with fixtures, simulations and gates.",
+     "points": [
+      "`anthropics/claude-code-action@v1` takes `anthropic_api_key` from secrets and `claude_args` such as `--max-turns`, `--model` and `--allowedTools`; automation mode runs a `prompt` with nobody present; grant minimal permissions and set workflow timeouts and concurrency limits to cap cost.",
+      "In scripts `claude -p --output-format json` returns a `session_id`; continue with `--resume <id>` or `--continue`, and in the Agent SDK use `resume` and `fork_session`; session files are local, so ephemeral CI hosts need a session store or the needed state passed into a fresh prompt.",
+      "Integration-testing an LLM feature: cache and replay real responses as fixtures for routine runs, keep a small live set for merges to main, and assert structure or semantic equivalence because temperature 0 does not give identical text.",
+      "Test agents against simulated services that replay scripted success and failure scenarios, keep a regression suite, and roll prompt or model changes out to a fraction of traffic while watching quality metrics.",
+      "Keep prompts and model versions in version control with review and tagged releases, so every change has an author and a history, and run the eval suite on each change as a gate."
+     ],
+     "tip": "'Flaky assertions at temperature 0' means structural or semantic assertions instead of exact strings; 'nobody can tell what changed in the prompt' means version control and CI gates; 'an agent only ever tested against live services' means scripted simulations.",
+     "diagram": "flowchart TB\n  A[Pull request] --> B[Action runs claude with a prompt]\n  B --> C[Eval suite and fixture replay]\n  C --> D{Gates pass?}\n  D -->|Yes| E[Merge and staged rollout]\n  D -->|No| F[Block with a report]",
+     "video": null,
+     "source": {
+      "title": "Claude Code GitHub Actions",
+      "url": "https://code.claude.com/docs/en/github-actions"
+     }
+    },
+    {
+     "objective": "Design and execute evaluation methodologies to measure accuracy, identify failure patterns, and audit system performance across diverse document types and use cases.",
+     "title": "Debug with traces, IDs and stop reasons",
+     "gist": "Capture every step of a run so you can locate the defect by stage instead of guessing.",
+     "points": [
+      "Log every turn of a multi-step agent (each model response, tool call and result); 'it is not finding obvious information' stays invisible without a trace that shows bad queries, poor sources or tool failures.",
+      "Locate the defect by stage: if answers faithfully follow the supplied documents but those documents are wrong, the retrieval layer is at fault; if retrieval is right and the answer is wrong, inspect the assembled prompt and the model response.",
+      "Read `stop_reason` first for truncated JSON or abrupt endings (`max_tokens`), read `usage` for real token cost, and quote the `request-id` response header when asking Anthropic support about a specific request.",
+      "When several changes ship together, isolate each one against a fixed benchmark; temperature 0 is not deterministic, so compare pass rates over several trials rather than single outputs.",
+      "Monitor production: record usage and stop reasons per call, alert on anomalous error or rate-limit patterns, and give each session a token counter and a step ceiling so runaway retry loops stop."
+     ],
+     "tip": "'Wrong answers although the model follows its documents faithfully' is a retrieval defect; 'intermittent 5xx cannot be reproduced' means capture the request-id; 'a sudden cost spike' means check `usage` and loop ceilings.",
+     "diagram": "flowchart TB\n  A[Wrong or odd output] --> B[Read the trace]\n  B --> C{Where does it go wrong?}\n  C -->|Retrieved documents| D[Fix search or indexing]\n  C -->|Prompt or model step| E[Fix the prompt, one change at a time]\n  C -->|Output cut off| F[Check stop_reason and max_tokens]",
+     "video": null,
+     "source": {
+      "title": "Claude API errors",
+      "url": "https://platform.claude.com/docs/en/api/errors"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "q": "An extraction returns valid JSON with an incorrect invoice total. Which layer catches it?",
+     "a": "A business-rule check in your own code (line items sum to the total), after the schema check. Schema validation alone cannot catch wrong values."
+    },
+    {
+     "q": "Model-computed sums over a long ledger are off by 2 to 3 percent. What is the fix?",
+     "a": "Have Claude output the line items and do summation and other arithmetic in application code, where it is exact."
+    },
+    {
+     "q": "How do you retry a failed extraction effectively?",
+     "a": "Send the original document, the failed output and the specific validation errors for a targeted correction, cap the attempts, then escalate."
+    },
+    {
+     "q": "How many tasks do you need to start an eval, and where do they come from?",
+     "a": "Roughly 20 to 50 small tasks taken from real failures and manual checks; each needs a clear pass or fail."
+    },
+    {
+     "q": "Which grading method comes first, and when do you use an LLM grader?",
+     "a": "Code-based grading (exact match, tests) first: fastest and most reliable. LLM graders with a clear rubric for judgments code cannot make; humans sparingly."
+    },
+    {
+     "q": "Why should the grader model differ from the generating model?",
+     "a": "The same model shares its blind spots and tends to favor its own output; use a different or stronger model and calibrate it against humans."
+    },
+    {
+     "q": "What is the difference between capability evals and regression evals?",
+     "a": "Capability evals start at a low pass rate as a hill to climb; regression evals sit near 100% and protect behavior that already worked."
+    },
+    {
+     "q": "A prompt change improved the five examples you tried. What must happen before it ships?",
+     "a": "Evaluate it on a held-out set that reflects real inputs against defined criteria, one change at a time, ideally with a staged rollout."
+    },
+    {
+     "q": "Overall extraction accuracy is 97.4 percent. Why not cut human review?",
+     "a": "Averages hide weak segments. Break accuracy down by document type and field, and automate only segments that meet validated thresholds."
+    },
+    {
+     "q": "How do you catch errors that high confidence scores hide?",
+     "a": "Stratified random sampling of high-confidence outputs across document type, source and field, monitoring error rates inside each stratum."
+    },
+    {
+     "q": "Developers dismiss most review comments of one kind. How do you find the cause?",
+     "a": "Add a category or pattern field to each finding, track dismissal rates by it, and refine or disable the noisy category."
+    },
+    {
+     "q": "A batch of 18,000 requests finishes with a few errors. What do you rerun?",
+     "a": "Only the `errored` and `expired` custom_ids; keep and apply the succeeded results. One failed request never affects the rest."
+    },
+    {
+     "q": "Why review generated code in a fresh session?",
+     "a": "It sees only the diff, repo context and guidelines, so it is not biased toward the code and reasoning of the session that wrote it."
+    },
+    {
+     "q": "Temperature is 0 yet exact-string test assertions still fail. What do you change?",
+     "a": "Assert structure and semantic equivalence instead of exact text, replay cached responses for routine runs, and keep a small live set for merges."
+    },
+    {
+     "q": "Users report wrong answers, but traces show Claude follows the supplied documents faithfully. Where is the defect?",
+     "a": "In the retrieval layer that selects the documents; fix search or indexing, not the prompt or the model."
+    }
+   ]
+  }
+ ]
+}

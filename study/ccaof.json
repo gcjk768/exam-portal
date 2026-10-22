@@ -1485,6 +1485,267 @@
      "a": "Artifacts (editable output content) and connectors (reactive retrieval); a persistent shared knowledge base is a Project."
     }
    ]
+  },
+  {
+   "domain": "Troubleshooting and Optimization",
+   "weight": 10,
+   "links": [
+    {
+     "title": "My prompt isn't giving me a helpful answer",
+     "url": "https://support.claude.com/en/articles/7996857-my-prompt-isn-t-giving-me-a-helpful-answer",
+     "note": "The four fixes: a clear ask, full context, smaller substeps and feedback to Claude.",
+     "kind": "official"
+    },
+    {
+     "title": "Define success criteria and build evaluations",
+     "url": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests",
+     "note": "Specific, measurable criteria, a baseline to beat, task-specific evals and how to grade them.",
+     "kind": "official"
+    },
+    {
+     "title": "Prompt engineering overview",
+     "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview",
+     "note": "What to have in place before tuning a prompt, and why some failures are not prompt problems.",
+     "kind": "official"
+    },
+    {
+     "title": "How do usage and length limits work?",
+     "url": "https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work",
+     "note": "Context window versus usage limits, automatic summarising and ways to save context.",
+     "kind": "official"
+    }
+   ],
+   "video": {
+    "id": "ysPbXH0LpIE",
+    "title": "Prompting 101",
+    "channel": "Anthropic",
+    "min": 25
+   },
+   "diagram": "flowchart TB\n  A([Output falls short]) --> B[Measure the baseline, find the cause]\n  B --> C[Change one thing and re-test]\n  C --> D{Better than the baseline?}\n  D -->|Yes| E([Record the cause and fix])\n  D -->|Gains stalled| F([Pivot or escalate])",
+   "notes": [
+    {
+     "objective": "Conduct baseline assessment and performance analysis of existing Claude workflows before implementing optimization changes.",
+     "title": "Measure the baseline before changing anything",
+     "gist": "Before redesigning a Claude workflow, record how it performs today and find which steps cost the most; announcements, rollout and training only come after that diagnosis.",
+     "points": [
+      "Two assessments come first: baseline metrics from recent runs (output quality, duration, cost), then an analysis of which steps create the biggest bottlenecks in time, expense or quality.",
+      "Announcing expected savings, releasing the new version, updating documentation and training the team are later phases; none of them is the opening move.",
+      "Map the current workflow before measuring it: its stages, who is responsible for each and where it branches.",
+      "Good success criteria are specific, measurable, achievable and relevant, e.g. 'F1 of at least 0.85, a 5% improvement over the current baseline'; most workflows need several (quality, latency, price).",
+      "The baseline is the proof that a change helped, and the version to go back to if it did not."
+     ],
+     "tip": "'Before you redesign' and 'which two activities first' stems want baseline metrics plus a bottleneck analysis; announcing benefits, releasing, documenting and training are the distractors.",
+     "diagram": "flowchart LR\n  A[Map the current workflow] --> B[Record baseline: quality, time, cost]\n  B --> C[Find the costliest steps]\n  C --> D[Only then redesign and pilot]",
+     "video": {
+      "id": "KIGBsQqZcNA",
+      "title": "Evaluate prompts in the Anthropic Console",
+      "channel": "Anthropic",
+      "min": 3
+     },
+     "source": {
+      "title": "Define success criteria and build evaluations",
+      "url": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests"
+     }
+    },
+    {
+     "objective": "Apply systematic feedback loops and iterative refinement processes to improve Claude output quality across multiple attempts.",
+     "title": "Turn specific feedback into targeted revisions",
+     "gist": "Each round, record specific observations, turn them into one or two focused changes, re-run, and compare with the previous round before deciding what comes next.",
+     "points": [
+      "The cycle: capture the reviewers' specific comments, make one or two focused changes, run the revision and compare it with the previous iteration, log what changed and what is still open, then continue, pivot or escalate.",
+      "Feedback has to be specific and issue by issue ('section 3 lacks the cost comparison'); one overall score or general impressions cannot say what to fix.",
+      "Act on feedback every round; waiting five or six runs 'for a pattern', or applying sweeping rewrites for problems nobody observed, slows the loop and hides what worked.",
+      "When a reviewer flags three problems and approves the rest, revise only those three, leave the approved sections untouched and track every change for the next review.",
+      "In a chat, feedback is a follow-up message: add the missing instruction or context, point at the gap, or ask Claude to rewrite its answer."
+     ],
+     "tip": "'Best demonstrates systematic feedback' answers tie a specific observation to a specific prompt change and a measured result; batching, a single score and sweeping revisions are the wrong options.",
+     "diagram": "flowchart LR\n  A[Record specific comments] --> B[Make one or two focused changes]\n  B --> C[Re-run and compare with last round]\n  C --> D[Log changes and open gaps]\n  D --> E{Continue, pivot or escalate?}",
+     "video": null,
+     "source": {
+      "title": "My prompt isn't giving me a helpful answer",
+      "url": "https://support.claude.com/en/articles/7996857-my-prompt-isn-t-giving-me-a-helpful-answer"
+     }
+    },
+    {
+     "objective": "Execute structured troubleshooting diagnostics by developing targeted hypotheses about prompt components and testing them methodically.",
+     "title": "Diagnose in order, then test one change",
+     "gist": "Find the cause before touching the prompt: pinpoint the shortfall, compare it with the prompt, form a hypothesis about one component, test one change and record the result.",
+     "points": [
+      "Order: pinpoint the exact deficiency in the output, compare prompt and output for gaps or mismatches, hypothesise the responsible component, make one focused adjustment, then document the cause and the fix.",
+      "One change per test: several simultaneous edits hide which one helped or hurt, and a test needs success criteria you can actually check.",
+      "A setup that worked for months and now returns off-target or shorter answers: establish what changed first (inputs, instructions, configuration, or knowledge added to the Project).",
+      "A Project that drifts from today's standards: audit its instructions and documents against current requirements before retiring it, upgrading the model or accepting the drift.",
+      "A wrong answer you cannot reproduce: get the exact prompt, inputs, configuration and Claude's reply; dismissing the report, a bigger model or a warning banner all act before the cause is known."
+     ],
+     "tip": "Sequence stems put 'review the output' first, the hypothesis before the test and 'document' last; options that rewrite the prompt, switch model or rebuild before the cause is known are the trap.",
+     "diagram": "flowchart LR\n  A[Pinpoint the exact shortfall] --> B[Compare output with the prompt]\n  B --> C[Hypothesise the faulty component]\n  C --> D[Change one thing and test]\n  D --> E[Record cause and fix]",
+     "video": null,
+     "source": {
+      "title": "Prompt engineering overview",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+     }
+    },
+    {
+     "objective": "Recognize diminishing returns in iterative optimization and determine when to pivot strategy or escalate for redesign.",
+     "title": "Spot the plateau, then pivot or escalate",
+     "gist": "When further rounds stop producing gains, stop iterating: go back to the last good version if you drifted, then change approach or hand the task to human review or a redesign.",
+     "points": [
+      "The signal is several rounds in a row with no meaningful improvement, for example nine iterations with the last five flat; repeating the same cycle will not change that.",
+      "Sound response: recognise diminishing returns and pivot (restructure the prompt, split the task, try another method) or escalate to manual or expert review. Not 'accept it as final', 'cancel without telling anyone' or 'iterate until perfect'.",
+      "If each edit moves the output further from the target, return to the most recent version that came closest and adjust in small, targeted steps; do not delete the history or make large blind edits.",
+      "Ask whether prompt wording is even the lever: latency and cost can sometimes be improved more easily by choosing a different model, and not every failing check is fixed by rewriting the prompt.",
+      "Report the plateau to stakeholders: what was tried, what the results show and what you recommend (redesign or human review)."
+     ],
+     "tip": "Stems give counts ('nine iterations, no gain in the last five') and ask for the most sound next step; the answer names diminishing returns and a switch to manual review or another method.",
+     "diagram": "flowchart TB\n  A[Run the next round] --> B{Gain over the last round?}\n  B -->|Yes| A\n  B -->|Getting worse| C[Return to the last good version]\n  B -->|Flat for several rounds| D([Pivot strategy or escalate])\n  C --> A",
+     "video": null,
+     "source": {
+      "title": "Prompt engineering overview",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview"
+     }
+    },
+    {
+     "objective": "Identify and isolate specific prompt components responsible for output deficiencies such as incomplete responses or format deviations.",
+     "title": "Match the symptom to the prompt component",
+     "gist": "Each kind of failure points at one part of the prompt: the task list, the output specification, the context or the rule set; fix that part and leave the rest alone.",
+     "points": [
+      "Incomplete (two of four questions answered): the task instructions; list every question explicitly, numbered, and state that each needs an answer. More background, a fancier persona or a looser format will not help.",
+      "Format or terminology deviation: the output specification; define the exact format, show an example (more effective than abstract rules) and supply the team's glossary with an instruction to use only those terms.",
+      "Shallow, generic or repetitive: the prompt lacks substance; add the strategic priorities, the specific competitors, the decision the analysis supports and the success criteria.",
+      "Granularity: a dozen rules with a few dropped each run is overload, so group, rank or phase them; twelve tiny steps with an incoherent result is over-decomposition, so merge related steps into thematic blocks.",
+      "Run-to-run variation on an identical prompt is normal generation behaviour; tighten the format, examples and constraints so the variation does not matter instead of calling the system broken."
+     ],
+     "tip": "Choose the option that edits the component matching the symptom: missing item, enumerate it; wrong terms, supply the reference; generic answer, add context. Persona changes, longer background and 'let Claude choose the structure' are distractors.",
+     "diagram": "flowchart TB\n  A{What is the symptom?} -->|Item missing| B[Task list: number every question]\n  A -->|Wrong terms or format| C[Spec: template, example, glossary]\n  A -->|Generic answer| D[Add context: priorities, criteria]\n  A -->|Rules half-followed| E[Group, rank or split the task]",
+     "video": null,
+     "source": {
+      "title": "Prompting best practices",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices"
+     }
+    },
+    {
+     "objective": "Analyze multi-stage workflows to locate performance bottlenecks and determine appropriate corrective actions.",
+     "title": "Find the bottleneck, then fix that stage",
+     "gist": "In a multi-stage workflow the constraint is the stage where work piles up; measure each stage, fix that one, pilot the change and only then roll it out.",
+     "points": [
+      "Sequence: document the current workflow (stages, owners, branch points), measure each stage to find the constraint, apply targeted fixes to it, pilot with a small group and compare, then roll out and record.",
+      "The bottleneck is the stage with the largest queue or backlog of items waiting to enter it; not the stage with the longest average task time, the most hand-offs, the newest redesign or the most stressed team.",
+      "Locate the delay before optimising: is it the model or the human steps around it (review, approval, hand-offs)? A faster model or a shorter prompt does not help if people are the wait.",
+      "Claude can help diagnose: walk it through each stage and ask for inefficiencies, unnecessary hand-offs and diagnostic questions, then check its findings against operational data; people keep the decisions.",
+      "Chaining a task into separate steps lets you inspect intermediate outputs and branch; a recurring pipeline also needs a consistent input schema and a person validating computed figures, because a sandboxed run does not prove the business logic is right."
+     ],
+     "tip": "'Which metric most reliably pinpoints the bottleneck' is answered by queue length or backlog; average processing time, felt time pressure, hand-off count and recency are the distractors. Ordering stems start with 'document the current workflow'.",
+     "diagram": "flowchart LR\n  A[Document stages and owners] --> B[Measure the queue at each stage]\n  B --> C[Fix the stage with the biggest queue]\n  C --> D[Pilot with a small group]\n  D --> E[Roll out and record]",
+     "video": null,
+     "source": {
+      "title": "Prompting best practices: chain complex prompts",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices#chain-complex-prompts"
+     }
+    },
+    {
+     "objective": "Optimize context management by filtering and prioritizing relevant information from large reference materials to improve Claude efficiency.",
+     "title": "Filter and structure what goes into context",
+     "gist": "Context is finite working memory: send only the relevant parts of large reference material, label them clearly, and restart a degraded chat from a verified summary.",
+     "points": [
+      "Filter first: for three long manuals and one question, include only the applicable sections of each; whole documents 'to be safe' crowd out the analysis, and leaving the sources out invites invented guidance.",
+      "Structure what remains: with long inputs (20k+ tokens) put the documents at the top and the question after them, wrap each in labelled tags or visible dividers, and ask Claude to quote the relevant passages first.",
+      "Prioritise and prune: drop whole email chains, duplicated reference text and unused Project files; keep Project instructions short and general, and task-specific instructions in the chat.",
+      "Let the product filter: Projects use retrieval (RAG) so only relevant content is loaded; switch off extended thinking, connectors and web search you do not need, and use a lower effort level for routine tasks.",
+      "A long chat where Claude mixes up details, slows down and overlooks recent corrections is overloaded: ask for a summary of the current state, check it, and start a new chat from it; resetting the account is not the fix."
+     ],
+     "tip": "Context stems reward the smallest sufficient input: relevant sections only, labelled and separated. 'Include everything', feeding fragments across chats or dropping the sources are the distractors; a degraded long chat is fixed by summarise, verify, restart.",
+     "diagram": "flowchart LR\n  A[Large reference material] --> B[Keep only the relevant sections]\n  B --> C[Label and separate each source]\n  C --> D[Put the question after the documents]\n  D --> E{Chat getting dense?}\n  E -->|Yes| F[Summarise, verify, start fresh]",
+     "video": {
+      "id": "-QVoIxEpFkM",
+      "title": "What is a Context Window? Unlocking LLM Secrets",
+      "channel": "IBM Technology",
+      "min": 12
+     },
+     "source": {
+      "title": "How do usage and length limits work?",
+      "url": "https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work"
+     }
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can find and fix what is wrong with a Claude workflow in a disciplined order: measure first, isolate one cause, change one thing, and know when to stop or escalate.",
+    "must_know": [
+     "Optimise in order: map the workflow, record baseline quality, duration and cost, find the stage with the biggest queue, fix it, pilot with a small group, then roll out and document.",
+     "Diagnose in order: pinpoint the shortfall, compare prompt with output, hypothesise one component, change one thing, record the cause and fix.",
+     "Feedback loop: specific comments, one or two targeted changes, re-run and compare with the last round; revise only what was flagged.",
+     "Regression or drift: establish what changed (inputs, configuration, knowledge) and audit Project instructions and documents before rebuilding or switching models.",
+     "Symptom to component: missed item, enumerate it; wrong terms or format, supply glossary and example; generic answer, add context; many rules half-followed, group, rank or split.",
+     "Plateau (nine rounds, last five flat): pivot or escalate to manual review; if every edit makes it worse, return to the last good version.",
+     "Context: send the relevant sections only, labelled and separated; restart a degraded long chat from a verified summary."
+    ],
+    "traps": [
+     "Rewriting the prompt, upgrading the model or rebuilding the Project before establishing what changed or what is actually slow.",
+     "Calling the stage with the longest task time, the most hand-offs or the most stress the bottleneck, instead of the one with the biggest backlog.",
+     "Pasting whole manuals 'to be safe', or iterating until perfect when gains have stalled."
+    ]
+   },
+   "cards": [
+    {
+     "q": "Before redesigning an established Claude workflow, which two assessments must you complete first?",
+     "a": "Baseline metrics from recent runs (quality, duration, cost), then an analysis of which steps are the biggest bottlenecks. Announcing, rollout and training come later."
+    },
+    {
+     "q": "Correct sequence for streamlining a team process that uses Claude?",
+     "a": "Document the current workflow, find the constraint by measuring, fix it, pilot with a small group, then roll out and record the changes."
+    },
+    {
+     "q": "Which metric most reliably pinpoints the bottleneck in a multi-stage approval workflow?",
+     "a": "The stage with the largest queue or backlog of waiting items; not the longest average task time, most hand-offs, newest stage or reported stress."
+    },
+    {
+     "q": "Output quality is acceptable but the process is too slow. What do you examine first?",
+     "a": "Whether the delay is the model or the human steps around it (review, approvals, hand-offs), before swapping the model or shortening the prompt."
+    },
+    {
+     "q": "What makes iterative refinement of Claude output systematic?",
+     "a": "Specific observations after each run, one or two targeted prompt changes and a comparison with the previous round; revise only what was flagged."
+    },
+    {
+     "q": "Diagnostic order for an output that missed expectations?",
+     "a": "Pinpoint the deficiency, compare prompt and output, hypothesise the component, change one thing and test it, then document the cause and fix."
+    },
+    {
+     "q": "A reliable workflow turns off-target, or a Project drifts from current standards. First step?",
+     "a": "Establish what changed (inputs, configuration, knowledge) and audit the Project's instructions and documents; do not rewrite, switch models or rebuild yet."
+    },
+    {
+     "q": "A user reports a wrong Claude answer you cannot reproduce. What do you need first?",
+     "a": "The exact prompt, inputs and configuration they used, plus Claude's reply; reproduction depends on the exact conditions."
+    },
+    {
+     "q": "A prompt was refined nine times and the last five rounds showed no gain. Most sound next step?",
+     "a": "Recognise diminishing returns: stop iterating and pivot to another approach or escalate to manual or expert review; do not accept it blindly or loop on."
+    },
+    {
+     "q": "Each prompt edit pushes the output further from the target format. What now?",
+     "a": "Return to the most recent version that came closest and make small, targeted adjustments from there; do not restart blind or make several large edits."
+    },
+    {
+     "q": "Claude answers two of four required questions and omits the fourth. Which prompt component needs revision?",
+     "a": "The task instructions: list all four questions explicitly and state that each requires a response."
+    },
+    {
+     "q": "Output is sound but its terminology differs from the team's standard. Most direct fix?",
+     "a": "Supply the team's vocabulary reference and instruct Claude to use only those terms throughout the response."
+    },
+    {
+     "q": "A dozen rules are half-followed, while a twelve-step split gives an incoherent result. Fix for each?",
+     "a": "Rule overload: group, rank by priority or split into phases. Over-decomposition: merge related steps into larger thematic blocks."
+    },
+    {
+     "q": "Three long manuals, but only some provisions matter. Most efficient use of context?",
+     "a": "Include only the applicable sections from each manual, drop extraneous material and separate sources with labels or dividers."
+    },
+    {
+     "q": "In a long chat Claude mixes up details, slows down and misses recent corrections. What do you do?",
+     "a": "Ask Claude to summarise the current state, verify the summary, then start a fresh chat from it."
+    }
+   ]
   }
  ]
 }
