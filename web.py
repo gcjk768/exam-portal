@@ -52,11 +52,25 @@ OWNER_KEY = os.environ.get("TD_UNLOCK_KEY", "")   # open /?td=<key> once on a br
 PUBLIC_HIDDEN = {x.strip() for x in os.environ.get("PUBLIC_HIDDEN_SOURCES", "Tutorials Dojo").split(",") if x.strip()}   # paid question sources: shown on LAN/tailnet only, never on the public Funnel link
 # key (= the bot's logger name) -> short, full name, real exam length, real exam minutes
 META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
+        "ccaof": ("CCAO-F", "Claude Certified Associate - Foundations", 60, 120),
+        "ccdvf": ("CCDV-F", "Claude Certified Developer - Foundations", 53, 120),
+        "ccarf": ("CCAR-F", "Claude Certified Architect - Foundations", 60, 120),
         "sapc03": ("SAP-C03", "AWS Solutions Architect Professional", 75, 180),
         "aipc01": ("AIP-C01", "AWS Generative AI Developer Professional", 75, 180),
         "cka": ("CKA", "Certified Kubernetes Administrator", 17, 120),   # ~17 hands-on tasks in 120 min
         "gitlabci": ("GitLab CI/CD", "GitLab Certified CI/CD Associate", 50, 75),
         "tfassoc": ("Terraform", "HashiCorp Terraform Associate (003)", 57, 60)}
+
+
+# Which loaded exams each audience sees (the owner, 2026-10-23): the public link shows the Claude certifications, the owner's
+# link shows the exams the owner is taking. Empty = every loaded exam (local dev).
+PUBLIC_EXAMS = {x.strip() for x in os.environ.get("PUBLIC_EXAMS", "").split(",") if x.strip()}
+PRIVATE_EXAMS = {x.strip() for x in os.environ.get("PRIVATE_EXAMS", "").split(",") if x.strip()}
+
+
+def visible(key: str, public: bool) -> bool:
+    allowed = PUBLIC_EXAMS if public else PRIVATE_EXAMS
+    return not allowed or key in allowed
 
 
 def hidden_source(src: str | None) -> bool:
@@ -778,7 +792,8 @@ app = FastAPI(title="Exam Portal", docs_url=None, redoc_url=None, lifespan=lifes
 
 
 def exam_or_404(key: str) -> Exam:
-    if key not in EXAMS:
+    """The exam, if it is loaded and this audience may see it (the middleware sets VISITOR for public requests)."""
+    if key not in EXAMS or not visible(key, VISITOR.get() is not None):
         raise HTTPException(404, "unknown exam")
     return EXAMS[key]
 
@@ -854,6 +869,8 @@ def api_access(req: Request):
 def api_exams(req: Request):
     out, pub = [], is_public(req)
     for e in EXAMS.values():
+        if not visible(e.key, pub):
+            continue
         c = e.coverage(e.mod.load_state(), pub)
         st = e.mod.load_state()
         out.append({"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,

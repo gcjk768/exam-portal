@@ -27,6 +27,9 @@ html[data-exam="aipc01"] { --accent: #c9a24a; --accent-ink: #1a1507; }
 html[data-exam="cka"] { --accent: #6f8fe8; --accent-ink: #0c1024; }
 html[data-exam="gitlabci"] { --accent: #e8793e; --accent-ink: #1d0e05; }
 html[data-exam="tfassoc"] { --accent: #a68cf0; --accent-ink: #150e2a; }
+html[data-exam="ccaof"] { --accent: #86c17a; --accent-ink: #0f1a0d; }
+html[data-exam="ccdvf"] { --accent: #e58ab4; --accent-ink: #1f0d16; }
+html[data-exam="ccarf"] { --accent: #8fcfe6; --accent-ink: #0b1a20; }
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #f3f1ea; --bg-2: #ebe9e1; --surface: #ffffff; --surface-2: #f7f5ee; --line: #dcd9ce; --line-2: #cfccbf;

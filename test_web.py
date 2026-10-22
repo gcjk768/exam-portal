@@ -115,6 +115,15 @@ if tdq:
     assert c.get(f"/api/ccarp/question/{tdq[0]}").json()["tag"] == "TD" and c.get("/api/ccarp/question/" + next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") != "Tutorials Dojo")).json()["tag"] == ""
     web.OWNER_KEY = ""
 
+# per-audience exam lists: PUBLIC_EXAMS / PRIVATE_EXAMS (env) filter /api/exams and every /api/{exam} route
+web.PUBLIC_EXAMS, web.PRIVATE_EXAMS = {"ccarp"}, {"ccarp", "sapc03", "aipc01", "cka"}
+assert [e["key"] for e in c.get("/api/exams", headers=pub).json()] == ["ccarp"]
+assert c.get("/api/sapc03/home", headers=pub).status_code == 404 and c.get("/api/sapc03/home").status_code == 200
+assert c.get("/api/ccarp/home", headers=pub).status_code == 200
+web.PRIVATE_EXAMS = {"ccarp"}
+assert c.get("/api/sapc03/home").status_code == 404
+web.PUBLIC_EXAMS, web.PRIVATE_EXAMS = set(), set()
+
 # exams + home
 ex = c.get("/api/exams").json()
 assert {"ccarp", "sapc03", "aipc01", "cka"} <= {e["key"] for e in ex}, ex
