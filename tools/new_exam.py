@@ -21,19 +21,19 @@ TPL = PROJ / "CCAR-P"
 
 EXAMS = {
     "ccaof": dict(folder="CCAO-F", short="CCAO-F", name="Claude Certified Associate - Foundations", n=60, minutes=120, pass_=720,
-                  bank=376, accent="#86c17a",
+                  bank=376, accent="#86c17a", slug="associate-foundations",
                   weights={"Output Evaluation and Validation": 21, "Workflow Integration and Solution Design": 16,
                            "Governance, Risk, and Responsible Use": 15, "Prompting and Task Execution": 14, "Product and Model Selection": 12,
                            "Configuration and Knowledge Management": 12, "Troubleshooting and Optimization": 10},
                   arch={"Workflow Integration and Solution Design"}),
     "ccdvf": dict(folder="CCDV-F", short="CCDV-F", name="Claude Certified Developer - Foundations", n=53, minutes=120, pass_=720,
-                  bank=731, accent="#e58ab4",
+                  bank=731, accent="#e58ab4", slug="developer-foundations",
                   weights={"Applications and Integration": 33.1, "Model Selection and Optimization": 16.8, "Agents and Workflows": 14.7,
                            "Prompt and Context Engineering": 11, "Tools and MCPs": 10.6, "Security and Safety": 8.1, "Claude Code": 3.1,
                            "Eval, Testing, and Debugging": 2.6},
                   arch={"Applications and Integration", "Agents and Workflows", "Tools and MCPs"}),
     "ccarf": dict(folder="CCAR-F", short="CCAR-F", name="Claude Certified Architect - Foundations", n=60, minutes=120, pass_=720,
-                  bank=516, accent="#8fcfe6",
+                  bank=516, accent="#8fcfe6", slug="architect-foundations",
                   weights={"Agentic Architecture & Orchestration": 27, "Claude Code Configuration & Workflows": 20,
                            "Prompt Engineering & Structured Output": 20, "Tool Design & MCP Integration": 18, "Context Management & Reliability": 15},
                   arch={"Agentic Architecture & Orchestration", "Tool Design & MCP Integration"}),
@@ -96,6 +96,33 @@ def fetch() -> list[dict]:
     return rows
 
 
+SLUG = "{slug}"                                   # this exam's key in the Amey-Thakur all-certs bank
+SOURCES = Path(__file__).parent / "sources" / "online"
+
+
+def amey() -> list[dict]:
+    """Amey-Thakur/CLAUDE-CERTIFICATIONS (MIT): 80 items per certification (35 practice + 3 mocks of 15), official domain names.
+    Reads sources/online/amey_question_bank_all_certs.json when the file is there (not uploaded to the NAS: the rows are in the CSV)."""
+    f = SOURCES / "amey_question_bank_all_certs.json"
+    if not f.exists():
+        return []
+    rows = []
+    for q in json.loads(f.read_text(encoding="utf-8"))["questions"]:
+        if q["exam"] != SLUG:
+            continue
+        tail = q["id"].split(SLUG + "-", 1)[1]                          # practice-12 / mock2-7
+        id_ = "AMEY-" + (tail.split("-")[1] if tail.startswith("practice") else "M" + tail[4:])
+        rows.append({{"id": id_, "domain": q["domain"].strip(), "question": q["question"].strip(),
+                     "options": "\\n".join(f"{{k}}. {{q['options'][k].strip()}}" for k in sorted(q["options"])),
+                     "correct": ",".join(sorted(str(q["answer"]).replace(" ", "").split(","))),
+                     "explanation": q.get("rationale", "").strip(), "source": "Amey-Thakur/CLAUDE-CERTIFICATIONS (MIT)"}})
+    return rows
+
+
+def _norm(stem: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", stem.lower()).strip()
+
+
 def load() -> list[dict]:
     if not OUT.exists():
         return []
@@ -104,23 +131,28 @@ def load() -> list[dict]:
 
 
 def refresh() -> dict:
-    """Fetch the page, append rows whose id is new, keep everything else. Same report shape as the CCAR-P bot expects."""
+    """Every source in turn: append rows with a new id and a new stem, keep everything else. Same report shape as the CCAR-P bot."""
     rows = load()
     ids = {{r["id"] for r in rows}}
+    stems = {{_norm(r["question"]) for r in rows}}
     report = {{"before": len(rows), "added": {{}}, "dupes": 0, "failed": {{}}}}
-    try:
-        fetched = fetch()
-    except Exception as exc:                       # network / layout change: keep the bank we have
-        report["failed"]["claudearchitects"] = f"{{type(exc).__name__}}: {{str(exc)[:80]}}"
-        fetched = []
-    added = 0
-    for r in fetched:
-        if r["id"] in ids or not r["correct"] or r["options"].count("\\n") < 1:
+    for name, source in (("claudearchitects", fetch), ("amey", amey)):
+        try:
+            fetched = source()
+        except Exception as exc:                   # network / layout change: keep the bank we have
+            report["failed"][name] = f"{{type(exc).__name__}}: {{str(exc)[:80]}}"
             continue
-        ids.add(r["id"])
-        rows.append(r)
-        added += 1
-    report["added"]["claudearchitects"] = added
+        added = 0
+        for r in fetched:
+            if not r["correct"] or r["options"].count("\\n") < 1:
+                continue
+            if r["id"] in ids or _norm(r["question"]) in stems:
+                report["dupes"] += r["id"] not in ids
+                continue
+            ids.add(r["id"]); stems.add(_norm(r["question"]))
+            rows.append(r)
+            added += 1
+        report["added"][name] = added
     OUT.parent.mkdir(exist_ok=True)
     tmp = OUT.with_suffix(".tmp")
     with tmp.open("w", newline="", encoding="utf-8") as f:
@@ -222,7 +254,11 @@ def generate(key: str) -> None:
     (dst / "data").mkdir(parents=True, exist_ok=True)
     (dst / "assets").mkdir(exist_ok=True)
     (dst / "bot.py").write_text(gen_bot(key, e), encoding="utf-8")
-    (dst / "scrape.py").write_text(SCRAPE.format(short=e["short"], key=key), encoding="utf-8")
+    (dst / "scrape.py").write_text(SCRAPE.format(short=e["short"], key=key, slug=e["slug"]), encoding="utf-8")
+    (dst / "sources" / "online").mkdir(parents=True, exist_ok=True)
+    amey_src = TPL / "sources" / "online" / "amey_question_bank_all_certs.json"
+    if amey_src.exists():                                      # the MIT all-certs bank: 80 items for each Foundation exam
+        shutil.copy(amey_src, dst / "sources" / "online" / amey_src.name)
     (dst / "Dockerfile").write_text((TPL / "Dockerfile").read_text(encoding="utf-8")
                                     .replace("COPY bot.py scrape.py online_parsers.py ./", "COPY bot.py scrape.py ./"), encoding="utf-8")
     (dst / "compose.yaml").write_text((TPL / "compose.yaml").read_text(encoding="utf-8").replace("ccarp", key), encoding="utf-8")

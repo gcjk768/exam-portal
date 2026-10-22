@@ -20,8 +20,11 @@
   // ── Exams ─────────────────────────────────────────────────────────────────
   async function init() {
     state.exams = await (await fetch("/api/exams")).json();
-    state.public = (await (await fetch("/api/access")).json()).public;   // public link: no Claude, no reset
+    const access = await (await fetch("/api/access")).json();
+    state.public = access.public;                                        // public visitor: no Claude, no reset, nothing recorded
+    state.shared = access.shared;                                        // the shared site (public name): no personal numbers, for anyone
     document.documentElement.dataset.public = state.public ? "1" : "";
+    document.documentElement.dataset.shared = state.shared ? "1" : "";
     const sc = $("#scope"); sc.hidden = false; sc.innerHTML = state.public ? `${ic("globe")}Public view` : `${ic("lock-simple")}Private`; sc.dataset.public = state.public ? "1" : "";
     if (!state.exams.some(e => e.key === state.exam)) state.exam = state.exams[0].key;
     renderSwitch();
@@ -67,12 +70,13 @@
     $("#door-study").textContent = h.has_study
       ? `Reading list by domain and ${h.study_cards} study cards (${h.studied} done)`
       : "Reading list by domain, official guide and free courses";
-    $("#door-quiz-d").textContent = h.pending ? `Resume ${h.pending.question.id}, still unanswered`
+    $("#door-quiz-d").textContent = state.shared ? `${h.coverage.total} ${unit} with explanations, unseen first`
+      : h.pending ? `Resume ${h.pending.question.id}, still unanswered`
       : h.progress ? (h.mode === "tasks" ? `Scenario tasks: ${h.progress.tasks.total - h.progress.tasks.seen} left to do`
                                          : `Multiple choice first: ${h.progress.mcq.total - h.progress.mcq.seen} left, then ${h.progress.tasks.total} scenario tasks`)
       : `${h.coverage.total - h.coverage.seen} ${unit} you have not seen yet`;
     $("#door-exam-d").textContent = `${h.exam_n} ${unit} in ${h.exam_minutes} min, scored at the end`;
-    if (!state.public) renderPlan(h.plan);
+    if (!state.public && !state.shared) renderPlan(h.plan);
   }
 
   // ── Plan (Home): exam date, today's targets, focus domains; the quiz bar shows the same numbers while you work ──

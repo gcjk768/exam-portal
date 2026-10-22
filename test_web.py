@@ -51,14 +51,16 @@ def events(resp):
 
 # public (Tailscale Funnel) link: no Claude, no reset; local keeps both
 pub = {"Tailscale-Funnel-Request": "?1"}
-assert c.get("/api/access").json() == {"public": False} and c.get("/api/access", headers=pub).json() == {"public": True}
+assert c.get("/api/access").json()["public"] is False and c.get("/api/access", headers=pub).json()["public"] is True
 for d in ("report", "refresh", "e|x|A"):
     ev = events(c.post("/api/ccarp/act", json={"data": d}, headers=pub))
     assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
 
 assert 'data-public="1"' in c.get("/", headers=pub).text and 'data-public="1"' not in c.get("/").text
+assert 'data-shared="1"' in c.get("/", headers=pub).text and 'data-shared' not in c.get("/").text   # the shared site hides personal numbers
+assert c.get("/api/access", headers=pub).json() == {"public": True, "shared": True} and c.get("/api/access").json() == {"public": False, "shared": False}
 assert c.get("/static/app.css").headers["cache-control"] == "no-cache"
-assert c.get("/api/access", headers={"Host": "owner-cck-nas.tailc4f63b.ts.net:10000"}).json() == {"public": True}   # tailnet device opening the public name
+assert c.get("/api/access", headers={"Host": "owner-cck-nas.tailc4f63b.ts.net:10000"}).json()["public"] is True   # tailnet device opening the public name
 qq = c.get(f"/api/ccarp/question/{web.EXAMS['ccarp'].mod.QUESTIONS and next(iter(web.EXAMS['ccarp'].mod.QUESTIONS))}").json()
 assert qq["correct"] and qq["options"] and "explanation" in qq, qq
 hid = [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if web.hidden_source(q.get("source"))]   # paid sources: TD + the Udemy mock sets
@@ -110,8 +112,8 @@ if tdq:
     assert c.get("/api/exams", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(hid)
     assert c.get("/api/exams?td=wrong", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"] - len(hid)
     assert c.get("/api/exams?td=k3y-for-test", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"]
-    assert c.get("/api/access?td=k3y-for-test", headers=pub).json() == {"public": False}   # key holder = owner: Claude/reset allowed
-    assert c.get("/api/access?td=wrong", headers=pub).json() == {"public": True}
+    assert c.get("/api/access?td=k3y-for-test", headers=pub).json()["public"] is False   # key holder = owner: Claude/reset allowed
+    assert c.get("/api/access?td=wrong", headers=pub).json()["public"] is True
     assert c.get(f"/api/ccarp/question/{tdq[0]}").json()["tag"] == "TD" and c.get("/api/ccarp/question/" + next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") != "Tutorials Dojo")).json()["tag"] == ""
     web.OWNER_KEY = ""
 
@@ -124,7 +126,7 @@ web.PRIVATE_EXAMS = {"ccarp"}
 assert c.get("/api/sapc03/home").status_code == 404
 web.OWNER_KEY = "k3y-for-test"                                     # the owner key on the public name keeps the public list (the host decides)
 assert [e["key"] for e in c.get("/api/exams?td=k3y-for-test", headers=pub).json()] == ["ccarp"]
-assert c.get("/api/access?td=k3y-for-test", headers=pub).json() == {"public": False}
+assert c.get("/api/access?td=k3y-for-test", headers=pub).json()["public"] is False
 web.OWNER_KEY = ""
 web.PUBLIC_EXAMS, web.PRIVATE_EXAMS = set(), set()
 

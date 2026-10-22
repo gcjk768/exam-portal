@@ -863,7 +863,9 @@ class ExamSubmit(BaseModel):
 
 @app.get("/api/access")
 def api_access(req: Request):
-    return {"public": is_public(req)}
+    """public: no Claude/admin and nothing recorded (owner key lifts it); shared: came in through the public name, so the
+    page shows no personal numbers to anyone (the site is shared by many people)."""
+    return {"public": is_public(req), "shared": funnel(req)}
 
 
 @app.get("/api/exams")
@@ -1098,6 +1100,8 @@ def index(req: Request):
     page = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     if is_public(req):                         # set server-side too, so the public view never depends on cached JS
         page = page.replace("<html", '<html data-public="1"', 1)
+    if funnel(req):                            # the shared site: no personal numbers for anyone
+        page = page.replace("<html", '<html data-shared="1"', 1)
     return HTMLResponse(page, headers={"Cache-Control": "no-store"})
 
 
