@@ -119,6 +119,13 @@ def amey() -> list[dict]:
     return rows
 
 
+def community() -> list[dict]:
+    """Open-licensed community banks from GitHub, normalised by exam-portal/tools/import_banks.py (MIT / Apache / CC BY repos
+    only; each row names its repo and licence in `source`). Rows are already de-duplicated against the bank they were built on."""
+    f = SOURCES / "community_2026-10-23.json"
+    return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+
+
 def _norm(stem: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", stem.lower()).strip()
 
@@ -136,7 +143,7 @@ def refresh() -> dict:
     ids = {{r["id"] for r in rows}}
     stems = {{_norm(r["question"]) for r in rows}}
     report = {{"before": len(rows), "added": {{}}, "dupes": 0, "failed": {{}}}}
-    for name, source in (("claudearchitects", fetch), ("amey", amey)):
+    for name, source in (("claudearchitects", fetch), ("amey", amey), ("community", community)):
         try:
             fetched = source()
         except Exception as exc:                   # network / layout change: keep the bank we have

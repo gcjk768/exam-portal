@@ -44,7 +44,7 @@ and open `http://<host>:3003`. The image is the bots' image (Python, Claude Code
 | `static/index.html`, `app.css`, `app.js`, `favicon.svg` | The site. No build step. Phosphor icons and the fonts come from a CDN. |
 | `study/<exam>.json` | Per exam: `start` links; `domains` with a summary (what you need to know), study notes (gist, points, exam tip, Mermaid diagram, video, source), flashcards (`cards`) and the reading list. |
 | `static/icons/` | Official product icons used in the diagrams; rebuilt by `python tools/build_icons.py`. |
-| `tools/` | `check_study.py` (validate a study JSON), `merge_cards.py` (merge agent-written flashcards), `new_exam.py` (generate a Claude-certification bot folder from the CCAR-P template with its bank from claudearchitects.org). |
+| `tools/` | `check_study.py` (validate a study JSON), `merge_cards.py` (merge agent-written flashcards), `new_exam.py` (generate a Claude-certification bot folder from the CCAR-P template with its bank from claudearchitects.org and the MIT all-certs bank), `import_banks.py` (import open-licensed community banks found on GitHub: answer resolution, domain classification, de-duplication). |
 | `test_web.py`, `test_plan.py` | `python test_web.py`: streaming, grading, scheduler, plan, decoder, flashcards, study JSON, report, exam mode. |
 | `Dockerfile`, `compose.yaml`, `web.env.example` | The container. |
 | `docs/superpowers/` | Design specs and plans. |
@@ -55,6 +55,6 @@ Two ways in, each with its own exam list (`PRIVATE_EXAMS` / `PUBLIC_EXAMS` in `c
 
 ## License
 
-MIT for the code and notes.
+MIT for the code and notes. Question banks: each row's `source` names where it came from; the Claude-certification banks mix claudearchitects.org (free community items), the MIT Amey-Thakur all-certs bank and open-licensed (MIT / Apache / CC BY) community repos on GitHub, imported with `tools/import_banks.py`. They are community or AI-written practice items, not real exam questions.
 
 Icons in `static/icons/` belong to their owners and keep their own terms: AWS Architecture Icons (Amazon Web Services; `aws-*`), Kubernetes icons (The Kubernetes Authors, github.com/kubernetes/community, Apache-2.0 or CC-BY-4.0; `k8s-*`), and product logos from the Iconify `logos` set (CC0; trademarks of their owners). They are used only to label diagrams. UI icons are [Phosphor Icons](https://phosphoricons.com) (MIT).
