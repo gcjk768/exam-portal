@@ -35,6 +35,7 @@
       <div class="pick-grid" id="pick-grid"></div>
     </div>
     <div class="leader" id="home-leader" hidden></div>
+    <div class="track-cta" id="track-cta" hidden><span>Save your progress to see your own score, study plan and whether you are ready for the exam.</span><button class="btn btn-accent" type="button" id="track-on">Save my progress</button></div>
     <div class="hero">
       <div class="hero-text">
         <p class="exam-name" id="home-name"></p>
@@ -233,19 +234,20 @@
         <button class="btn btn-danger js-reset" type="button"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i><span class="lbl">Reset progress</span></button>
       </div>
       <p class="muted small">Refresh reloads the question bank. Reset clears every answer for this exam, in Telegram too.</p>
+      <div class="row" id="track-off-row" hidden><button class="btn btn-danger" type="button" id="track-off">Stop saving and delete my progress</button></div>
     </div>
   </section>
 </main>
 
 <dialog id="lb-join" class="lb-join">
   <form method="dialog" id="lb-form">
-    <h3>Join the leaderboard?</h3>
-    <p>Compete on questions answered right on the first try. If you join, other visitors see the name you choose below and your counts. It can be a nickname, or your real name if you prefer. If you say no, nothing is kept about you.</p>
-    <label for="lb-name">Name shown on the board</label>
+    <h3>Save your progress?</h3>
+    <p>Saving keeps your answers on this site, tied to this browser, so you get your own score, study plan and an "are you ready for the exam?" check. Nobody else sees them. You can also join the public leaderboard by typing a name below: a nickname, or your real name if you prefer. Everyone with the link can see that name and your counts.</p>
+    <label for="lb-name">Name for the leaderboard (optional)</label>
     <input id="lb-name" maxlength="24" autocomplete="off" placeholder="Nickname or real name">
     <p class="lb-err small" id="lb-err" hidden></p>
-    <div class="row"><button class="btn btn-accent" type="submit" value="join">Join</button><button class="btn" type="button" id="lb-no">No thanks</button></div>
-    <p class="muted small">You can leave any time from the Leaderboard page, which deletes your name and counts.</p>
+    <div class="row"><button class="btn btn-accent" type="submit" value="join">Save</button><button class="btn" type="button" id="lb-no">No thanks</button></div>
+    <p class="muted small">If you say no, nothing is kept about you. You can stop any time: Stats deletes your saved progress, and the Leaderboard page deletes your name and counts.</p>
   </form>
 </dialog>
 

@@ -27,6 +27,7 @@ import logging
 import os
 import random
 import secrets
+import shutil
 import time
 from collections import defaultdict, deque
 from contextvars import ContextVar
@@ -110,6 +111,19 @@ def quiet_for_public(fn):
     return lambda *a, **k: None if VISITOR.get() else fn(*a, **k)
 
 
+TRACK_DIR = Path(os.environ.get("TRACKER_DIR", ROOT / "data" / "tracker"))   # opt-in per-visitor progress: <pid>/on marks consent, <pid>/<exam>.json is the state
+
+
+def track_path(pid: str, key: str) -> Path:
+    return TRACK_DIR / pid / f"{key}.json"
+
+
+def tracked() -> bool:
+    """This request is a public visitor who chose to save their progress."""
+    pid = VISITOR.get()
+    return bool(pid) and (TRACK_DIR / pid / "on").exists()
+
+
 class Exam:
     def __init__(self, key: str, bot_dir: str, vault: str | None):
         self.key, self.dir = key, Path(bot_dir)
@@ -122,7 +136,7 @@ class Exam:
         if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks
             sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
         self.mod.vault_log = quiet_for_public(vault_writer(vault))
-        self._own_state(self.mod)
+        self._own_state(self.mod, key)
         self.mod.PREFER_MERMAID = True                         # tutor draws Mermaid here (icons are added in the browser)
         png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
         self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
@@ -140,12 +154,30 @@ class Exam:
                 self.cards[cd["key"]] = cd
 
     @staticmethod
-    def _own_state(mod) -> None:
-        """Public visitors are graded but nothing is recorded (the owner, 2026-10-23): they read an empty state and their
-        writes are dropped, so the owner's state.json, schedule and vault never see them. The bot code is unchanged."""
+    def _own_state(mod, key: str) -> None:
+        """Public visitors are graded but nothing is recorded unless they opted in to the tracker (the owner, 2026-10-23): then they
+        read and write their own file (TRACK_DIR/<pid>/<exam>.json); otherwise an empty state and dropped writes. The owner's
+        state.json, schedule and vault never see them. The bot code is unchanged."""
         load, save = mod.load_state, mod.save_state
-        mod.load_state = lambda: {"ok": {}, "bad": {}} if VISITOR.get() else load()
-        mod.save_state = lambda state: None if VISITOR.get() else save(state)
+
+        def load_own():
+            pid = VISITOR.get()
+            if not pid:
+                return load()
+            try:
+                return json.loads(track_path(pid, key).read_text(encoding="utf-8")) if tracked() else {"ok": {}, "bad": {}}
+            except (OSError, ValueError):
+                return {"ok": {}, "bad": {}}
+
+        def save_own(state):
+            pid = VISITOR.get()
+            if not pid:
+                return save(state)
+            if tracked():
+                tmp = track_path(pid, key).with_suffix(".tmp")
+                tmp.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+                tmp.replace(track_path(pid, key))
+        mod.load_state, mod.save_state = load_own, save_own
 
     @staticmethod
     def _load(name: str, path: Path):
@@ -534,7 +566,7 @@ async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public:
     head = (f"{mod.TITLE['ok']} <b>CORRECT</b> · {html.escape(q['correct'])}" if right else
             f"{mod.TITLE['bad']} <b>WRONG</b> · you picked <code>{html.escape(','.join(sorted(letters)))}</code>, "
             f"answer <code>{html.escape(q['correct'])}</code>")
-    if not public:                                        # visitors are not scheduled: nothing comes back
+    if not public or tracked():                           # visitors are not scheduled, unless they save their progress
         head += f" · {'guessed, ' if guess and right else ''}back in {when(mins)}"
     await rec.send_message(f"{head}\n\n{html.escape(q['explanation'])}", reply_markup=mod.after_kb(q, letters))
 
@@ -942,7 +974,7 @@ class ExamSubmit(BaseModel):
 def api_access(req: Request):
     """public: no Claude/admin and nothing recorded (owner key lifts it); shared: came in through the public name, so the
     page shows no personal numbers to anyone (the site is shared by many people)."""
-    return {"public": is_public(req), "shared": funnel(req)}
+    return {"public": is_public(req), "shared": is_public(req) and not tracked(), "track": tracked()}
 
 
 @app.get("/api/exams")
@@ -963,7 +995,7 @@ def api_exams(req: Request):
 def plan_of(e: Exam, state: dict, public: bool) -> dict:
     m = e.mod.metrics(state, datetime.now(SGT))
     return plan.plan(state, e.pool(state, public) or e.questions(public), getattr(e.mod, "WEIGHTS", {}), m["by_dom"],
-                     datetime.now(SGT), 0 if public else m["score"], e.mod.PASS)
+                     datetime.now(SGT), 0 if public and not tracked() else m["score"], e.mod.PASS)
 
 
 @app.get("/api/{key}/home")
@@ -979,11 +1011,12 @@ async def api_home(key: str, req: Request):
         if q["letters"]:
             prefetch(e, q, pub)                            # asked in Telegram or before a restart: decode it now
     last = state.get("last") or {}
-    if pub:                                                # the owner's score, readiness and week are not for the public link
+    nonum = pub and not tracked()                          # the owner's numbers are not for the public link; a visitor who saves their progress sees their own
+    if nonum:
         m = {**m, "score": 0, "week_n": 0, "week_ok": 0}
     return {"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,
             "mode": e.mode(state), "progress": e.progress(state) if e.has_tasks else None,
-            "coverage": e.coverage(state, pub), "score": m["score"], "pass": e.mod.PASS, "verdict": "" if pub else e.mod.verdict(m),
+            "coverage": e.coverage(state, pub), "score": m["score"], "pass": e.mod.PASS, "verdict": "" if nonum else e.mod.verdict(m),
             "week": {"n": m["week_n"], "ok": m["week_ok"]}, "pending": pending, "plan": plan_of(e, state, pub),
             "last": {"id": last.get("id"), "has_teach": bool(last.get("teach"))} if last else None,
             "study_cards": len(getattr(e.mod, "NOTES", {}) or {}),
@@ -1125,6 +1158,25 @@ async def api_exam_submit(key: str, body: ExamSubmit, req: Request):
         return await exam_submit(e, body.answers, body.minutes_used, is_public(req))
 
 
+@app.post("/api/track/on")
+def api_track_on(req: Request):
+    pid = VISITOR.get()
+    if not pid:
+        raise HTTPException(403, "Your own links already keep your progress.")
+    (TRACK_DIR / pid).mkdir(parents=True, exist_ok=True)
+    (TRACK_DIR / pid / "on").write_text(datetime.now(SGT).isoformat(timespec="minutes"), encoding="utf-8")
+    return {"track": True}
+
+
+@app.post("/api/track/off")
+def api_track_off(req: Request):
+    pid = VISITOR.get()
+    if not pid:
+        raise HTTPException(403, "Your own links already keep your progress.")
+    shutil.rmtree(TRACK_DIR / pid, ignore_errors=True)       # every saved answer is deleted
+    return {"track": False}
+
+
 class Join(BaseModel):
     name: str
 
@@ -1243,8 +1295,8 @@ def index(req: Request):
     page = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     if is_public(req):                         # set server-side too, so the public view never depends on cached JS
         page = page.replace("<html", '<html data-public="1"', 1)
-    if funnel(req):                            # the shared site: no personal numbers for anyone
-        page = page.replace("<html", '<html data-shared="1"', 1)
+    if is_public(req) and not tracked():
+        page = page.replace("<html", '<html data-shared="1"', 1)      # no personal numbers unless the visitor saves their progress
     return HTMLResponse(page, headers={"Cache-Control": "no-store"})
 
 

@@ -22,7 +22,8 @@
     state.exams = await (await fetch("/api/exams")).json();
     const access = await (await fetch("/api/access")).json();
     state.public = access.public;                                        // public visitor: no Claude, no reset, nothing recorded
-    state.shared = access.shared;                                        // the shared site (public name): no personal numbers, for anyone
+    state.shared = access.shared;                                        // no personal numbers: a public visitor who has not chosen to save their progress
+    state.track = access.track;                                          // a public visitor who saves their progress (own score, plan, readiness)
     document.documentElement.dataset.public = state.public ? "1" : "";
     document.documentElement.dataset.shared = state.shared ? "1" : "";
     const sc = $("#scope"); sc.hidden = false; sc.innerHTML = state.public ? `${ic("globe")}Public view` : `${ic("lock-simple")}Private`; sc.dataset.public = state.public ? "1" : "";
@@ -30,7 +31,7 @@
     renderSwitch();
     setExam(state.exam, false);
     route();
-    if (state.public && !localStorage.getItem("lb-asked")) $("#lb-join").showModal();   // ask once; "No thanks" is remembered and nothing is recorded
+    if (state.public && !state.track && !localStorage.getItem("lb-asked")) $("#lb-join").showModal();   // ask once; "No thanks" is remembered and nothing is recorded
   }
 
   // ── Leaderboard: opt-in; public visitors, and the owner for the public exams (web.py /api/board) ───────────────
@@ -44,7 +45,17 @@
   }
   $("#lb-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
-    if (await lbJoin($("#lb-name").value)) { $("#lb-join").close(); if (state.view === "board") loadBoard(); }
+    const err = $("#lb-err"), name = $("#lb-name").value.trim();
+    if (!state.public && !name) { err.textContent = "Type a name to join."; err.hidden = false; return; }
+    if (state.public && !(await fetch("/api/track/on", { method: "POST" })).ok) { err.textContent = "Could not save your progress."; err.hidden = false; return; }
+    if (name && !(await lbJoin(name))) return;
+    localStorage.setItem("lb-asked", "1"); location.reload();            // reload so the score, plan and readiness appear
+  });
+  $("#track-on").addEventListener("click", () => $("#lb-join").showModal());
+  $("#track-off").addEventListener("click", async (ev) => {
+    const b = ev.currentTarget;
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Click again to delete everything saved"; return; }
+    await fetch("/api/track/off", { method: "POST" }); await lbPost("leave"); localStorage.removeItem("lb-asked"); location.reload();
   });
   $("#lb-no").addEventListener("click", () => { localStorage.setItem("lb-asked", "1"); $("#lb-join").close(); });
   async function loadBoard() {
@@ -109,7 +120,7 @@
     const unit = h.tasks ? "tasks" : "questions";
     $("#home-name").textContent = h.name;
     $("#home-title").textContent = h.short;
-    $("#home-verdict").textContent = h.verdict.replace(/^[^\w]+/, "");
+    $("#home-verdict").textContent = h.verdict ? "Exam readiness: " + h.verdict.replace(/^[^\w]+/, "") : "";
     $("#ring-score").textContent = h.score;
     $("#ring-pass").textContent = h.pass;
     $("#ring-fill").style.strokeDashoffset = 326.7 * (1 - Math.min(h.score, 1000) / 1000);
@@ -125,7 +136,8 @@
                                          : `Multiple choice first: ${h.progress.mcq.total - h.progress.mcq.seen} left, then ${h.progress.tasks.total} scenario tasks`)
       : `${h.coverage.total - h.coverage.seen} ${unit} you have not seen yet`;
     $("#door-exam-d").textContent = `${h.exam_n} ${unit} in ${h.exam_minutes} min, scored at the end`;
-    if (!state.public && !state.shared) renderPlan(h.plan);
+    $("#track-cta").hidden = !(state.public && !state.track);
+    if (!state.shared) renderPlan(h.plan);
     renderPick(); showLeader();
   }
 
@@ -567,6 +579,7 @@
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   async function loadStats() {
+    $("#track-off-row").hidden = !(state.public && state.track);
     const h = await api("/home");
     $("#stats-summary").textContent = `${h.coverage.seen} of ${h.coverage.total} seen, ${h.coverage.right} right first time. Predicted ${h.score} of 1000, pass ${h.pass}. ${h.verdict.replace(/^[^\w]+/, "")}`;
     const box = $("#stats-bars"); box.innerHTML = "";

@@ -57,8 +57,8 @@ for d in ("report", "refresh", "e|x|A"):
     assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
 
 assert 'data-public="1"' in c.get("/", headers=pub).text and 'data-public="1"' not in c.get("/").text
-assert 'data-shared="1"' in c.get("/", headers=pub).text and 'data-shared' not in c.get("/").text   # the shared site hides personal numbers
-assert c.get("/api/access", headers=pub).json() == {"public": True, "shared": True} and c.get("/api/access").json() == {"public": False, "shared": False}
+assert 'data-shared="1"' in c.get("/", headers=pub).text and 'data-shared' not in c.get("/").text   # public visitors without the tracker see no personal numbers
+assert c.get("/api/access", headers=pub).json() == {"public": True, "shared": True, "track": False} and c.get("/api/access").json() == {"public": False, "shared": False, "track": False}
 assert c.get("/static/app.css").headers["cache-control"] == "no-cache"
 assert c.get("/api/access", headers={"Host": "owner-cck-nas.tailc4f63b.ts.net:10000"}).json()["public"] is True   # tailnet device opening the public name
 qq = c.get(f"/api/ccarp/question/{web.EXAMS['ccarp'].mod.QUESTIONS and next(iter(web.EXAMS['ccarp'].mod.QUESTIONS))}").json()
@@ -88,6 +88,27 @@ assert json.dumps(mod.load_state(), sort_keys=True) == owner_before
 ev = events(c.post("/api/ccarp/act", json={"data": "weak"}))                                # weak-topic quiz: header message then a question
 assert "Weak topic" in ev[0]["html"] and ev[1]["question"], ev
 events(c.post("/api/ccarp/act", json={"data": "reset"}))
+# tracker: a public visitor who opts in gets their own progress, score and readiness; nobody else is touched
+web.TRACK_DIR = tmp / "track"
+tc = {**pub, "Cookie": "pid=" + "12" * 16}
+assert c.get("/api/access", headers=tc).json() == {"public": True, "shared": True, "track": False}
+assert c.get("/api/ccarp/home", headers=tc).json()["verdict"] == ""
+assert c.post("/api/track/on").status_code == 403                                         # the owner already keeps their own
+owner_snap = json.dumps(mod.load_state(), sort_keys=True)
+assert c.post("/api/track/on", headers=tc).json() == {"track": True}
+assert c.get("/api/access", headers=tc).json() == {"public": True, "shared": False, "track": True}
+for _ in range(3):
+    qv = events(c.post("/api/ccarp/act", json={"data": "next"}, headers=tc))[0]["question"]
+    events(c.post("/api/ccarp/answer", json={"id": qv["id"], "picked": sorted(mod.QUESTIONS[qv["id"]]["answer"])}, headers=tc))
+th = c.get("/api/ccarp/home", headers=tc).json()
+assert th["coverage"]["seen"] == 3 and th["verdict"].startswith("⚪"), th["verdict"]        # own numbers; too early to tell
+assert th["coverage"]["right"] == 3 and th["plan"]["today"]["done"] == 3, th["plan"]
+assert c.get("/api/ccarp/home", headers={**pub, "Cookie": "pid=" + "34" * 16}).json()["coverage"]["seen"] == 0   # another visitor: nothing
+assert json.dumps(mod.load_state(), sort_keys=True) == owner_snap                        # the owner's state untouched
+assert (web.TRACK_DIR / ("12" * 16) / "ccarp.json").exists()
+assert 'data-shared="1"' in c.get("/", headers=pub).text and "data-shared" not in c.get("/", headers=tc).text
+assert c.post("/api/track/off", headers=tc).json() == {"track": False} and not (web.TRACK_DIR / ("12" * 16)).exists()
+assert c.get("/api/ccarp/home", headers=tc).json()["coverage"]["seen"] == 0
 # leaderboard: opt-in; nothing kept before joining; only a question's first answer counts; leaving deletes everything
 web.LB_DIR = tmp / "lb"; web.BOARD_CACHE["t"] = 0.0
 lbc = {**pub, "Cookie": "pid=" + "ef" * 16}

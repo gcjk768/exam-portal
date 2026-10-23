@@ -435,12 +435,10 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
 
 /* public (Funnel) link: Claude and admin actions are refused by the server, so hide their buttons */
 [data-public="1"] [data-act="report"], [data-public="1"] [data-act="refresh"] { display: none; }
-/* the shared site (public name) shows no personal numbers to anyone, and nothing is recorded for visitors:
+/* a public visitor who has not chosen to save their progress sees no personal numbers, and nothing is recorded for them:
    no score ring, readiness, plan, quiz bar, stats, previous-question history or reset */
 [data-shared="1"] .hero-ring, [data-shared="1"] #home-verdict, [data-shared="1"] .plan, [data-shared="1"] .quiz-bar, [data-shared="1"] [data-view="stats"],
 [data-shared="1"] [data-act="stats"], [data-shared="1"] .js-reset, [data-shared="1"] #btn-prev-q, [data-shared="1"] .read-count,
-[data-public="1"] .hero-ring, [data-public="1"] #home-verdict, [data-public="1"] .quiz-bar, [data-public="1"] [data-view="stats"],
-[data-public="1"] [data-act="stats"], [data-public="1"] .js-reset, [data-public="1"] #btn-prev-q { display: none; }
 [data-shared="1"] .hero { min-height: 0; }
 .peek-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0 0 .8rem; }
 [hidden] { display: none !important; }
@@ -470,3 +468,6 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
 .leader { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .6rem .9rem; margin-bottom: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .leader .ph-trophy { color: var(--accent); font-size: 1.2rem; }
 .leader a { margin-left: auto; color: var(--accent); }
+
+.track-cta { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .6rem .9rem; margin-bottom: 1rem; border: 1px dashed var(--accent); border-radius: 12px; }
+.track-cta span { flex: 1 1 18rem; }
