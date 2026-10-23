@@ -278,8 +278,12 @@ def tag_of(src: str | None) -> str:
     return SOURCE_TAG.get(src or "") or ("UD" if hidden_source(src) else "")   # paid mock sets: one small label on the card
 
 
+# Free-bank CCAR-P questions that read like the paid mocks (tools/examlike.py); the badge shows on every link. ponytail: ids only, no exam key
+EXAMLIKE = set(json.loads((ROOT / "study" / "examlike" / "ccarp.json").read_text(encoding="utf-8"))) if (ROOT / "study" / "examlike" / "ccarp.json").exists() else set()
+
+
 def qview(q: dict) -> dict:
-    return {"id": q["id"], "tag": tag_of(q.get("source")), "domain": q["domain"], "question": q["question"], "options": options_of(q),
+    return {"id": q["id"], "tag": tag_of(q.get("source")) or ("≈ exam" if q["id"] in EXAMLIKE else ""), "domain": q["domain"], "question": q["question"], "options": options_of(q),
             "multi": len(q["answer"]) > 1, "task": not q["letters"]}
 
 
