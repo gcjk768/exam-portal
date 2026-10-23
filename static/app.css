@@ -447,9 +447,9 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
 .peek-nav select { max-width: 14rem; font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: .35rem .5rem; }
 .qid[data-tag]::after { content: attr(data-tag); margin-left: .45rem; padding: .05rem .4rem; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); font-size: .65rem; vertical-align: middle; }   /* TD / UD = paid mock sets, "≈ exam" = a free question that reads like them (web.py EXAMLIKE) */
 
-/* Leaderboard: only on the shared site (public name) */
+/* Leaderboard: only for visitors of the public link, not on your own links */
 .board-link { display: none; }
-[data-shared="1"] .board-link { display: inline; }
+[data-public="1"] .board-link { display: inline; }
 .board { width: 100%; border-collapse: collapse; margin-top: 1rem; font-variant-numeric: tabular-nums; }
 .board th, .board td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line); }
 .board th { color: var(--muted); font-weight: 500; font-size: .8rem; }

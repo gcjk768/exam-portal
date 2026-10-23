@@ -9,6 +9,7 @@
   function go(view) { location.hash = view; }
   function route() {
     const v = (location.hash || "#home").slice(1);
+    if (v === "board" && !state.public) { location.hash = "home"; return; }   // the leaderboard is for public visitors only
     state.view = ["home", "study", "quiz", "exam", "stats", "cram", "board"].includes(v) ? v : "home";
     $$(".view").forEach(s => s.hidden = s.id !== `view-${state.view}`);
     $$(".views a").forEach(a => a.setAttribute("aria-current", a.dataset.view === state.view || (state.view === "cram" && a.dataset.view === "study")));
@@ -33,7 +34,7 @@
     if (state.public && !localStorage.getItem("lb-asked")) $("#lb-join").showModal();   // ask once; "No thanks" is remembered and nothing is recorded
   }
 
-  // ── Leaderboard: opt-in, shared site only (web.py /api/board) ───────────────
+  // ── Leaderboard: opt-in, public visitors only (web.py /api/board) ───────────────
   const LB = { exam: "all", period: "week" };
   const lbPost = (p, body) => fetch(`/api/board/${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
   async function lbJoin(name) {
