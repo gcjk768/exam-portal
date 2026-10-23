@@ -18,6 +18,7 @@ services:
       EXAMS: "ccarp:/exams/ccarp:/vault/ccarp,ccaof:/exams/ccaof:/vault/ccaof,ccdvf:/exams/ccdvf:/vault/ccdvf,ccarf:/exams/ccarf:/vault/ccarf,sapc03:/exams/sapc03:/vault/sapc03,aipc01:/exams/aipc01:/vault/aipc01,cka:/exams/cka:/vault/cka,gitlabci:/exams/gitlabci:/vault/gitlabci,tfassoc:/exams/tfassoc:/vault/tfassoc"
       PUBLIC_EXAMS: "ccarp,ccaof,ccdvf,ccarf"                              # the public link: the Claude certifications only
       PRIVATE_EXAMS: "ccarp,sapc03,aipc01,cka,gitlabci,tfassoc"            # the owner's link: the exams the owner is taking
+      LEADERBOARD_DIR: "/exams/ccarp/data/leaderboard"                     # opt-in public leaderboard: one small file per visitor who joined (the CCAR-P data volume is writable)
       PERSONAL_EXAMS: "ccarp,sapc03,aipc01,cka,gitlabci,tfassoc"           # the public name opened with the owner key (the owner's personal URL): the exams he is taking
     volumes:
       # each quiz bot's stack: code read-only, its data/ (questions + the shared state.json + decoder cache) read-write

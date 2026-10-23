@@ -446,3 +446,17 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
 [hidden] { display: none !important; }
 .peek-nav select { max-width: 14rem; font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: .35rem .5rem; }
 .qid[data-tag]::after { content: attr(data-tag); margin-left: .45rem; padding: .05rem .4rem; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); font-size: .65rem; vertical-align: middle; }   /* TD / UD = paid mock sets, "≈ exam" = a free question that reads like them (web.py EXAMLIKE) */
+
+/* Leaderboard: only on the shared site (public name) */
+.board-link { display: none; }
+[data-shared="1"] .board-link { display: inline; }
+.board { width: 100%; border-collapse: collapse; margin-top: 1rem; font-variant-numeric: tabular-nums; }
+.board th, .board td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line); }
+.board th { color: var(--muted); font-weight: 500; font-size: .8rem; }
+.board tr.me td { color: var(--accent); font-weight: 600; }
+.board-me { margin: 1rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.lb-join { max-width: 30rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; }
+.lb-join::backdrop { background: rgba(0, 0, 0, .6); }
+.lb-join input { width: 100%; margin: .3rem 0 .6rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; }
+.lb-err { color: #e5645a; }
+#board-filters { display: flex; flex-wrap: wrap; gap: .8rem; }

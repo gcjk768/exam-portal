@@ -355,7 +355,64 @@ def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = 
     state.setdefault("log", []).append({"t": now.isoformat(timespec="minutes"), "id": qid, "ok": right, "first": first,
                                         **({"guess": True} if guess else {}), **(extra or {})})
     state["log"] = state["log"][-5000:]
+    lb_count(exam.key, qid, right)
     return plan.schedule(state, qid, right, now, guess)[1]
+
+
+# ── Leaderboard: opt-in, public visitors only (the owner, 2026-10-23) ─────────────
+# One small file per visitor who joined: {"name", "joined", "seen": {exam: {qid: [first_try_right 0/1, "YYYY-Www"]}}}. Nothing is kept
+# for anyone who has not joined; leaving deletes the file. Only a question's first answer counts, so repeating one earns nothing.
+LB_DIR = Path(os.environ.get("LEADERBOARD_DIR", ROOT / "data" / "leaderboard"))
+NAME_BAD = re.compile(r"https?|www|\.\w{2,}|@", re.I)
+BOARD_CACHE: dict = {"t": 0.0, "rows": []}
+
+
+def lb_file(pid: str) -> Path:
+    return LB_DIR / f"{pid}.json"
+
+
+def lb_load(pid: str) -> dict | None:
+    try:
+        return json.loads(lb_file(pid).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def lb_save(pid: str, prof: dict) -> None:
+    LB_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = lb_file(pid).with_suffix(".tmp")
+    tmp.write_text(json.dumps(prof, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(lb_file(pid))
+    BOARD_CACHE["t"] = 0.0
+
+
+def lb_count(exam_key: str, qid: str, right: bool) -> None:
+    pid = VISITOR.get()
+    prof = lb_load(pid) if pid else None
+    if prof is None or qid in prof["seen"].setdefault(exam_key, {}):
+        return
+    now = datetime.now(SGT)
+    prof["seen"][exam_key][qid] = [int(right), f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"]
+    lb_save(pid, prof)   # ponytail: rewrites the visitor's file per new question; fine at hundreds of questions, batch if it grows
+
+
+def lb_rows() -> list[dict]:
+    """Every joined visitor, cached for 20 s (the board is read far more often than it changes)."""
+    if time.monotonic() - BOARD_CACHE["t"] > 20:
+        rows = []
+        for f in LB_DIR.glob("*.json") if LB_DIR.exists() else []:
+            try:
+                prof = json.loads(f.read_text(encoding="utf-8"))
+                rows.append({"pid": f.stem, "name": prof["name"], "seen": prof["seen"]})
+            except (OSError, ValueError, KeyError):
+                continue
+        BOARD_CACHE.update(t=time.monotonic(), rows=rows)
+    return BOARD_CACHE["rows"]
+
+
+def lb_totals(seen: dict, exams: set[str], week: str | None) -> tuple[int, int]:
+    got = [v[0] for k, d in seen.items() if k in exams for v in d.values() if week is None or v[1] == week]
+    return len(got), sum(got)
 
 
 def when(mins: int) -> str:
@@ -1055,6 +1112,60 @@ async def api_exam_submit(key: str, body: ExamSubmit, req: Request):
     e = exam_or_404(key)
     async with e.lock:
         return await exam_submit(e, body.answers, body.minutes_used, is_public(req))
+
+
+class Join(BaseModel):
+    name: str
+
+
+def visitor_or_403(req: Request) -> str:
+    pid = VISITOR.get()
+    if not pid:
+        raise HTTPException(403, "The leaderboard is for visitors of the public link; your own link is not on it.")
+    return pid
+
+
+@app.post("/api/board/join")
+def api_board_join(body: Join, req: Request):
+    pid = visitor_or_403(req)
+    name = re.sub(r"\s+", " ", body.name).strip()
+    if not 2 <= len(name) <= 24 or not re.fullmatch(r"[\w .'\-]+", name) or NAME_BAD.search(name):
+        raise HTTPException(400, "Use 2 to 24 letters, numbers, spaces, - . ' _ (no links or @).")
+    prof = lb_load(pid) or {"joined": datetime.now(SGT).isoformat(timespec="minutes"), "seen": {}}
+    lb_save(pid, {**prof, "name": name})
+    return {"joined": True, "name": name}
+
+
+@app.post("/api/board/leave")
+def api_board_leave(req: Request):
+    pid = visitor_or_403(req)
+    lb_file(pid).unlink(missing_ok=True)       # their name and every count are deleted
+    BOARD_CACHE["t"] = 0.0
+    return {"joined": False}
+
+
+@app.get("/api/board")
+def api_board(req: Request, exam: str = "all", period: str = "week"):
+    shown = {e.key for e in EXAMS.values() if visible(e.key, audience(req))}
+    if exam != "all" and exam not in shown:
+        raise HTTPException(404, "unknown exam")
+    exams = shown if exam == "all" else {exam}
+    now = datetime.now(SGT)
+    week = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}" if period == "week" else None
+    rows = []
+    for r in lb_rows():
+        done, right = lb_totals(r["seen"], exams, week)
+        if done:
+            rows.append({"pid": r["pid"], "name": r["name"], "done": done, "right": right, "wrong": done - right, "acc": round(100 * right / done)})
+    rows.sort(key=lambda r: (-r["right"], -r["acc"], r["done"], r["name"].lower()))
+    pid, mine = VISITOR.get(), None
+    for i, r in enumerate(rows, 1):
+        r["rank"], r["me"] = i, r["pid"] == pid
+        mine = mine or (r if r["me"] else None)
+        del r["pid"]
+    prof = lb_load(pid) if pid else None
+    return {"rows": rows[:50], "me": {"visitor": bool(pid), "joined": prof is not None, "name": prof and prof["name"], "rank": mine and mine["rank"]},
+            "total": len(rows), "week": week}
 
 
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")

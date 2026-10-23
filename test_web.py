@@ -88,6 +88,28 @@ assert json.dumps(mod.load_state(), sort_keys=True) == owner_before
 ev = events(c.post("/api/ccarp/act", json={"data": "weak"}))                                # weak-topic quiz: header message then a question
 assert "Weak topic" in ev[0]["html"] and ev[1]["question"], ev
 events(c.post("/api/ccarp/act", json={"data": "reset"}))
+# leaderboard: opt-in; nothing kept before joining; only a question's first answer counts; leaving deletes everything
+web.LB_DIR = tmp / "lb"; web.BOARD_CACHE["t"] = 0.0
+lbc = {**pub, "Cookie": "pid=" + "ef" * 16}
+assert c.get("/api/board/join").status_code in (404, 405) and c.post("/api/board/join", json={"name": "Ann"}).status_code == 403   # the owner link is not on it
+for bad_name in ("a", "x" * 25, "see http://x.io", "me@mail", "<b>hi</b>"):
+    assert c.post("/api/board/join", json={"name": bad_name}, headers=lbc).status_code == 400, bad_name
+def lb_answer(ok: bool):
+    qv = events(c.post("/api/ccarp/act", json={"data": "next"}, headers=lbc))[0]["question"]
+    q = web.EXAMS["ccarp"].mod.QUESTIONS[qv["id"]]
+    return qv["id"], events(c.post("/api/ccarp/answer", json={"id": qv["id"], "picked": sorted(q["answer"]) if ok else ["Z"]}, headers=lbc))
+lb_answer(True)
+assert not web.LB_DIR.exists() or not list(web.LB_DIR.glob("*.json"))                      # not joined: nothing kept
+assert c.get("/api/board", headers=lbc).json()["me"]["joined"] is False
+assert c.post("/api/board/join", json={"name": "  Ann   Lee "}, headers=lbc).json() == {"joined": True, "name": "Ann Lee"}
+qid, _ = lb_answer(True)
+events(c.post("/api/ccarp/answer", json={"id": qid, "picked": ["A"]}, headers=lbc))        # same question again: not counted twice
+b = c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()
+assert b["rows"][0]["name"] == "Ann Lee" and b["rows"][0]["done"] == 1 and b["rows"][0]["me"] and b["me"]["rank"] == 1, b
+assert c.get("/api/board?exam=nope", headers=lbc).status_code == 404
+assert c.get("/api/board?period=week", headers=lbc).json()["rows"][0]["done"] == 1
+assert c.post("/api/board/leave", headers=lbc).json() == {"joined": False}
+assert c.get("/api/board", headers=lbc).json()["rows"] == [] and not list(web.LB_DIR.glob("*.json"))
 # rate limit: one visitor over its budget gets 429
 web.HITS.clear()
 codes = [c.get("/api/exams", headers={**pub, "Cookie": "pid=" + "cd" * 16}).status_code for _ in range(95)]

@@ -9,10 +9,10 @@
   function go(view) { location.hash = view; }
   function route() {
     const v = (location.hash || "#home").slice(1);
-    state.view = ["home", "study", "quiz", "exam", "stats", "cram"].includes(v) ? v : "home";
+    state.view = ["home", "study", "quiz", "exam", "stats", "cram", "board"].includes(v) ? v : "home";
     $$(".view").forEach(s => s.hidden = s.id !== `view-${state.view}`);
     $$(".views a").forEach(a => a.setAttribute("aria-current", a.dataset.view === state.view || (state.view === "cram" && a.dataset.view === "study")));
-    ({ home: loadHome, study: loadStudy, quiz: openQuiz, exam: loadExam, stats: loadStats, cram: loadCram })[state.view]();
+    ({ home: loadHome, study: loadStudy, quiz: openQuiz, exam: loadExam, stats: loadStats, cram: loadCram, board: loadBoard })[state.view]();
     window.scrollTo({ top: 0 });
   }
   window.addEventListener("hashchange", route);
@@ -30,6 +30,55 @@
     renderSwitch();
     setExam(state.exam, false);
     route();
+    if (state.public && !localStorage.getItem("lb-asked")) $("#lb-join").showModal();   // ask once; "No thanks" is remembered and nothing is recorded
+  }
+
+  // ── Leaderboard: opt-in, shared site only (web.py /api/board) ───────────────
+  const LB = { exam: "all", period: "week" };
+  const lbPost = (p, body) => fetch(`/api/board/${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  async function lbJoin(name) {
+    const r = await lbPost("join", { name });
+    if (!r.ok) { const e = $("#lb-err"); e.textContent = (await r.json()).detail || "Could not join."; e.hidden = false; return false; }
+    localStorage.setItem("lb-asked", "1");
+    return true;
+  }
+  $("#lb-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (await lbJoin($("#lb-name").value)) { $("#lb-join").close(); if (state.view === "board") loadBoard(); }
+  });
+  $("#lb-no").addEventListener("click", () => { localStorage.setItem("lb-asked", "1"); $("#lb-join").close(); });
+  async function loadBoard() {
+    const nav = $("#board-exam");
+    if (!nav.children.length) {
+      for (const [k, t] of [["all", "All"], ...state.exams.map(e => [e.key, e.short])]) {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.dataset.k = k;
+        b.onclick = () => { LB.exam = k; loadBoard(); };
+        nav.append(b);
+      }
+      $$("#board-period button").forEach(b => b.onclick = () => { LB.period = b.dataset.p; loadBoard(); });
+    }
+    $$("#board-exam button").forEach(b => b.setAttribute("aria-current", b.dataset.k === LB.exam));
+    $$("#board-period button").forEach(b => b.setAttribute("aria-current", b.dataset.p === LB.period));
+    const d = await (await fetch(`/api/board?exam=${LB.exam}&period=${LB.period}`)).json();
+    const tb = $("#board-table tbody"); tb.innerHTML = "";
+    for (const r of d.rows) {
+      const tr = document.createElement("tr"); if (r.me) tr.className = "me";
+      for (const v of [r.rank, r.name + (r.me ? " (you)" : ""), r.done, r.right, r.wrong, r.acc + "%"]) { const td = document.createElement("td"); td.textContent = v; tr.append(td); }
+      tb.append(tr);
+    }
+    $("#board-empty").hidden = d.rows.length > 0;
+    const me = $("#board-me"); me.innerHTML = "";
+    if (!d.me.visitor) { me.textContent = "You are on your own link, so you are not on the board."; return; }
+    if (d.me.joined) {
+      me.append(`You are on the board as ${d.me.name}${d.me.rank ? `, rank ${d.me.rank} of ${d.total}` : ", answer a question to get ranked"}. `);
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Leave and delete my data";
+      b.onclick = async () => { await lbPost("leave"); localStorage.setItem("lb-asked", "1"); loadBoard(); };
+      me.append(b);
+    } else {
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-accent"; b.textContent = "Join the leaderboard";
+      b.onclick = () => $("#lb-join").showModal();
+      me.append("You are not on the board. Nothing is recorded until you join. ", b);
+    }
   }
   function renderSwitch() {
     const nav = $("#exam-switch");
