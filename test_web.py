@@ -117,18 +117,21 @@ if tdq:
     assert c.get(f"/api/ccarp/question/{tdq[0]}").json()["tag"] == "TD" and c.get("/api/ccarp/question/" + next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") != "Tutorials Dojo")).json()["tag"] == ""
     web.OWNER_KEY = ""
 
-# per-audience exam lists: PUBLIC_EXAMS / PRIVATE_EXAMS (env) filter /api/exams and every /api/{exam} route
-web.PUBLIC_EXAMS, web.PRIVATE_EXAMS = {"ccarp"}, {"ccarp", "sapc03", "aipc01", "cka"}
+# per-audience exam lists: EXAM_LISTS (env PUBLIC_EXAMS / PRIVATE_EXAMS / PERSONAL_EXAMS) filter /api/exams and every /api/{exam} route
+web.EXAM_LISTS.update(public={"ccarp"}, private={"ccarp", "sapc03", "aipc01", "cka"})
 assert [e["key"] for e in c.get("/api/exams", headers=pub).json()] == ["ccarp"]
 assert c.get("/api/sapc03/home", headers=pub).status_code == 404 and c.get("/api/sapc03/home").status_code == 200
 assert c.get("/api/ccarp/home", headers=pub).status_code == 200
-web.PRIVATE_EXAMS = {"ccarp"}
+web.EXAM_LISTS["private"] = {"ccarp"}
 assert c.get("/api/sapc03/home").status_code == 404
-web.OWNER_KEY = "k3y-for-test"                                     # the owner key on the public name keeps the public list (the host decides)
+web.OWNER_KEY = "k3y-for-test"                                     # the owner key on the public name gets the personal list
+web.EXAM_LISTS.update(public={"ccarp", "sapc03"}, personal={"ccarp"})
+assert {e["key"] for e in c.get("/api/exams", headers=pub).json()} == {"ccarp", "sapc03"}
 assert [e["key"] for e in c.get("/api/exams?td=k3y-for-test", headers=pub).json()] == ["ccarp"]
+assert c.get("/api/sapc03/home?td=k3y-for-test", headers=pub).status_code == 404
 assert c.get("/api/access?td=k3y-for-test", headers=pub).json()["public"] is False
 web.OWNER_KEY = ""
-web.PUBLIC_EXAMS, web.PRIVATE_EXAMS = set(), set()
+web.EXAM_LISTS.update(public=set(), private=set(), personal=set())
 
 # exams + home
 ex = c.get("/api/exams").json()

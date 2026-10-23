@@ -48,7 +48,7 @@ log = logging.getLogger("portal")
 ROOT = Path(__file__).resolve().parent
 SGT = timezone(timedelta(hours=8))
 VISITOR: ContextVar[str | None] = ContextVar("visitor", default=None)   # public visitor id (cookie, rate limit only); None = the owner
-FUNNEL: ContextVar[bool] = ContextVar("funnel", default=False)         # request came in through the public name: the exam list follows the host, even for the owner key
+AUDIENCE: ContextVar[str] = ContextVar("audience", default="private")   # which exam list this request gets: public (the public name), personal (public name + owner key), private (tailnet IP / LAN)
 OWNER_KEY = os.environ.get("TD_UNLOCK_KEY", "")   # open /?td=<key> once on a browser: the public link then treats it as the owner (Claude, reset, paid bank, own progress); empty = off
 PUBLIC_HIDDEN = {x.strip() for x in os.environ.get("PUBLIC_HIDDEN_SOURCES", "Tutorials Dojo").split(",") if x.strip()}   # paid question sources: shown on LAN/tailnet only, never on the public Funnel link
 # key (= the bot's logger name) -> short, full name, real exam length, real exam minutes
@@ -64,14 +64,19 @@ META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
 
 
 # Which loaded exams each link shows (the owner, 2026-10-23): the public name shows the Claude certifications, the owner's
-# link (tailnet IP / LAN) shows the exams the owner is taking. Decided by the host, not by the owner key. Empty = every loaded exam.
-PUBLIC_EXAMS = {x.strip() for x in os.environ.get("PUBLIC_EXAMS", "").split(",") if x.strip()}
-PRIVATE_EXAMS = {x.strip() for x in os.environ.get("PRIVATE_EXAMS", "").split(",") if x.strip()}
+# link (tailnet IP / LAN) shows the exams the owner is taking, and the public name opened with the owner key (his personal
+# URL) shows only CCAR-P. Empty = every loaded exam.
+EXAM_LISTS = {a: {x.strip() for x in os.environ.get(f"{a.upper()}_EXAMS", "").split(",") if x.strip()}
+              for a in ("public", "private", "personal")}
 
 
-def visible(key: str, public: bool) -> bool:
-    allowed = PUBLIC_EXAMS if public else PRIVATE_EXAMS
+def visible(key: str, audience: str) -> bool:
+    allowed = EXAM_LISTS[audience]
     return not allowed or key in allowed
+
+
+def audience(req: Request) -> str:
+    return ("personal" if owner_key(req) else "public") if funnel(req) else "private"
 
 
 def hidden_source(src: str | None) -> bool:
@@ -793,8 +798,8 @@ app = FastAPI(title="Exam Portal", docs_url=None, redoc_url=None, lifespan=lifes
 
 
 def exam_or_404(key: str) -> Exam:
-    """The exam, if it is loaded and this link shows it (the middleware sets FUNNEL for requests through the public name)."""
-    if key not in EXAMS or not visible(key, FUNNEL.get()):
+    """The exam, if it is loaded and this link shows it (the middleware sets AUDIENCE per request)."""
+    if key not in EXAMS or not visible(key, AUDIENCE.get()):
         raise HTTPException(404, "unknown exam")
     return EXAMS[key]
 
@@ -872,7 +877,7 @@ def api_access(req: Request):
 def api_exams(req: Request):
     out, pub = [], is_public(req)
     for e in EXAMS.values():
-        if not visible(e.key, funnel(req)):
+        if not visible(e.key, audience(req)):
             continue
         c = e.coverage(e.mod.load_state(), pub)
         st = e.mod.load_state()
@@ -1072,7 +1077,7 @@ def too_many(key: str, name: str) -> bool:
 async def visitors(req: Request, call_next):
     """Public requests: a cookie for the per-visitor rate limit (nothing else is kept). Static files always revalidate after a deploy."""
     pub = is_public(req) and not req.url.path.startswith("/static/")
-    FUNNEL.set(funnel(req))
+    AUDIENCE.set(audience(req))
     pid, new = req.cookies.get("pid", ""), False
     if pub:
         if not PID_RX.fullmatch(pid):
