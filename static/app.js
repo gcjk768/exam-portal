@@ -48,9 +48,10 @@
   });
   $("#lb-no").addEventListener("click", () => { localStorage.setItem("lb-asked", "1"); $("#lb-join").close(); });
   async function loadBoard() {
+    const d = await (await fetch(`/api/board?exam=${LB.exam}&period=${LB.period}`)).json();
     const nav = $("#board-exam");
-    if (!nav.children.length) {
-      for (const [k, t] of [["all", "All"], ...state.exams.map(e => [e.key, e.short])]) {
+    if (!nav.children.length) {                                         // the board lists the public exams, whichever link you are on
+      for (const [k, t] of [["all", "All"], ...d.exams.map(e => [e.key, e.short])]) {
         const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.dataset.k = k;
         b.onclick = () => { LB.exam = k; loadBoard(); };
         nav.append(b);
@@ -59,7 +60,6 @@
     }
     $$("#board-exam button").forEach(b => b.setAttribute("aria-current", b.dataset.k === LB.exam));
     $$("#board-period button").forEach(b => b.setAttribute("aria-current", b.dataset.p === LB.period));
-    const d = await (await fetch(`/api/board?exam=${LB.exam}&period=${LB.period}`)).json();
     const tb = $("#board-table tbody"); tb.innerHTML = "";
     for (const r of d.rows) {
       const tr = document.createElement("tr"); if (r.me) tr.className = "me";

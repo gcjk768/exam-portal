@@ -1169,7 +1169,7 @@ def api_board(req: Request, exam: str = "all", period: str = "week"):
         del r["pid"]
     prof = lb_load(pid)
     return {"rows": rows[:50], "me": {"visitor": True, "owner": pid == OWNER_PID, "joined": prof is not None, "name": prof and prof["name"], "rank": mine and mine["rank"]},
-            "total": len(rows), "week": week}
+            "total": len(rows), "week": week, "exams": [{"key": e.key, "short": e.short} for e in EXAMS.values() if e.key in shown]}
 
 
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
