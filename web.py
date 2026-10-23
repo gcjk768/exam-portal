@@ -141,10 +141,7 @@ class Exam:
         png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
         self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
         self.lock = asyncio.Lock()
-        el = ROOT / "study" / "examlike" / f"{key}.json"       # free questions that read like the paid mocks (tools/examlike.py): a badge on every link
-        for i in json.loads(el.read_text(encoding="utf-8")) if el.exists() else []:
-            if i in self.mod.QUESTIONS:
-                self.mod.QUESTIONS[i]["examlike"] = True        # ponytail: a bank refresh reloads the dicts and drops the flag until the next restart
+        self.mark_examlike()
         sj = ROOT / "study" / f"{key}.json"
         self.study = json.loads(sj.read_text(encoding="utf-8")) if sj.exists() else {}
         self.cards: dict[str, dict] = {}                       # flashcards by key (plan.card_key), see /card
@@ -178,6 +175,13 @@ class Exam:
                 tmp.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
                 tmp.replace(track_path(pid, key))
         mod.load_state, mod.save_state = load_own, save_own
+
+    def mark_examlike(self) -> None:
+        """Flag the free questions that read like the paid mocks (tools/examlike.py): a badge on every link. Runs at start and after a bank refresh."""
+        el = ROOT / "study" / "examlike" / f"{self.key}.json"
+        for i in json.loads(el.read_text(encoding="utf-8")) if el.exists() else []:
+            if i in self.mod.QUESTIONS:
+                self.mod.QUESTIONS[i]["examlike"] = True
 
     @staticmethod
     def _load(name: str, path: Path):
@@ -398,6 +402,7 @@ def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = 
 LB_DIR = Path(os.environ.get("LEADERBOARD_DIR", ROOT / "data" / "leaderboard"))
 NAME_BAD = re.compile(r"https?|www|\.\w{2,}|@", re.I)
 BOARD_CACHE: dict = {"t": 0.0, "rows": []}
+LB_MIN_GAP = 3.0   # seconds between two counted answers by the same person
 
 
 OWNER_PID = hashlib.sha256(b"exam-portal-owner").hexdigest()[:32]            # the owner's id on the board (no cookie: any non-public link is the owner)
@@ -434,6 +439,9 @@ def lb_count(exam_key: str, qid: str, right: bool) -> None:
     prof = lb_load(pid)
     if prof is None or qid in prof["seen"].setdefault(exam_key, {}):
         return
+    if time.time() - prof.get("last", 0) < LB_MIN_GAP:
+        return                                   # answers faster than anyone can read a scenario are graded but not counted (a script, not a person)
+    prof["last"] = time.time()
     now = datetime.now(SGT)
     prof["seen"][exam_key][qid] = [int(right), f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"]
     lb_save(pid, prof)   # ponytail: rewrites the visitor's file per new question; fine at hundreds of questions, batch if it grows
@@ -513,6 +521,7 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
         if exam.scrape is not None:
             sys.modules["scrape"] = exam.scrape               # the bot's refresh_bank does `import scrape` first thing, before any await
         await mod.refresh_bank(None, rec)
+        exam.mark_examlike()                                  # a refresh reloads the question dicts: put the badges back
     elif data == "reset":
         mod.save_state({"ok": {}, "bad": {}})
         mod.vault_log("🔄 **reset**", "progress cleared")
@@ -1202,6 +1211,9 @@ def api_board_join(body: Join, req: Request):
     name = re.sub(r"\s+", " ", body.name).strip()
     if not 2 <= len(name) <= 24 or not re.fullmatch(r"[\w .'\-]+", name) or NAME_BAD.search(name):
         raise HTTPException(400, "Use 2 to 24 letters, numbers, spaces, - . ' _ (no links or @).")
+    BOARD_CACHE["t"] = 0.0
+    if any(r["pid"] != pid and r["name"].lower() == name.lower() for r in lb_rows()):
+        raise HTTPException(409, "That name is already on the board. Pick another.")
     prof = lb_load(pid)
     if prof is None:
         prof = {"joined": datetime.now(SGT).isoformat(timespec="minutes"), "seen": {}}

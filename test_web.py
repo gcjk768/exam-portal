@@ -110,7 +110,7 @@ assert 'data-shared="1"' in c.get("/", headers=pub).text and "data-shared" not i
 assert c.post("/api/track/off", headers=tc).json() == {"track": False} and not (web.TRACK_DIR / ("12" * 16)).exists()
 assert c.get("/api/ccarp/home", headers=tc).json()["coverage"]["seen"] == 0
 # leaderboard: opt-in; nothing kept before joining; only a question's first answer counts; leaving deletes everything
-web.LB_DIR = tmp / "lb"; web.BOARD_CACHE["t"] = 0.0
+web.LB_DIR = tmp / "lb"; web.BOARD_CACHE["t"] = 0.0; web.LB_MIN_GAP = 0.0   # pacing is tested on its own below
 lbc = {**pub, "Cookie": "pid=" + "ef" * 16}
 for bad_name in ("a", "x" * 25, "see http://x.io", "me@mail", "<b>hi</b>"):
     assert c.post("/api/board/join", json={"name": bad_name}, headers=lbc).status_code == 400, bad_name
@@ -128,6 +128,13 @@ b = c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()
 assert b["rows"][0]["name"] == "Ann Lee" and b["rows"][0]["done"] == 1 and b["rows"][0]["me"] and b["me"]["rank"] == 1, b
 assert c.get("/api/board?exam=nope", headers=lbc).status_code == 404
 assert c.get("/api/board?period=week", headers=lbc).json()["rows"][0]["done"] == 1
+assert c.post("/api/board/join", json={"name": "ann lee"}, headers={**pub, "Cookie": "pid=" + "56" * 16}).status_code == 409   # names are unique, ignoring case
+web.LB_MIN_GAP = 3.0                                                                         # two answers in a row: only the first counts
+_p = web.lb_load("ef" * 16); _p["last"] = 0; web.lb_save("ef" * 16, _p)
+done0 = c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()["rows"][0]["done"]
+lb_answer(True); lb_answer(True)
+assert c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()["rows"][0]["done"] == done0 + 1
+web.LB_MIN_GAP = 0.0
 assert c.post("/api/board/leave", headers=lbc).json() == {"joined": False}
 assert c.get("/api/board", headers=lbc).json()["rows"] == [] and not list(web.LB_DIR.glob("*.json"))
 # the owner (any non-public link) can join too, for CCAR-P only and never for paid questions
