@@ -127,6 +127,38 @@
       : `${h.coverage.total - h.coverage.seen} ${unit} you have not seen yet`;
     $("#door-exam-d").textContent = `${h.exam_n} ${unit} in ${h.exam_minutes} min, scored at the end`;
     if (!state.public && !state.shared) renderPlan(h.plan);
+    if (state.public) { renderPick(); showLeader(); }
+  }
+
+  // ── Public home: pick your certification, and this exam's leader (opt-in board) ──
+  function renderPick() {
+    const g = $("#pick-grid"); g.innerHTML = ""; $("#home-pick").hidden = false;
+    for (const e of state.exams) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "pick-card"; b.dataset.exam = e.key;
+      b.setAttribute("aria-current", e.key === state.exam);
+      const k = document.createElement("b"); k.textContent = e.short;
+      const n = document.createElement("span"); n.textContent = e.name.replace(/^Claude Certified /, "");
+      const c = document.createElement("small"); c.textContent = `${e.total} questions`;
+      b.append(k, n, c);
+      b.onclick = () => setExam(e.key, true);
+      g.append(b);
+    }
+  }
+  async function showLeader() {
+    const box = $("#home-leader");
+    let d = null, period = "this week";
+    for (const p of ["week", "all"]) {
+      d = await (await fetch(`/api/board?exam=${state.exam}&period=${p}`)).json();
+      if (d.rows.length) { if (p === "all") period = "all time"; break; }
+    }
+    box.innerHTML = ""; box.hidden = false;
+    const t = d.rows[0];
+    const i = document.createElement("i"); i.className = "ph ph-trophy"; i.setAttribute("aria-hidden", "true");
+    const msg = document.createElement("span");
+    msg.textContent = t ? `${cur().short} leader, ${period}: ${t.name}, ${t.right} right first time (${t.acc}% of ${t.done})`
+                        : `Nobody is on the ${cur().short} leaderboard yet. Be the first.`;
+    const a = document.createElement("a"); a.href = "#board"; a.textContent = "Leaderboard";
+    box.append(i, msg, a);
   }
 
   // ── Plan (Home): exam date, today's targets, focus domains; the quiz bar shows the same numbers while you work ──

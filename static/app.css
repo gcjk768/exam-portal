@@ -460,3 +460,15 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
 .lb-join input { width: 100%; margin: .3rem 0 .6rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; }
 .lb-err { color: #e5645a; }
 #board-filters { display: flex; flex-wrap: wrap; gap: .8rem; }
+
+/* Public home: certification picker + leader card */
+.pick h2 { font-size: 1rem; margin: 0 0 .6rem; color: var(--muted); font-weight: 500; }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .6rem; margin-bottom: 1rem; }
+.pick-card { text-align: left; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: .7rem .8rem; cursor: pointer; display: flex; flex-direction: column; gap: .15rem; }
+.pick-card:hover { border-color: var(--accent); }
+.pick-card[aria-current="true"] { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, var(--surface)); }
+.pick-card span { font-size: .8rem; color: var(--muted); }
+.pick-card small { font-size: .72rem; color: var(--muted); }
+.leader { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .6rem .9rem; margin-bottom: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.leader .ph-trophy { color: var(--accent); font-size: 1.2rem; }
+.leader a { margin-left: auto; color: var(--accent); }
