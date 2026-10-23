@@ -88,7 +88,7 @@ h3 { font-size: 1.05rem; color: var(--muted); font-weight: 500; margin: 1.6rem 0
 main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.8rem, 3vw, 2rem) 6rem; }
 
 /* Home */
-.hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2rem; align-items: center; min-height: calc(100dvh - 64px - 6rem); }
+.hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2rem; align-items: center; min-height: 0; padding-top: .5rem; }   /* the picker and leader card sit above it now, so it no longer fills the screen */
 .hero-text > * { animation: rise .5s var(--ease) both; }
 .hero-text > :nth-child(2) { animation-delay: .05s; }
 .hero-text > :nth-child(3) { animation-delay: .1s; }
@@ -132,7 +132,7 @@ main { max-width: 980px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem) clamp(.
 .plan-controls .ph { color: var(--accent); font-size: 1.1rem; }
 .plan-controls input { font: inherit; font-size: .92rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: .35rem .55rem; width: 9.6rem; color-scheme: dark light; }
 .plan-controls input[type=number] { width: 4.8rem; }
-[data-public="1"] .plan, [data-shared="1"] .plan { display: none; }
+[data-shared="1"] .plan { display: none; }
 
 /* Buttons: pill, 40px, icon + label; accent = primary, plain = secondary, ghost = quiet, danger = destructive */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 40px; font: inherit; font-size: .95rem; font-weight: 600; line-height: 1; border: 1px solid var(--line); background: var(--surface); color: var(--text); padding: .55rem 1rem; border-radius: 999px; cursor: pointer; text-decoration: none; white-space: nowrap; box-shadow: var(--shadow-1); transition: transform .15s var(--ease), background .2s, border-color .2s, box-shadow .2s, color .2s; }
