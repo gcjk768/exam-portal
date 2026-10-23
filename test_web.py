@@ -115,7 +115,11 @@ free = next(i for i, q in mq.items() if not web.hidden_source(q.get("source")) a
 assert c.get("/api/board").json()["me"] == {"visitor": True, "owner": True, "joined": False, "name": None, "rank": None}
 events(c.post("/api/ccarp/answer", json={"id": free, "picked": sorted(mq[free]["answer"])}))
 assert c.get("/api/board?period=all").json()["rows"] == []                                  # before joining nothing is kept
+events(c.post("/api/ccarp/answer", json={"id": free, "picked": ["Z"]}))                    # earlier history: a wrong first answer recorded in the owner's state
+hist = c.get("/api/board?period=all").json()["rows"]
 assert c.post("/api/board/join", json={"name": "the owner"}).json()["joined"]
+ob0 = c.get("/api/board?period=all").json()["rows"][0]
+assert ob0["done"] >= 1 and ob0["name"] == "the owner", ob0                                    # joining back-fills the owner's history
 other = next(i for i, q in mq.items() if i != free and not web.hidden_source(q.get("source")) and q["letters"])
 events(c.post("/api/ccarp/answer", json={"id": other, "picked": sorted(mq[other]["answer"])}))
 sq = web.EXAMS["sapc03"].mod.QUESTIONS; sid = next(iter(sq))
@@ -123,7 +127,7 @@ events(c.post("/api/sapc03/answer", json={"id": sid, "picked": sorted(sq[sid]["a
 if tdq:
     events(c.post("/api/ccarp/answer", json={"id": tdq[0], "picked": ["A"]}))                  # paid question: not counted
 ob = c.get("/api/board?period=all").json()
-assert [(r["name"], r["done"], r["me"]) for r in ob["rows"]] == [("the owner", 1, True)] and ob["me"]["owner"], ob
+assert ob["rows"][0]["name"] == "the owner" and ob["rows"][0]["done"] == ob0["done"] + 1 and ob["me"]["owner"], (ob, ob0)   # +1: only the new free CCAR-P answer counted
 assert c.post("/api/board/leave").json() == {"joined": False} and c.get("/api/board?period=all").json()["rows"] == []
 # rate limit: one visitor over its budget gets 429
 web.HITS.clear()

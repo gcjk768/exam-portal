@@ -1129,13 +1129,32 @@ class Join(BaseModel):
     name: str
 
 
+def lb_backfill(exam_key: str) -> dict:
+    """The owner's existing first-try results for one exam, from the real state.json (free questions only). Entries without a timestamp
+    go under week "0000-W00": they count for all time, never for a week."""
+    mod = EXAMS[exam_key].mod
+    st = mod.load_state()
+    seen = {}
+    for e in st.get("log", []):
+        if e.get("first") and e["id"] in mod.QUESTIONS:
+            seen[e["id"]] = [int(e["ok"]), (lambda d: f"{d.isocalendar().year}-W{d.isocalendar().week:02d}")(datetime.fromisoformat(e["t"]))]
+    for qid in set(st["ok"]) | set(st["bad"]):
+        if qid in mod.QUESTIONS and qid not in seen:
+            seen[qid] = [int(st["ok"].get(qid, 0) >= 1 and st["bad"].get(qid, 0) == 0), "0000-W00"]
+    return {k: v for k, v in seen.items() if not hidden_source(mod.QUESTIONS[k].get("source"))}
+
+
 @app.post("/api/board/join")
 def api_board_join(body: Join, req: Request):
     pid = lb_id(req)
     name = re.sub(r"\s+", " ", body.name).strip()
     if not 2 <= len(name) <= 24 or not re.fullmatch(r"[\w .'\-]+", name) or NAME_BAD.search(name):
         raise HTTPException(400, "Use 2 to 24 letters, numbers, spaces, - . ' _ (no links or @).")
-    prof = lb_load(pid) or {"joined": datetime.now(SGT).isoformat(timespec="minutes"), "seen": {}}
+    prof = lb_load(pid)
+    if prof is None:
+        prof = {"joined": datetime.now(SGT).isoformat(timespec="minutes"), "seen": {}}
+        if pid == OWNER_PID:                          # the owner's existing history counts (the owner, 2026-10-23); visitors start from zero
+            prof["seen"] = {k: lb_backfill(k) for k in OWNER_BOARD if k in EXAMS}
     lb_save(pid, {**prof, "name": name})
     return {"joined": True, "name": name}
 
