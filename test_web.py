@@ -91,7 +91,6 @@ events(c.post("/api/ccarp/act", json={"data": "reset"}))
 # leaderboard: opt-in; nothing kept before joining; only a question's first answer counts; leaving deletes everything
 web.LB_DIR = tmp / "lb"; web.BOARD_CACHE["t"] = 0.0
 lbc = {**pub, "Cookie": "pid=" + "ef" * 16}
-assert c.get("/api/board/join").status_code in (404, 405) and c.post("/api/board/join", json={"name": "Ann"}).status_code == 403   # the owner link is not on it
 for bad_name in ("a", "x" * 25, "see http://x.io", "me@mail", "<b>hi</b>"):
     assert c.post("/api/board/join", json={"name": bad_name}, headers=lbc).status_code == 400, bad_name
 def lb_answer(ok: bool):
@@ -110,6 +109,22 @@ assert c.get("/api/board?exam=nope", headers=lbc).status_code == 404
 assert c.get("/api/board?period=week", headers=lbc).json()["rows"][0]["done"] == 1
 assert c.post("/api/board/leave", headers=lbc).json() == {"joined": False}
 assert c.get("/api/board", headers=lbc).json()["rows"] == [] and not list(web.LB_DIR.glob("*.json"))
+# the owner (any non-public link) can join too, for CCAR-P only and never for paid questions
+mq = web.EXAMS["ccarp"].mod.QUESTIONS
+free = next(i for i, q in mq.items() if not web.hidden_source(q.get("source")) and q["letters"])
+assert c.get("/api/board").json()["me"] == {"visitor": True, "owner": True, "joined": False, "name": None, "rank": None}
+events(c.post("/api/ccarp/answer", json={"id": free, "picked": sorted(mq[free]["answer"])}))
+assert c.get("/api/board?period=all").json()["rows"] == []                                  # before joining nothing is kept
+assert c.post("/api/board/join", json={"name": "the owner"}).json()["joined"]
+other = next(i for i, q in mq.items() if i != free and not web.hidden_source(q.get("source")) and q["letters"])
+events(c.post("/api/ccarp/answer", json={"id": other, "picked": sorted(mq[other]["answer"])}))
+sq = web.EXAMS["sapc03"].mod.QUESTIONS; sid = next(iter(sq))
+events(c.post("/api/sapc03/answer", json={"id": sid, "picked": sorted(sq[sid]["answer"])}))   # not a CCAR-P question: not counted
+if tdq:
+    events(c.post("/api/ccarp/answer", json={"id": tdq[0], "picked": ["A"]}))                  # paid question: not counted
+ob = c.get("/api/board?period=all").json()
+assert [(r["name"], r["done"], r["me"]) for r in ob["rows"]] == [("the owner", 1, True)] and ob["me"]["owner"], ob
+assert c.post("/api/board/leave").json() == {"joined": False} and c.get("/api/board?period=all").json()["rows"] == []
 # rate limit: one visitor over its budget gets 429
 web.HITS.clear()
 codes = [c.get("/api/exams", headers={**pub, "Cookie": "pid=" + "cd" * 16}).status_code for _ in range(95)]

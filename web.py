@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import copy
 import functools
 import html
@@ -367,6 +368,14 @@ NAME_BAD = re.compile(r"https?|www|\.\w{2,}|@", re.I)
 BOARD_CACHE: dict = {"t": 0.0, "rows": []}
 
 
+OWNER_PID = hashlib.sha256(b"exam-portal-owner").hexdigest()[:32]            # the owner's id on the board (no cookie: any non-public link is the owner)
+OWNER_BOARD = {x.strip() for x in os.environ.get("OWNER_BOARD_EXAMS", "ccarp").split(",") if x.strip()}   # exams the owner's answers count for
+
+
+def lb_id(req: Request | None = None) -> str:
+    return VISITOR.get() or OWNER_PID
+
+
 def lb_file(pid: str) -> Path:
     return LB_DIR / f"{pid}.json"
 
@@ -387,8 +396,10 @@ def lb_save(pid: str, prof: dict) -> None:
 
 
 def lb_count(exam_key: str, qid: str, right: bool) -> None:
-    pid = VISITOR.get()
-    prof = lb_load(pid) if pid else None
+    pid = lb_id()
+    if pid == OWNER_PID and (exam_key not in OWNER_BOARD or hidden_source(EXAMS[exam_key].mod.QUESTIONS.get(qid, {}).get("source"))):
+        return                                   # the owner counts for the public exams only, and never for paid questions visitors cannot see
+    prof = lb_load(pid)
     if prof is None or qid in prof["seen"].setdefault(exam_key, {}):
         return
     now = datetime.now(SGT)
@@ -1118,16 +1129,9 @@ class Join(BaseModel):
     name: str
 
 
-def visitor_or_403(req: Request) -> str:
-    pid = VISITOR.get()
-    if not pid:
-        raise HTTPException(403, "The leaderboard is for visitors of the public link; your own link is not on it.")
-    return pid
-
-
 @app.post("/api/board/join")
 def api_board_join(body: Join, req: Request):
-    pid = visitor_or_403(req)
+    pid = lb_id(req)
     name = re.sub(r"\s+", " ", body.name).strip()
     if not 2 <= len(name) <= 24 or not re.fullmatch(r"[\w .'\-]+", name) or NAME_BAD.search(name):
         raise HTTPException(400, "Use 2 to 24 letters, numbers, spaces, - . ' _ (no links or @).")
@@ -1138,7 +1142,7 @@ def api_board_join(body: Join, req: Request):
 
 @app.post("/api/board/leave")
 def api_board_leave(req: Request):
-    pid = visitor_or_403(req)
+    pid = lb_id(req)
     lb_file(pid).unlink(missing_ok=True)       # their name and every count are deleted
     BOARD_CACHE["t"] = 0.0
     return {"joined": False}
@@ -1146,7 +1150,7 @@ def api_board_leave(req: Request):
 
 @app.get("/api/board")
 def api_board(req: Request, exam: str = "all", period: str = "week"):
-    shown = {e.key for e in EXAMS.values() if visible(e.key, audience(req))}
+    shown = {e.key for e in EXAMS.values() if visible(e.key, "public")}     # one board, the public exams, for every link
     if exam != "all" and exam not in shown:
         raise HTTPException(404, "unknown exam")
     exams = shown if exam == "all" else {exam}
@@ -1158,13 +1162,13 @@ def api_board(req: Request, exam: str = "all", period: str = "week"):
         if done:
             rows.append({"pid": r["pid"], "name": r["name"], "done": done, "right": right, "wrong": done - right, "acc": round(100 * right / done)})
     rows.sort(key=lambda r: (-r["right"], -r["acc"], r["done"], r["name"].lower()))
-    pid, mine = VISITOR.get(), None
+    pid, mine = lb_id(req), None
     for i, r in enumerate(rows, 1):
         r["rank"], r["me"] = i, r["pid"] == pid
         mine = mine or (r if r["me"] else None)
         del r["pid"]
-    prof = lb_load(pid) if pid else None
-    return {"rows": rows[:50], "me": {"visitor": bool(pid), "joined": prof is not None, "name": prof and prof["name"], "rank": mine and mine["rank"]},
+    prof = lb_load(pid)
+    return {"rows": rows[:50], "me": {"visitor": True, "owner": pid == OWNER_PID, "joined": prof is not None, "name": prof and prof["name"], "rank": mine and mine["rank"]},
             "total": len(rows), "week": week}
 
 

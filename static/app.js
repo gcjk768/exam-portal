@@ -9,7 +9,6 @@
   function go(view) { location.hash = view; }
   function route() {
     const v = (location.hash || "#home").slice(1);
-    if (v === "board" && !state.public) { location.hash = "home"; return; }   // the leaderboard is for public visitors only
     state.view = ["home", "study", "quiz", "exam", "stats", "cram", "board"].includes(v) ? v : "home";
     $$(".view").forEach(s => s.hidden = s.id !== `view-${state.view}`);
     $$(".views a").forEach(a => a.setAttribute("aria-current", a.dataset.view === state.view || (state.view === "cram" && a.dataset.view === "study")));
@@ -34,7 +33,7 @@
     if (state.public && !localStorage.getItem("lb-asked")) $("#lb-join").showModal();   // ask once; "No thanks" is remembered and nothing is recorded
   }
 
-  // ── Leaderboard: opt-in, public visitors only (web.py /api/board) ───────────────
+  // ── Leaderboard: opt-in; public visitors, and the owner for the public exams (web.py /api/board) ───────────────
   const LB = { exam: "all", period: "week" };
   const lbPost = (p, body) => fetch(`/api/board/${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
   async function lbJoin(name) {
@@ -69,16 +68,16 @@
     }
     $("#board-empty").hidden = d.rows.length > 0;
     const me = $("#board-me"); me.innerHTML = "";
-    if (!d.me.visitor) { me.textContent = "You are on your own link, so you are not on the board."; return; }
+    const own = d.me.owner ? "On your own links only CCAR-P counts, and not the paid questions. " : "";
     if (d.me.joined) {
-      me.append(`You are on the board as ${d.me.name}${d.me.rank ? `, rank ${d.me.rank} of ${d.total}` : ", answer a question to get ranked"}. `);
+      me.append(`${own}You are on the board as ${d.me.name}${d.me.rank ? `, rank ${d.me.rank} of ${d.total}` : ", answer a question to get ranked"}. `);
       const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Leave and delete my data";
       b.onclick = async () => { await lbPost("leave"); localStorage.setItem("lb-asked", "1"); loadBoard(); };
       me.append(b);
     } else {
       const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-accent"; b.textContent = "Join the leaderboard";
       b.onclick = () => $("#lb-join").showModal();
-      me.append("You are not on the board. Nothing is recorded until you join. ", b);
+      me.append(`${own}You are not on the board. Nothing is recorded until you join. `, b);
     }
   }
   function renderSwitch() {
