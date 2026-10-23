@@ -114,7 +114,7 @@ if tdq:
     assert c.get("/api/exams?td=k3y-for-test", headers=pub).json()[0]["total"] == c.get("/api/exams").json()[0]["total"]
     assert c.get("/api/access?td=k3y-for-test", headers=pub).json()["public"] is False   # key holder = owner: Claude/reset allowed
     assert c.get("/api/access?td=wrong", headers=pub).json()["public"] is True
-    assert c.get(f"/api/ccarp/question/{tdq[0]}").json()["tag"] == "TD" and c.get("/api/ccarp/question/" + next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") != "Tutorials Dojo" and i not in web.EXAMLIKE)).json()["tag"] == ""
+    assert c.get(f"/api/ccarp/question/{tdq[0]}").json()["tag"] == "TD" and c.get("/api/ccarp/question/" + next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("source") != "Tutorials Dojo" and not q.get("examlike"))).json()["tag"] == ""
     web.OWNER_KEY = ""
 
 # per-audience exam lists: EXAM_LISTS (env PUBLIC_EXAMS / PRIVATE_EXAMS / PERSONAL_EXAMS) filter /api/exams and every /api/{exam} route
@@ -230,7 +230,7 @@ r = c.get(f"/api/ccarp/decode/{other}"); assert r.status_code in (200, 202)     
 assert c.get("/api/ccarp/decode/nope").status_code == 404
 
 # free questions that read like the exam get the "≈ exam" badge on every link
-eid = next(iter(web.EXAMLIKE)); assert c.get(f"/api/ccarp/question/{eid}", headers=pub).json()["tag"] == "≈ exam"
+eid = next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("examlike")); assert c.get(f"/api/ccarp/question/{eid}", headers=pub).json()["tag"] == "≈ exam"
 # paid mock sets (Udemy via Microsoft Forms, rows MF*) are hidden on the public link and tagged on the card
 if mfq := [i for i, q in mod.QUESTIONS.items() if q.get("source", "").startswith("Microsoft Forms mock")]:
     assert web.hidden_source(mod.QUESTIONS[mfq[0]]["source"]) and c.get(f"/api/ccarp/question/{mfq[0]}", headers=pub).status_code == 404

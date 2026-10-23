@@ -126,6 +126,10 @@ class Exam:
         png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
         self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
         self.lock = asyncio.Lock()
+        el = ROOT / "study" / "examlike" / f"{key}.json"       # free questions that read like the paid mocks (tools/examlike.py): a badge on every link
+        for i in json.loads(el.read_text(encoding="utf-8")) if el.exists() else []:
+            if i in self.mod.QUESTIONS:
+                self.mod.QUESTIONS[i]["examlike"] = True        # ponytail: a bank refresh reloads the dicts and drops the flag until the next restart
         sj = ROOT / "study" / f"{key}.json"
         self.study = json.loads(sj.read_text(encoding="utf-8")) if sj.exists() else {}
         self.cards: dict[str, dict] = {}                       # flashcards by key (plan.card_key), see /card
@@ -278,12 +282,8 @@ def tag_of(src: str | None) -> str:
     return SOURCE_TAG.get(src or "") or ("UD" if hidden_source(src) else "")   # paid mock sets: one small label on the card
 
 
-# Free-bank CCAR-P questions that read like the paid mocks (tools/examlike.py); the badge shows on every link. ponytail: ids only, no exam key
-EXAMLIKE = set(json.loads((ROOT / "study" / "examlike" / "ccarp.json").read_text(encoding="utf-8"))) if (ROOT / "study" / "examlike" / "ccarp.json").exists() else set()
-
-
 def qview(q: dict) -> dict:
-    return {"id": q["id"], "tag": tag_of(q.get("source")) or ("≈ exam" if q["id"] in EXAMLIKE else ""), "domain": q["domain"], "question": q["question"], "options": options_of(q),
+    return {"id": q["id"], "tag": tag_of(q.get("source")) or ("≈ exam" if q.get("examlike") else ""), "domain": q["domain"], "question": q["question"], "options": options_of(q),
             "multi": len(q["answer"]) > 1, "task": not q["letters"]}
 
 
