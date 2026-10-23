@@ -126,10 +126,10 @@
       : `${h.coverage.total - h.coverage.seen} ${unit} you have not seen yet`;
     $("#door-exam-d").textContent = `${h.exam_n} ${unit} in ${h.exam_minutes} min, scored at the end`;
     if (!state.public && !state.shared) renderPlan(h.plan);
-    if (state.public) { renderPick(); showLeader(); }
+    renderPick(); showLeader();
   }
 
-  // ── Public home: pick your certification, and this exam's leader (opt-in board) ──
+  // ── Home: pick your certification, and this exam's leader (opt-in board) ──
   function renderPick() {
     const g = $("#pick-grid"); g.innerHTML = ""; $("#home-pick").hidden = false;
     for (const e of state.exams) {
@@ -147,7 +147,9 @@
     const box = $("#home-leader");
     let d = null, period = "this week";
     for (const p of ["week", "all"]) {
-      d = await (await fetch(`/api/board?exam=${state.exam}&period=${p}`)).json();
+      const r = await fetch(`/api/board?exam=${state.exam}&period=${p}`);
+      if (!r.ok) { box.hidden = true; return; }                        // an exam that is not on the public board (SAP-C03, CKA...): no leader card
+      d = await r.json();
       if (d.rows.length) { if (p === "all") period = "all time"; break; }
     }
     box.innerHTML = ""; box.hidden = false;
