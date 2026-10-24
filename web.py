@@ -466,6 +466,20 @@ def lb_totals(seen: dict, exams: set[str], week: str | None) -> tuple[int, int]:
     return len(got), sum(got)
 
 
+def lb_topics(seen: dict, exams: set[str]) -> tuple[str | None, str | None]:
+    """(strongest, weakest) topic by first-try accuracy, topics with at least 3 counted answers; None until there is a real gap."""
+    by: dict[str, list[int]] = {}
+    for k, d in seen.items():
+        qs = EXAMS[k].mod.QUESTIONS if k in exams and k in EXAMS else {}
+        for qid, v in d.items():
+            if qid in qs:
+                t = by.setdefault(qs[qid]["domain"], [0, 0]); t[0] += v[0]; t[1] += 1
+    tried = sorted((r / n, n, d) for d, (r, n) in by.items() if n >= 3)
+    if len(tried) < 2 or tried[0][0] == tried[-1][0]:
+        return None, None
+    return tried[-1][2], tried[0][2]
+
+
 def when(mins: int) -> str:
     return f"{mins} min" if mins < 60 else f"{mins // 1440} day{'s' if mins >= 2880 else ''}"
 
@@ -1243,7 +1257,8 @@ def api_board(req: Request, exam: str = "all", period: str = "week"):
     for r in lb_rows():
         done, right = lb_totals(r["seen"], exams, week)
         if done:
-            rows.append({"pid": r["pid"], "name": r["name"], "done": done, "right": right, "wrong": done - right, "acc": round(100 * right / done)})
+            strong, weak = lb_topics(r["seen"], exams)
+            rows.append({"pid": r["pid"], "name": r["name"], "done": done, "right": right, "wrong": done - right, "acc": round(100 * right / done), "strong": strong, "weak": weak})
     rows.sort(key=lambda r: (-r["right"], -r["acc"], r["done"], r["name"].lower()))
     pid, mine = lb_id(req), None
     for i, r in enumerate(rows, 1):

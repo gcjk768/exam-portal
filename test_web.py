@@ -126,6 +126,11 @@ qid, _ = lb_answer(True)
 events(c.post("/api/ccarp/answer", json={"id": qid, "picked": ["A"]}, headers=lbc))        # same question again: not counted twice
 b = c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()
 assert b["rows"][0]["name"] == "Ann Lee" and b["rows"][0]["done"] == 1 and b["rows"][0]["me"] and b["me"]["rank"] == 1, b
+assert b["rows"][0]["strong"] is None and b["rows"][0]["weak"] is None                     # too few answers for a topic verdict
+_seen = {"ccarp": {f"q{i}": [int(i < 3), "2026-W01"] for i in range(6)}}
+web.EXAMS["ccarp"].mod.QUESTIONS.update({f"q{i}": {"domain": "Good" if i < 3 else "Bad"} for i in range(6)})
+assert web.lb_topics(_seen, {"ccarp"}) == ("Good", "Bad") and web.lb_topics(_seen, set()) == (None, None)
+for i in range(6): del web.EXAMS["ccarp"].mod.QUESTIONS[f"q{i}"]
 assert c.get("/api/board?exam=nope", headers=lbc).status_code == 404
 assert c.get("/api/board?period=week", headers=lbc).json()["rows"][0]["done"] == 1
 assert c.post("/api/board/join", json={"name": "ann lee"}, headers={**pub, "Cookie": "pid=" + "56" * 16}).status_code == 409   # names are unique, ignoring case

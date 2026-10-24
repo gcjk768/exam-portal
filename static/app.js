@@ -74,7 +74,7 @@
     const tb = $("#board-table tbody"); tb.innerHTML = "";
     for (const r of d.rows) {
       const tr = document.createElement("tr"); if (r.me) tr.className = "me";
-      for (const v of [r.rank, r.name + (r.me ? " (you)" : ""), r.done, r.right, r.wrong, r.acc + "%"]) { const td = document.createElement("td"); td.textContent = v; tr.append(td); }
+      for (const v of [r.rank, r.name + (r.me ? " (you)" : ""), r.done, r.right, r.wrong, r.acc + "%", r.strong || "-", r.weak || "-"]) { const td = document.createElement("td"); td.textContent = v; tr.append(td); }
       tb.append(tr);
     }
     $("#board-empty").hidden = d.rows.length > 0;
