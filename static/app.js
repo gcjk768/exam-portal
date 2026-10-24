@@ -784,6 +784,12 @@
     return b;
   }
 
+  function shuffled(a) {   // Fisher-Yates on a copy
+    a = [...a];
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+
   function questionCard(ev) {
     const q = ev.question;
     const el = $("#t-question").content.firstElementChild.cloneNode(true);
@@ -791,7 +797,7 @@
     $(".dom", el).textContent = q.domain;
     $(".qtext", el).textContent = q.question;
     const opts = $(".options", el), picked = new Set();
-    for (const o of q.options) {
+    for (const o of shuffled(q.options)) {   // fresh order every time the card is shown; letters stay with their text so explanations still match
       const b = optionButton(o);
       b.onclick = () => {
         if (!q.multi) return submit([o.l]);
