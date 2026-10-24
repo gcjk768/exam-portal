@@ -67,17 +67,21 @@ def next_question(state: dict, Q: dict, weights: dict, by_dom: dict, now_iso: st
     """Due reviews first, then an unseen question from a domain drawn by priority, then missed, then any."""
     if not Q:
         return None
+    recent = [e.get("id") for e in state.get("log", [])[-3:]]             # mix it up: no straight repeat, fewer same-topic runs
     due = [k for k in due_keys(state, now_iso) if k in Q]
     if due:
-        return Q[due[0]]
+        return Q[next((k for k in due if k not in recent[-1:]), due[0])]
     seen = set(state["ok"]) | set(state["bad"])
     unseen = [i for i in Q if i not in seen]
     if unseen:
         pri = domain_priority(weights, by_dom, Counter(Q[i]["domain"] for i in unseen))
+        run = Counter(Q[i]["domain"] for i in recent[-2:] if i in Q)
+        pri = {d: p for d, p in pri.items() if run[d] < 2} or pri            # two in a row from one domain: switch topic
         d = rng.choices(list(pri), weights=list(pri.values()))[0]
         return Q[rng.choice([i for i in unseen if Q[i]["domain"] == d])]
     missed = [i for i in Q if state["bad"].get(i, 0) > state["ok"].get(i, 0)]
-    return Q[rng.choice(missed or list(Q))]
+    pool = [i for i in (missed or list(Q)) if i not in recent[-1:]] or missed or list(Q)
+    return Q[rng.choice(pool)]
 
 
 def plan(state: dict, Q: dict, weights: dict, by_dom: dict, now: datetime, score: int, pass_mark: int) -> dict:

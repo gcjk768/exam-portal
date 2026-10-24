@@ -44,6 +44,11 @@ assert plan.next_question(st, Q, W, by_dom, iso(now))["id"] == "L1"        # all
 st = {"ok": {i: 1 for i in Q}, "bad": {}}
 assert plan.next_question(st, Q, W, by_dom, iso(now))["id"] in Q
 assert plan.next_question(st, {}, W, by_dom, iso(now)) is None
+st = {"ok": {"H1": 1, "H2": 1}, "bad": {}, "log": [{"id": "H1"}, {"id": "H2"}]}            # mixing: two Heavy just answered
+picks = [plan.next_question(st, Q, W, by_dom, iso(now), random.Random(s))["domain"] for s in range(200)]
+assert picks.count("Heavy") == 0, picks.count("Heavy")                       # was >160 of 200 with no history
+st = {"ok": {}, "bad": {}, "srs": {"L3": [iso(now - timedelta(hours=1)), 0], "L4": [iso(now - timedelta(minutes=5)), 0]}, "log": [{"id": "L3"}]}
+assert plan.next_question(st, Q, W, by_dom, iso(now))["id"] == "L4"          # a miss due again doesn't repeat back-to-back
 pri = plan.domain_priority(W, by_dom, {"Heavy": 5, "Light": 5, "Empty": 0})
 assert pri["Heavy"] > pri["Light"] and "Empty" not in pri
 
