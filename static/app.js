@@ -600,6 +600,7 @@
     clearTimeout(resetArmed); resetArmed = 0; setResetLabel("Reset progress");
     go("quiz");
     clearFeed(); state.feedLoaded = state.exam; state.home = null;   // drop stale cards and cached progress
+    localStorage.removeItem(EX.key()); EX.run = null; EX.cur = 0; clearInterval(EX.timer);   // and the saved mock exam, so the next one is a fresh shuffle
     await act("reset");
     state.home = await api("/home"); renderMode(state.home.progress);
   });

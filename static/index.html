@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
+<script>(function(){var t;try{t=localStorage.getItem("ep-theme")}catch(e){}document.documentElement.dataset.theme=t||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark")})()</script>
 <title>Exam Portal</title>
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,6 +25,7 @@
     <a href="#exam" data-view="exam">Exam</a>
     <a href="#stats" data-view="stats">Stats</a>
     <a href="#board" data-view="board" class="board-link">Leaderboard</a>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch colour theme"><i class="ph ph-moon" aria-hidden="true"></i><i class="ph ph-sun" aria-hidden="true"></i></button>
   </nav>
 </header>
 
@@ -281,7 +283,7 @@
   </article>
 </template>
 
-<footer class="site-foot">Learn more: <a href="https://claude.com/resources/articles/dashboards-and-motion" target="_blank" rel="noopener noreferrer">Build live dashboards and animate explainers with Claude</a></footer>
 <script src="/static/app.js" defer></script>
+<script src="/static/motion.js" defer></script>
 </body>
 </html>
