@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-<header class="top">
+<header class="top" role="banner">
   <a class="brand" href="#home" data-view="home"><i class="ph ph-seal-check brand-mark" aria-hidden="true"></i><b>Exam<span>Portal</span></b></a>
   <span class="scope" id="scope" hidden></span>
   <nav class="exams" id="exam-switch" aria-label="Exam"></nav>
@@ -145,9 +145,9 @@
       </div>
       <div id="peek-card"></div>
     </div>
-    <div class="quiz-bar" id="quiz-bar" hidden><i class="ph ph-arrows-clockwise" aria-hidden="true"></i><span id="quiz-bar-text"></span></div>
-    <div class="feed" id="feed" aria-live="polite"></div>
-    <div class="working" id="working" hidden>
+    <div class="quiz-bar" id="quiz-bar" role="status" hidden><i class="ph ph-arrows-clockwise" aria-hidden="true"></i><span id="quiz-bar-text"></span></div>
+    <div class="feed" id="feed" aria-live="polite" aria-busy="false"></div>
+    <div class="working" id="working" role="status" aria-live="polite" hidden>
       <span class="working-bar"></span>
       <span id="working-text">Working</span>
       <span class="mono" id="working-time">0s</span>
@@ -174,7 +174,7 @@
     </div>
     <div id="exam-run" hidden>
       <div class="exam-bar">
-        <span class="mono" id="exam-clock">00:00</span>
+        <span class="mono" id="exam-clock" role="timer" aria-label="Time left">00:00</span>
         <span id="exam-progress"></span>
         <button class="btn btn-accent" type="button" id="exam-submit"><i class="ph ph-paper-plane-right" aria-hidden="true"></i><span class="lbl">Submit exam</span></button>
       </div>
@@ -218,8 +218,8 @@
       <nav class="exams" id="board-period" aria-label="Period"><button type="button" data-p="week">This week</button><button type="button" data-p="all">All time</button></nav>
     </div>
     <div class="board-me" id="board-me"></div>
-    <table class="board" id="board-table"><thead><tr><th>#</th><th>Name</th><th>Done</th><th>Right</th><th>Wrong</th><th>Accuracy</th><th>Strongest topic</th><th>Weakest topic</th></tr></thead><tbody></tbody></table>
-    <p class="muted small" id="board-empty" hidden>Nobody is on this board yet.</p>
+    <table class="board" id="board-table" aria-label="Leaderboard"><thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Done</th><th scope="col">Right</th><th scope="col">Wrong</th><th scope="col">Accuracy</th><th scope="col">Strongest topic</th><th scope="col">Weakest topic</th></tr></thead><tbody></tbody></table>
+    <p class="muted small" id="board-empty" role="status" hidden>Nobody is on this board yet.</p>
   </section>
 
   <!-- Stats -->
@@ -239,19 +239,19 @@
   </section>
 </main>
 
-<dialog id="lb-join" class="lb-join">
+<dialog id="lb-join" class="lb-join" aria-labelledby="lb-title">
   <form method="dialog" id="lb-form">
-    <h3>Save your progress?</h3>
+    <h3 id="lb-title">Save your progress?</h3>
     <p>Saving keeps your answers on this site, tied to this browser, so you get your own score, study plan and an "are you ready for the exam?" check. Nobody else sees them. You can also join the public leaderboard by typing a name below: a nickname, or your real name if you prefer. Everyone with the link can see that name, your counts, and your strongest and weakest topic.</p>
     <label for="lb-name">Name for the leaderboard (optional)</label>
     <input id="lb-name" maxlength="24" autocomplete="off" placeholder="Nickname or real name">
-    <p class="lb-err small" id="lb-err" hidden></p>
+    <p class="lb-err small" id="lb-err" role="alert" hidden></p>
     <div class="row"><button class="btn btn-accent" type="submit" value="join">Save</button><button class="btn" type="button" id="lb-no">No thanks</button></div>
     <p class="muted small">If you say no, nothing is kept about you. You can stop any time: Stats deletes your saved progress, and the Leaderboard page deletes your name and counts.</p>
   </form>
 </dialog>
 
-<dialog id="lightbox" class="lightbox">
+<dialog id="lightbox" class="lightbox" aria-label="Enlarged diagram">
   <form method="dialog"><button class="close" type="submit" aria-label="Close">Close</button></form>
   <img id="lightbox-img" alt="Diagram">
   <div id="lightbox-svg" class="lightbox-svg" hidden></div>
@@ -281,6 +281,7 @@
   </article>
 </template>
 
+<footer class="site-foot">Learn more: <a href="https://claude.com/resources/articles/dashboards-and-motion" target="_blank" rel="noopener noreferrer">Build live dashboards and animate explainers with Claude</a></footer>
 <script src="/static/app.js" defer></script>
 </body>
 </html>
