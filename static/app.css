@@ -873,6 +873,7 @@ kbd { border-radius: 0; border: 1.5px solid var(--edge); border-bottom-width: 3p
 .summary { border-radius: 0; border: 1.5px solid var(--edge); border-left: 10px solid var(--accent); background: color-mix(in oklab, var(--accent) 9%, var(--surface)); }
 .summary h4 { font: 400 1.7rem/1 var(--font-display); }
 .summary code, .note code { border-radius: 0; font-family: var(--font-mono); border: 1.5px solid var(--line-2); background: var(--surface); }
+.summary, .note-text, .cram, .domain-actions { overflow-wrap: anywhere; min-width: 0; }   /* long tokens like include: component: <host>/<project>/<name>@<version> have no break point and widened the whole Study column past a phone screen */
 .note { border-radius: 0; border: 1.5px solid var(--edge); background: var(--surface-2); box-shadow: 4px 4px 0 var(--hard-c); }
 .note h4 { font: 400 1.7rem/1.05 var(--font-display); }
 .note .nn { border-radius: 0; font: 500 .8rem var(--font-mono); padding: .15rem .55rem; border: 1.5px solid var(--edge-acc); }
@@ -1068,6 +1069,10 @@ kbd { border-radius: 0; border: 1.5px solid var(--edge); border-bottom-width: 3p
 #board-filters .exams { box-shadow: 3px 3px 0 var(--hard-c); }
 #board-filters .exams button { padding: .6rem .9rem; }
 .board-me { margin: 1.4rem 0 0; padding: 1rem 1.2rem; gap: .8rem 1rem; border: 1.5px solid var(--edge); border-left: 12px solid var(--accent); background: var(--surface); box-shadow: 4px 4px 0 var(--hard-c); color: var(--text); font-size: 1rem; }
+.lb-summary { margin: 1rem 0 0; padding: 1rem 1.2rem; border: 1.5px solid var(--edge); background: var(--surface); box-shadow: 4px 4px 0 var(--hard-c); overflow-wrap: anywhere; }
+.lb-summary h3 { display: flex; align-items: center; gap: .45rem; margin: 0 0 .5rem; font-size: 1.15rem; }
+.lb-summary p { margin: .4rem 0; } .lb-summary p .ph { margin-right: .35rem; }
+.lb-summary ol { margin: .3rem 0 .9rem; padding-left: 1.3rem; } .lb-summary li { margin: .2rem 0; }
 .board { margin-top: 1.6rem; border: 1.5px solid var(--edge); border-radius: 0; background: var(--surface); box-shadow: 8px 8px 0 var(--hard-c); }
 .board thead th { position: static; padding: .85rem .9rem; background: var(--text); color: var(--bg); font: 500 .66rem var(--font-mono); letter-spacing: .16em; text-transform: uppercase; }
 .board td { padding: .95rem .9rem; border-bottom: 1.5px solid var(--line-2); font-size: .98rem; }
@@ -1240,6 +1245,9 @@ html.navd { --base: .32s; }
 @media (max-width: 380px) {
   .feed-actions [data-act="next"] .ph { display: none; }   /* narrow phones: the word alone, so "Next" is never cut */
 }
+.history > summary, .info-btn { min-height: 24px; padding-block: .3rem; }   /* 24 px tap targets (WCAG 2.5.8) */
+@media (max-width: 640px) { .card .btn { white-space: normal; max-width: 100%; text-align: left; } }   /* long labels ("Explain more with a diagram", "Study next" domains) wrap instead of running off a phone screen */
+#feed { grid-template-columns: minmax(0, 1fr); } #feed > * { min-width: 0; }   /* one wide card must not widen the column for every card after it */
 
 /* ---------- Reduced motion and print ---------- */
 @media (prefers-reduced-motion: reduce) {

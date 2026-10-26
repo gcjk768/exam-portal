@@ -48,14 +48,17 @@
     const err = $("#lb-err"), name = $("#lb-name").value.trim();
     if (!state.public && !name) { err.textContent = "Type a name to join."; err.hidden = false; return; }
     if (state.public && !(await fetch("/api/track/on", { method: "POST" })).ok) { err.textContent = "Could not save your progress."; err.hidden = false; return; }
-    if (name && !(await lbJoin(name))) return;
+    if (name && !(await lbJoin(name))) {                                  // name taken or refused: undo the tracking switched on just above
+      if (state.public && !state.track) await fetch("/api/track/off", { method: "POST" });
+      return;
+    }
     localStorage.setItem("lb-asked", "1"); location.reload();            // reload so the score, plan and readiness appear
   });
   $("#track-on").addEventListener("click", () => $("#lb-join").showModal());
   $("#track-off").addEventListener("click", async (ev) => {
     const b = ev.currentTarget;
     if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Click again to delete everything saved"; return; }
-    await fetch("/api/track/off", { method: "POST" }); await lbPost("leave"); localStorage.removeItem("lb-asked");
+    await fetch("/api/track/off", { method: "POST" }); await lbPost("leave"); localStorage.setItem("lb-asked", "1");   // they just said no: don't ask again at once
     location.hash = "home"; location.reload();                          // Stats has nothing to show once the saved progress is gone
   });
   $("#lb-no").addEventListener("click", () => { localStorage.setItem("lb-asked", "1"); $("#lb-join").close(); });
@@ -83,7 +86,7 @@
     const own = d.me.owner ? "On your own links only CCAR-P counts, and not the paid questions. " : "";
     if (d.me.joined) {
       me.append(`${own}You are on the board as ${d.me.name}${d.me.rank ? `, rank ${d.me.rank} of ${d.total}` : ", answer a question to get ranked"}. `);
-      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Leave and delete my data";
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Leave the board";   // removes the board entry only; saved progress is stopped on Stats
       b.onclick = async () => { await lbPost("leave"); localStorage.setItem("lb-asked", "1"); loadBoard(); };
       me.append(b);
     } else {
@@ -91,6 +94,30 @@
       b.onclick = () => $("#lb-join").showModal();
       me.append(`${own}You are not on the board. Nothing is recorded until you join. `, b);
     }
+    renderSummary();
+  }
+  // Your strengths, weak spots and the shortest way to the pass mark (web.py summary: same numbers as the predicted score)
+  async function renderSummary() {
+    const box = $("#board-summary");
+    const r = state.shared ? null : await fetch(`/api/${state.exam}/summary`);
+    if (!r || !r.ok) { box.hidden = true; return; }
+    const s = await r.json(), pct = (a) => a == null ? "not started" : `${Math.round(100 * a)}%`;
+    const list = (xs) => xs.map(x => `${esc(x.domain)} (${pct(x.acc)})`).join(", ");
+    box.innerHTML = `<h3>${ic("compass", "ic-accent")}Your summary · ${esc(s.exam)}</h3>
+      <p class="muted small">Predicted ${s.score} of 1000, pass ${s.pass}, from ${s.answered} first-try answer${s.answered === 1 ? "" : "s"}${s.answered < 20 ? ". Answer more for a reliable picture" : ""}.</p>
+      <p>${ic("trend-up", "ic-ok")}<b>Strong</b> ${s.strong.length ? list(s.strong) : "none yet (75% or more on at least 3 questions)"}</p>
+      <p>${ic("warning", "ic-bad")}<b>Weak</b> ${s.weak.length ? list(s.weak) : "nothing below 72% yet"}</p>
+      ${s.gap ? `<p><b>To pass</b> you need ${s.gap} more points. Lift these, biggest gain first:</p>
+        <ol>${s.steps.map(x => `<li>${esc(x.domain)} <span class="muted">(${x.weight}% of the exam)</span>: ${pct(x.acc)} → ${Math.round(100 * x.target)}% · <b>+${x.points}</b></li>`).join("")}</ol>`
+        : `<p><b>At pass level.</b> Keep every topic above 72% and close the weak ones before booking.</p>`}`;
+    const focus = s.weak[0]?.domain || s.steps[0]?.domain;
+    if (focus) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-accent";
+      b.innerHTML = `${ic("target")}Quiz me on ${esc(focus)}`;
+      b.onclick = () => { go("quiz"); setTimeout(() => act(`d|${focus}`), 50); };
+      box.append(b);
+    }
+    box.hidden = false;
   }
   function renderSwitch() {
     const nav = $("#exam-switch");
@@ -158,6 +185,7 @@
   }
   async function showLeader() {
     const box = $("#home-leader");
+    if (!cur()?.board) { box.hidden = true; return; }               // only the public exams have a board: no request, no 404
     let d = null, period = "this week";
     for (const p of ["week", "all"]) {
       const r = await fetch(`/api/board?exam=${state.exam}&period=${p}`);
@@ -178,9 +206,10 @@
   // ── Plan (Home): exam date, today's targets, focus domains; the quiz bar shows the same numbers while you work ──
   const days = (n) => n == null ? "No exam date yet" : n < 0 ? "Exam date passed" : n === 0 ? "Exam day" : `${n} day${n === 1 ? "" : "s"} to the exam`;
   function fmtPlan(p) {
-    const cards = p.cards.due.length ? ` and ${p.cards.due.length} flashcards` : "";
+    const s = (n) => n === 1 ? "" : "s";
+    const cards = p.cards.due.length ? ` and ${p.cards.due.length} flashcard${s(p.cards.due.length)}` : "";
     const track = p.score ? (p.on_track ? `${p.score} predicted: on track for the ${p.pass} pass mark.` : `${p.score} predicted, ${p.gap} short of the ${p.pass} pass mark.`) : "Answer questions to get a predicted score.";
-    return `${days(p.days_left)}. Today: ${p.due} due reviews${cards}, then ${p.today.pace} new questions. ${track}`;
+    return `${days(p.days_left)}. Today: ${p.due} due review${s(p.due)}${cards}, then ${p.today.pace} new questions. ${track}`;
   }
   function renderPlan(p) {
     state.plan = p;
@@ -416,7 +445,7 @@
         const icon = text && open !== "{" && !/["<>`]/.test(text) && !iconised.has(id) && iconFor(text);
         if (!icon) continue;
         iconised.add(id);                                      // the icon sits above the text inside the same node shape
-        src = src.replace(id + open + label + CLOSE[open], `${id}${open}"<img src='/static/icons/${icon}' class='ni' width='36' height='36' style='display:block;margin:2px auto 6px;object-fit:contain;box-sizing:border-box;padding:4px'/>${esc(text)}"${CLOSE[open]}`);
+        src = src.replace(id + open + label + CLOSE[open], `${id}${open}"<img src='/static/icons/${icon}' alt='' class='ni' width='36' height='36' style='display:block;margin:2px auto 6px;object-fit:contain;box-sizing:border-box;padding:4px'/>${esc(text)}"${CLOSE[open]}`);
       }
     const tint = (c, t) => `fill:${mix(c, PAL.bg, t)},stroke:${c},stroke-width:1.6px,color:${PAL.text}`;
     const defs = [
@@ -634,6 +663,7 @@
   $$("#mode-bar [data-mode]").forEach(b => b.onclick = async () => {
     const p = await (await post("/mode", { mode: b.dataset.mode })).json();
     if (state.home) { state.home.progress = p; state.home.mode = p.mode; }
+    state.exams = await (await fetch("/api/exams")).json();   // the mock exam's size and mode follow the switch
     renderMode(p);
   });
   async function openQuiz() {
@@ -665,6 +695,11 @@
     state.fresh = body.data === "next" || body.data === "weak" || /^[dq]\|/.test(body.data || "");   // next question: start a clean screen on its first card
     try {
       const res = await post(path, body);
+      if (!res.ok) {                                       // e.g. 429 "slow down": a JSON detail, not the event stream
+        let d = ""; try { d = (await res.json()).detail; } catch (e) { /* not JSON */ }
+        apply({ op: "error", html: esc(typeof d === "string" && d ? d : `Request failed (${res.status}).`) });
+        return;
+      }
       const reader = res.body.getReader(), dec = new TextDecoder();
       let buf = "";
       for (;;) {
@@ -971,6 +1006,7 @@
   // Keyboard: A-H pick, Enter submits a multi-select or asks for the next question (not while typing a task answer).
   document.addEventListener("keydown", (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest("input, textarea, dialog")) return;
+    if ((e.key === "Enter" || e.key === " ") && e.target.closest("button, a, summary")) return;   // a focused control does its own thing (keyboard users pick options with Enter)
     const k = e.key.toUpperCase();
     if (state.view === "exam" && EX.run && !EX.run.done) {
       if (!EX.run.tasks && /^[A-H]$/.test(k)) { $(`#exam-q .opt[data-l="${k}"]`)?.click(); e.preventDefault(); }
@@ -1000,7 +1036,7 @@
   const EX = { key: () => `exam:${state.exam}`, run: null, timer: null, cur: 0 };
   function loadExam() {
     const saved = JSON.parse(localStorage.getItem(EX.key()) || "null");
-    if (saved && !saved.done) { EX.run = saved; EX.cur = Math.min(EX.cur, saved.questions.length - 1); return showExamRun(); }
+    if (saved && !saved.done) { EX.run = saved; EX.cur = Math.min(saved.cur || 0, saved.questions.length - 1); return showExamRun(); }   // back where you were
     EX.run = null;
     $("#exam-setup").hidden = false; $("#exam-run").hidden = true; $("#exam-result").hidden = true;
     const e = cur();
@@ -1058,6 +1094,7 @@
   }
   function renderExamQ() {
     const q = EX.run.questions[EX.cur];
+    if (EX.run.cur !== EX.cur) { EX.run.cur = EX.cur; saveExam(); }
     const box = $("#exam-q"); box.innerHTML = "";
     if (q.task) {
       const el = $("#t-task").content.firstElementChild.cloneNode(true);
@@ -1093,10 +1130,11 @@
   $("#exam-prev").onclick = () => { if (EX.cur > 0) { EX.cur--; renderExamNav(); renderExamQ(); } };
   $("#exam-next").onclick = () => { if (EX.cur < EX.run.questions.length - 1) { EX.cur++; renderExamNav(); renderExamQ(); } };
   let submitArmed = 0;
+  const submitLabel = (s) => { $(".lbl", $("#exam-submit")).textContent = s; };   // keep the icon: textContent on the button wiped it
   $("#exam-submit").onclick = () => {
     const blank = EX.run.questions.length - EX.run.questions.filter(answered).length;
-    if (!submitArmed && blank) { $("#exam-submit").textContent = `Submit with ${blank} blank`; submitArmed = setTimeout(() => { submitArmed = 0; $("#exam-submit").textContent = "Submit exam"; }, 5000); return; }
-    clearTimeout(submitArmed); submitArmed = 0; $("#exam-submit").textContent = "Submit exam";
+    if (!submitArmed && blank) { submitLabel(`Submit with ${blank} blank`); submitArmed = setTimeout(() => { submitArmed = 0; submitLabel("Submit exam"); }, 5000); return; }
+    clearTimeout(submitArmed); submitArmed = 0; submitLabel("Submit exam");
     submitExam(false);
   };
   async function submitExam(timedOut) {
@@ -1104,7 +1142,7 @@
     EX.run.done = true; clearInterval(EX.timer);
     const answers = {};
     for (const q of EX.run.questions) answers[q.id] = EX.run.answers[q.id] || [];
-    if (EX.run.tasks) { $("#exam-submit").disabled = true; $("#exam-submit").textContent = "Grading with Claude, this takes a minute per task"; }
+    if (EX.run.tasks) { $("#exam-submit").disabled = true; submitLabel("Grading with Claude, this takes a minute per task"); }
     let res;
     try {
       const r = await post("/exam/submit", { answers, minutes_used: (Date.now() - EX.run.started) / 60000 });
@@ -1112,12 +1150,12 @@
       res = await r.json();
     } catch (e) {                                          // keep the answers (still in localStorage) and let the user retry
       EX.run.done = false;
-      $("#exam-submit").disabled = false; $("#exam-submit").textContent = "Submit failed, try again";
+      $("#exam-submit").disabled = false; submitLabel("Submit failed, try again");
       if (!timedOut) EX.timer = setInterval(tickExam, 1000);
       return;
     }
     localStorage.removeItem(EX.key());
-    $("#exam-submit").disabled = false; $("#exam-submit").textContent = "Submit exam";
+    $("#exam-submit").disabled = false; submitLabel("Submit exam");
     showExamResult(res, timedOut);
   }
   function showExamResult(res, timedOut) {

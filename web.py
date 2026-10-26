@@ -130,11 +130,11 @@ class Exam:
         self.short, self.name, self.n_exam, self.minutes = META.get(key, (key.upper(), key, 65, 130))
         os.environ["DATA_DIR"] = str(self.dir / "data")       # bot.py reads it at import
         self.mod = self._load(f"bot_{key}", self.dir / "bot.py")
-        self.scrape = None
+        self.scrape = self.parsers = None
         if (self.dir / "scrape.py").exists():                  # refresh_bank does `import scrape` lazily: act() points sys.modules at this exam's copy
             self.scrape = sys.modules["scrape"] = self._load(f"scrape_{key}", self.dir / "scrape.py")
-        if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks
-            sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
+        if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks; several exams have one, so act() swaps it in too
+            self.parsers = sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
         self.mod.vault_log = quiet_for_public(vault_writer(vault))
         self._own_state(self.mod, key)
         self.mod.PREFER_MERMAID = True                         # tutor draws Mermaid here (icons are added in the browser)
@@ -534,6 +534,8 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
     elif data == "refresh":
         if exam.scrape is not None:
             sys.modules["scrape"] = exam.scrape               # the bot's refresh_bank does `import scrape` first thing, before any await
+        if exam.parsers is not None:
+            sys.modules["online_parsers"] = exam.parsers      # else the last-loaded exam's parsers (CKA) answer CCAR-P's import
         await mod.refresh_bank(None, rec)
         exam.mark_examlike()                                  # a refresh reloads the question dicts: put the badges back
     elif data == "reset":
@@ -837,11 +839,12 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
                     g = await grade_one(exam, q, text)
                 except Exception as exc:
                     log.warning("exam grading failed for %s: %s", qid, exc)
-                    g = {"score": 0, "verdict": "grader unavailable", "feedback": str(exc)[:200], "commands": ""}
+                    g = {"score": 0, "verdict": "grader unavailable", "feedback": str(exc)[:200], "commands": "", "failed": True}
             else:
                 g = {"score": 0, "verdict": "blank", "feedback": "No answer given.", "commands": ""}
             right = g["score"] >= PASS_TASK
-            record(exam, state, qid, right, {"exam": True, "score": g["score"]})
+            if not g.get("failed"):                           # a Claude outage is not a failed attempt: progress and schedule stay as they were
+                record(exam, state, qid, right, {"exam": True, "score": g["score"]})
             d = by_dom.setdefault(q["domain"], [0, 0]); d[1] += 1; d[0] += g["score"] / 100
             results.append({"id": qid, "domain": q["domain"], "question": q["question"], "options": [], "multi": False, "task": True,
                             "answer": text, "score": g["score"], "verdict": g["verdict"], "feedback": g["feedback"],
@@ -1015,7 +1018,8 @@ def api_exams(req: Request):
         out.append({"key": e.key, "short": e.short, "name": e.name, "has_study": e.has_study, "tasks": e.has_tasks,
                     "mode": e.mode(st), "progress": e.progress(st) if e.has_tasks else None,
                     "total": c["total"], "seen": c["seen"], "right": c["right"], "pass": e.mod.PASS,
-                    "exam_n": min(e.n_exam, len(e.pool(st, pub)) if e.has_tasks else c["total"]), "exam_minutes": e.minutes})
+                    "exam_n": min(exam_size(e, st), len(e.pool(st, pub)) if e.has_tasks else c["total"]), "exam_minutes": e.minutes,
+                    "board": visible(e.key, "public")})
     return out
 
 
@@ -1048,7 +1052,7 @@ async def api_home(key: str, req: Request):
             "last": {"id": last.get("id"), "has_teach": bool(last.get("teach"))} if last else None,
             "study_cards": len(getattr(e.mod, "NOTES", {}) or {}),
             "studied": len(set(state.get("studied", []))),
-            "exam_n": min(e.n_exam, len(e.pool(state, pub)) if e.has_tasks else len(e.questions(pub))), "exam_minutes": e.minutes,
+            "exam_n": min(exam_size(e, state), len(e.pool(state, pub)) if e.has_tasks else len(e.questions(pub))), "exam_minutes": e.minutes,
             "exam_answers": sum(1 for x in state.get("log", []) if x.get("exam"))}
 
 
@@ -1082,6 +1086,38 @@ def api_mode(key: str, body: Mode):
 def api_study(key: str, req: Request):
     e = exam_or_404(key)
     return {"reading": without_dead(e.study), "coverage": e.coverage(e.mod.load_state(), is_public(req)), "has_cards": e.has_study}
+
+
+SUMMARY_TARGET = 0.8      # "lift it to" accuracy: the bot's READY bar (verdict: score 800 and 80% first-try)
+
+
+def summary(e: Exam, state: dict) -> dict:
+    """Strengths, weaknesses and the shortest way to the pass mark, from the same first-try numbers as the predicted score
+    (bot metrics: score = sum(weight x domain accuracy) / sum(weights) x 1000, untried domains count 0). A step is worth
+    weight / total x (target - accuracy) x 1000 points; the biggest steps are listed until they close the gap."""
+    m = e.mod.metrics(state, datetime.now(SGT))
+    weights = getattr(e.mod, "WEIGHTS", None) or {d: 1 for d in m["by_dom"]}
+    total = sum(weights.values())
+    acc = {d: (r / n if n else None, n) for d, (r, n) in m["by_dom"].items()}
+    tried = sorted(((a, d) for d, (a, n) in acc.items() if n >= 3), reverse=True)
+    strong = [{"domain": d, "acc": round(a, 2)} for a, d in tried if a >= 0.75][:2]
+    weak = [{"domain": d, "acc": round(a, 2)} for a, d in reversed(tried) if a < 0.72][:2]
+    gap, steps, need = max(0, e.mod.PASS - m["score"]), [], e.mod.PASS - m["score"]
+    for pts, d in sorted(((weights.get(d, 1) / total * (SUMMARY_TARGET - (a or 0)) * 1000, d) for d, (a, n) in acc.items()), reverse=True):
+        if need <= 0 or pts <= 0:
+            break
+        a, n = acc[d]
+        steps.append({"domain": d, "weight": round(100 * weights.get(d, 1) / total), "acc": None if a is None else round(a, 2), "seen": n, "target": SUMMARY_TARGET, "points": round(pts)})
+        need -= pts
+    return {"exam": e.short, "score": m["score"], "pass": e.mod.PASS, "gap": gap, "answered": m["first_n"], "strong": strong, "weak": weak, "steps": steps}
+
+
+@app.get("/api/{key}/summary")
+def api_summary(key: str, req: Request):
+    e = exam_or_404(key)
+    if is_public(req) and not tracked():
+        raise HTTPException(404, "no personal numbers on the shared link")   # nothing is kept for them, so there is nothing to sum up
+    return summary(e, e.mod.load_state())
 
 
 @app.get("/api/{key}/plan")
@@ -1165,6 +1201,11 @@ async def api_task(key: str, body: TaskAnswer):
     return stream(e, functools.partial(check_task, e, body.id, body.answer, guess=body.guess))
 
 
+def exam_size(e: Exam, state: dict) -> int:
+    """Questions in a full mock exam in the current mode: the MCQ phase of a hands-on exam is 60 in the real 120 min."""
+    return e.n_exam if not e.has_tasks or e.mode(state) == "tasks" else 60
+
+
 @app.post("/api/{key}/exam/start")
 def api_exam_start(key: str, body: ExamStart, req: Request):
     e = exam_or_404(key)
@@ -1172,7 +1213,7 @@ def api_exam_start(key: str, body: ExamStart, req: Request):
     st = e.mod.load_state()
     pool = e.pool(st, pub) if e.has_tasks else e.questions(pub)
     mode_tasks = e.has_tasks and e.mode(st) == "tasks"
-    n_exam = e.n_exam if (mode_tasks or not e.has_tasks) else 60          # MCQ phase of a hands-on exam: 60 questions in the real 120 min
+    n_exam = exam_size(e, st)
     n = max(1, min(body.n or n_exam, len(pool)))
     minutes = e.minutes if n >= n_exam else max(5, round(e.minutes * n / n_exam))   # same pace as the real exam
     return {"questions": exam_pick(e, n, pub), "minutes": minutes, "n": n, "pass": e.mod.PASS, "tasks": mode_tasks}

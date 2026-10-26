@@ -56,6 +56,16 @@ for d in ("report", "refresh", "e|x|A"):
     ev = events(c.post("/api/ccarp/act", json={"data": d}, headers=pub))
     assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
 
+# owner bank refresh: CCAR-P's scrape.py imports `online_parsers` lazily, and CKA (loaded last) has one too
+_seen = {}
+async def _fake_refresh(update, rec):
+    import online_parsers
+    _seen["file"] = online_parsers.__file__
+_rb, web.EXAMS["ccarp"].mod.refresh_bank = web.EXAMS["ccarp"].mod.refresh_bank, _fake_refresh
+events(c.post("/api/ccarp/act", json={"data": "refresh"}))
+web.EXAMS["ccarp"].mod.refresh_bank = _rb
+assert Path(_seen["file"]).parent.name == "ccarp", _seen                    # was CKA's online_parsers.py
+
 assert 'data-public="1"' in c.get("/", headers=pub).text and 'data-public="1"' not in c.get("/").text
 assert 'data-shared="1"' in c.get("/", headers=pub).text and 'data-shared' not in c.get("/").text   # public visitors without the tracker see no personal numbers
 assert c.get("/api/access", headers=pub).json() == {"public": True, "shared": True, "track": False} and c.get("/api/access").json() == {"public": False, "shared": False, "track": False}
@@ -407,13 +417,29 @@ assert sum(st["ok"].values()) + sum(st["bad"].values()) >= 10 and st["log"][-1][
 assert c.get("/api/sapc03/home").json()["exam_answers"] == 10
 
 # task exam (CKA): next task streams the task + a task meta event; Claude grading is monkeypatched; self-mark path is free
+# summary: strengths, weaknesses and the steps that close the gap to the pass mark (same numbers as the predicted score)
+for k in web.EXAMS:
+    s = c.get(f"/api/{k}/summary").json()
+    assert s["gap"] == max(0, s["pass"] - s["score"]) and all(x["acc"] >= .75 for x in s["strong"]) and all(x["acc"] < .72 for x in s["weak"]), (k, s)
+    assert s["gap"] == 0 or s["score"] + sum(x["points"] for x in s["steps"]) >= s["pass"] - len(s["steps"]), (k, s)   # the listed steps reach the pass mark (rounding)
+fake = {"ok": {}, "bad": {}, "log": [{"t": "2026-10-26T10:00", "id": i, "ok": n < 4, "first": True}
+        for d in ("Integration", "Solution Design & Architecture") for n, i in enumerate([q for q, v in mod.QUESTIONS.items() if v["domain"] == d][:5])]}
+s = web.summary(web.EXAMS["ccarp"], fake)                                  # 80% on both: strong, never weak; the untried heavy domains lead the steps
+assert [x["domain"] for x in s["strong"]] == ["Solution Design & Architecture", "Integration"] or len(s["strong"]) == 2, s
+assert not s["weak"] and s["steps"][0]["acc"] is None and s["steps"][0]["weight"] >= s["steps"][-1]["weight"], s
+assert c.get("/api/ccarp/summary", headers=pub).status_code == 404                           # shared link: no personal numbers
+
 cka = web.EXAMS["cka"]
 home = c.get("/api/cka/home").json()
 assert home["tasks"] is True and home["mode"] == "mcq" and home["progress"]["mcq"]["total"] >= 50   # MCQ phase first
 ev = events(c.post("/api/cka/act", json={"data": "next"}))
 assert ev[0]["op"] == "add" and ev[0]["question"]["options"] and not ev[0]["question"]["task"], ev[0]   # an MCQ while in MCQ mode
 assert c.post("/api/cka/exam/start", json={"n": 5}).json()["tasks"] is False
+ck = next(e for e in c.get("/api/exams").json() if e["key"] == "cka")
+assert ck["exam_n"] == 60 and home["exam_n"] == 60, ck                                              # MCQ mock: 60 in 120 min, as /exam/start paces it (was the 17-task count)
+assert c.post("/api/cka/exam/start", json={"n": 10}).json()["minutes"] == round(120 * 10 / 60)
 assert c.post("/api/cka/mode", json={"mode": "tasks"}).json()["mode"] == "tasks"                      # manual switch
+assert next(e for e in c.get("/api/exams").json() if e["key"] == "cka")["exam_n"] == 17             # task mock: the 17 tasks
 ev = events(c.post("/api/cka/act", json={"data": "next"}))
 assert ev[0]["html"].startswith("🛠") and ev[1]["op"] == "meta" and ev[1]["task"]["task"] is True, ev
 tid = ev[1]["task"]["id"]
@@ -438,6 +464,13 @@ ex = c.post("/api/cka/exam/start", json={"n": 3}).json()
 assert ex["tasks"] is True and ex["minutes"] == 21 and all(q["task"] for q in ex["questions"])
 res = c.post("/api/cka/exam/submit", json={"answers": {ex["questions"][0]["id"]: ["kubectl apply -f x.yaml"], ex["questions"][1]["id"]: [""]}, "minutes_used": 5}).json()
 assert res["tasks"] is True and res["n"] == 2 and res["results"][0]["score"] == 85 and res["results"][1]["verdict"] == "blank"
+_g, t3 = web.grade_one, ex["questions"][2]["id"]
+async def _down(*a, **k): raise RuntimeError("claude down")
+web.grade_one = _down
+before = (dict(cka.mod.load_state()["ok"]), dict(cka.mod.load_state()["bad"]))
+res = c.post("/api/cka/exam/submit", json={"answers": {t3: ["kubectl get pods"]}, "minutes_used": 1}).json()
+web.grade_one = _g
+assert res["results"][0]["verdict"] == "grader unavailable" and (cka.mod.load_state()["ok"], cka.mod.load_state()["bad"]) == before   # an outage is not a failed attempt
 assert c.post("/api/ccarp/task", json={"id": "x", "answer": "y"}).status_code == 400
 
 c.__exit__(None, None, None)
