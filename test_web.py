@@ -161,7 +161,21 @@ done0 = c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()["rows"][0]
 lb_answer(True); lb_answer(True)
 assert c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()["rows"][0]["done"] == done0 + 1
 web.LB_MIN_GAP = 0.0
+# mock-exam board: its own ranking under the same name; 20+ questions, best score first
+assert c.get("/api/board/mock", headers=lbc).json()["rows"] == []
+def lb_mock(n: int, right: bool):
+    ex = c.post("/api/ccarp/exam/start", json={"n": n}, headers=lbc).json()["questions"]
+    Qm = web.EXAMS["ccarp"].mod.QUESTIONS
+    return c.post("/api/ccarp/exam/submit", json={"answers": {q["id"]: sorted(Qm[q["id"]]["answer"]) if right else ["Z"] for q in ex}, "minutes_used": 30}, headers=lbc).json()
+lb_mock(5, True)                                                                             # too short: left off
+assert c.get("/api/board/mock", headers=lbc).json()["rows"] == []
+lb_mock(20, False); lb_mock(20, True)
+mb = c.get("/api/board/mock?exam=ccarp", headers=lbc).json()
+assert mb["rows"][0]["name"] == "Ann Lee" and mb["rows"][0]["best"] == 1000 and mb["rows"][0]["last"] == 1000, mb
+assert mb["rows"][0]["taken"] == 2 and mb["rows"][0]["passed"] == 1 and mb["rows"][0]["best_exam"] == "CCAR-P" and mb["me"]["rank"] == 1, mb
+assert "best" not in c.get("/api/board?period=all", headers=lbc).json()["rows"][0]                # the practice board is unchanged
 assert c.post("/api/board/leave", headers=lbc).json() == {"joined": False}
+assert c.get("/api/board/mock", headers=lbc).json()["rows"] == []                             # leaving deletes the mock scores too
 assert c.get("/api/board", headers=lbc).json()["rows"] == [] and not list(web.LB_DIR.glob("*.json"))
 # the owner (any non-public link) can join too, for CCAR-P only and never for paid questions
 mq = web.EXAMS["ccarp"].mod.QUESTIONS
@@ -494,4 +508,30 @@ assert c.post("/api/ccarp/task", json={"id": "x", "answer": "y"}).status_code ==
 
 c.__exit__(None, None, None)
 shutil.rmtree(tmp, ignore_errors=True)
+# Claude credentials: the API key at its spend limit hands over to the subscription token until the reset time, then back
+import asyncio as _aio  # noqa: E402
+_env0 = {k: os.environ.get(k) for k in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_FALLBACK_OAUTH_TOKEN")}
+web.API_KEY, web.OWN_TOKEN = "sk-test", None
+os.environ.update(ANTHROPIC_API_KEY="sk-test", CLAUDE_FALLBACK_OAUTH_TOKEN="oat-test"); os.environ.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+_creds = []
+async def _limited(*a):
+    _creds.append((os.environ.get("ANTHROPIC_API_KEY"), os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")))
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        raise RuntimeError("API Error: 400 You have reached your specified API usage limits. You will regain access on 2099-11-01 at 00:00 UTC.")
+    return {"result": "ok"}
+_run = web.with_fallback(_limited)
+assert _aio.run(_run("s", "p")) == {"result": "ok"} and _creds == [("sk-test", None), (None, "oat-test")], _creds
+assert _aio.run(_run("s", "p")) == {"result": "ok"} and len(_creds) == 3                      # stays on the token: no wasted call on the key
+web.KEY_BACK["at"] = 0                                                                        # reset time passed: the key is tried again
+_aio.run(_run("s", "p")) and None
+assert _creds[3] == ("sk-test", None) and _creds[4] == (None, "oat-test"), _creds
+async def _other_error(*a):
+    raise RuntimeError("claude exit 1: boom")
+web.use_key()
+try:
+    _aio.run(web.with_fallback(_other_error)("s", "p")); raise AssertionError("other errors must not switch credentials")
+except RuntimeError as exc:
+    assert "boom" in str(exc) and not web.KEY_BACK and os.environ["ANTHROPIC_API_KEY"] == "sk-test"
+for _k, _v in _env0.items():
+    os.environ.pop(_k, None) if _v is None else os.environ.__setitem__(_k, _v)
 print("ok: all web tests passed")

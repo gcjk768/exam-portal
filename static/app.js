@@ -35,7 +35,7 @@
   }
 
   // ── Leaderboard: opt-in; public visitors, and the owner for the public exams (web.py /api/board) ───────────────
-  const LB = { exam: "all", period: "week" };
+  const LB = { exam: "all", period: "week", board: "practice" };   // board: practice (first tries) or mock (best mock-exam score), same names
   const lbPost = (p, body) => fetch(`/api/board/${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
   async function lbJoin(name) {
     const r = await lbPost("join", { name });
@@ -63,7 +63,8 @@
   });
   $("#lb-no").addEventListener("click", () => { localStorage.setItem("lb-asked", "1"); $("#lb-join").close(); });
   async function loadBoard() {
-    const d = await (await fetch(`/api/board?exam=${LB.exam}&period=${LB.period}`)).json();
+    const mock = LB.board === "mock";
+    const d = await (await fetch(mock ? `/api/board/mock?exam=${LB.exam}` : `/api/board?exam=${LB.exam}&period=${LB.period}`)).json();
     const nav = $("#board-exam");
     if (!nav.children.length) {                                         // the board lists the public exams, whichever link you are on
       for (const [k, t] of [["all", "All"], ...d.exams.map(e => [e.key, e.short])]) {
@@ -72,20 +73,27 @@
         nav.append(b);
       }
       $$("#board-period button").forEach(b => b.onclick = () => { LB.period = b.dataset.p; loadBoard(); });
+      $$("#board-kind button").forEach(b => b.onclick = () => { LB.board = b.dataset.b; loadBoard(); });
     }
+    $$("#board-kind button").forEach(b => b.setAttribute("aria-current", b.dataset.b === LB.board));
+    $("#board-period").hidden = mock; $("#board-table").hidden = mock; $("#board-mock").hidden = !mock;
+    $("#board-rule").textContent = mock ? `Ranked by the best mock-exam score (out of 1000). A mock counts when it has at least 20 questions; paid questions are left out of the score.`
+                                        : "Ranked by questions answered right on the first try. Only a question's first answer counts.";
     $$("#board-exam button").forEach(b => b.setAttribute("aria-current", b.dataset.k === LB.exam));
     $$("#board-period button").forEach(b => b.setAttribute("aria-current", b.dataset.p === LB.period));
-    const tb = $("#board-table tbody"); tb.innerHTML = "";
+    const tb = $(mock ? "#board-mock tbody" : "#board-table tbody"); tb.innerHTML = "";
     for (const r of d.rows) {
       const tr = document.createElement("tr"); if (r.me) tr.className = "me";
-      for (const v of [r.rank, r.name + (r.me ? " (you)" : ""), r.done, r.right, r.wrong, r.acc + "%", r.strong || "-", r.weak || "-"]) { const td = document.createElement("td"); td.textContent = v; tr.append(td); }
+      const cells = mock ? [r.rank, r.name + (r.me ? " (you)" : ""), r.best, r.best_exam, r.last, r.taken, r.passed]
+                         : [r.rank, r.name + (r.me ? " (you)" : ""), r.done, r.right, r.wrong, r.acc + "%", r.strong || "-", r.weak || "-"];
+      for (const v of cells) { const td = document.createElement("td"); td.textContent = v; tr.append(td); }
       tb.append(tr);
     }
     $("#board-empty").hidden = d.rows.length > 0;
     const me = $("#board-me"); me.innerHTML = "";
     const own = d.me.owner ? "On your own links only CCAR-P counts, and not the paid questions. " : "";
     if (d.me.joined) {
-      me.append(`${own}You are on the board as ${d.me.name}${d.me.rank ? `, rank ${d.me.rank} of ${d.total}` : ", answer a question to get ranked"}. `);
+      me.append(`${own}You are on the board as ${d.me.name}${d.me.rank ? `, rank ${d.me.rank} of ${d.total}` : mock ? ", finish a mock exam of 20+ questions to get ranked" : ", answer a question to get ranked"}. `);
       const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Leave the board";   // removes the board entry only; saved progress is stopped on Stats
       b.onclick = async () => { await lbPost("leave"); localStorage.setItem("lb-asked", "1"); loadBoard(); };
       me.append(b);
@@ -1010,6 +1018,7 @@
     if ((e.key === "Enter" || e.key === " ") && e.target.closest("button, a, summary")) return;   // a focused control does its own thing (keyboard users pick options with Enter)
     const k = e.key.toUpperCase();
     if (state.view === "exam" && EX.run && !EX.run.done) {
+      if (EX.run.paused) return;                          // paused: the questions are hidden, keys do nothing
       if (!EX.run.tasks && /^[A-H]$/.test(k)) { $$("#exam-q .opt")[k.charCodeAt(0) - 65]?.click(); e.preventDefault(); }   // by position: the letters on screen
       else if (e.key === "ArrowRight" || (!EX.run.tasks && e.key === "Enter")) $("#exam-next").click();
       else if (e.key === "ArrowLeft") $("#exam-prev").click();
@@ -1067,10 +1076,25 @@
   function saveExam() { localStorage.setItem(EX.key(), JSON.stringify(EX.run)); }
   function showExamRun() {
     $("#exam-setup").hidden = true; $("#exam-run").hidden = false; $("#exam-result").hidden = true;
-    renderExamNav(); renderExamQ(); tickExam();
+    renderExamNav(); renderExamQ(); showPause(); tickExam();
     clearInterval(EX.timer); EX.timer = setInterval(tickExam, 1000);
   }
-  function examLeft() { return EX.run.minutes * 60 - Math.floor((Date.now() - EX.run.started) / 1000); }
+  // Pause: `paused` holds when it started; resuming moves `started` on by the pause, so time left and minutes_used skip it
+  const examNow = () => EX.run.paused || Date.now();
+  function examLeft() { return EX.run.minutes * 60 - Math.floor((examNow() - EX.run.started) / 1000); }
+  function showPause() {
+    const p = !!EX.run.paused, b = $("#exam-pause");
+    b.setAttribute("aria-pressed", String(p));
+    b.innerHTML = p ? `${ic("play")}<span class="lbl">Resume</span>` : `${ic("pause")}<span class="lbl">Pause</span>`;
+    $("#exam-paused").hidden = !p;
+    for (const s of ["#exam-nav", "#exam-q", ".exam-move"]) $(s).hidden = p;
+  }
+  $("#exam-pause").onclick = () => {
+    if (!EX.run || EX.run.done) return;
+    if (EX.run.paused) { EX.run.started += Date.now() - EX.run.paused; EX.run.paused = null; }
+    else EX.run.paused = Date.now();
+    saveExam(); showPause(); tickExam();
+  };
   function tickExam() {
     if (!EX.run || EX.run.done) return clearInterval(EX.timer);
     const left = examLeft();
@@ -1142,6 +1166,7 @@
   };
   async function submitExam(timedOut) {
     if (!EX.run || EX.run.done) return;
+    if (EX.run.paused) { EX.run.started += Date.now() - EX.run.paused; EX.run.paused = null; }   // submitted while paused: the pause doesn't count as time used
     EX.run.done = true; clearInterval(EX.timer);
     const answers = {};
     for (const q of EX.run.questions) answers[q.id] = EX.run.answers[q.id] || [];

@@ -124,6 +124,50 @@ def tracked() -> bool:
     return bool(pid) and (TRACK_DIR / pid / "on").exists()
 
 
+# Claude credentials (the owner, 2026-10-26): the API key first; when it reports its spend limit, every caller (owner and public)
+# moves to the subscription token CLAUDE_FALLBACK_OAUTH_TOKEN until the key's reset time. The bots' run_claude copies
+# os.environ on each call, so switching it here switches every exam.
+LIMIT_RX = re.compile(r"usage limits?|credit balance", re.I)
+RESET_RX = re.compile(r"(\d{4}-\d{2}-\d{2}) at (\d{2}:\d{2}) UTC")
+KEY_BACK: dict[str, float] = {}               # "at": epoch when the API key is tried again; empty = the key is in use
+API_KEY, OWN_TOKEN = os.environ.get("ANTHROPIC_API_KEY", ""), os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+
+
+def use_key() -> None:
+    os.environ["ANTHROPIC_API_KEY"] = API_KEY
+    if OWN_TOKEN is None:
+        os.environ.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+    else:
+        os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = OWN_TOKEN
+    KEY_BACK.clear()
+
+
+def use_fallback(msg: str) -> bool:
+    """Switch to the subscription token until the reset time in the error (else an hour). False when there is none to switch to."""
+    tok = os.environ.get("CLAUDE_FALLBACK_OAUTH_TOKEN", "")
+    if not tok:
+        return False
+    m = RESET_RX.search(msg)
+    KEY_BACK["at"] = datetime.strptime(" ".join(m.groups()), "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc).timestamp() if m else time.time() + 3600
+    os.environ.pop("ANTHROPIC_API_KEY", None)     # the CLI prefers the API key over a token: take it away
+    os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = tok
+    log.warning("Claude API key at its spend limit: using the subscription token until %s", datetime.fromtimestamp(KEY_BACK["at"], SGT).isoformat(timespec="minutes"))
+    return True
+
+
+def with_fallback(run):
+    async def call(*a, **kw):
+        if KEY_BACK and API_KEY and time.time() >= KEY_BACK["at"]:
+            use_key()                                 # the key's limit has reset
+        try:
+            return await run(*a, **kw)
+        except RuntimeError as exc:
+            if KEY_BACK or not API_KEY or not LIMIT_RX.search(str(exc)) or not use_fallback(str(exc)):
+                raise
+            return await run(*a, **kw)
+    return call
+
+
 class Exam:
     def __init__(self, key: str, bot_dir: str, vault: str | None):
         self.key, self.dir = key, Path(bot_dir)
@@ -138,6 +182,7 @@ class Exam:
         self.mod.vault_log = quiet_for_public(vault_writer(vault))
         self._own_state(self.mod, key)
         self.mod.PREFER_MERMAID = True                         # tutor draws Mermaid here (icons are added in the browser)
+        self.mod.run_claude = with_fallback(self.mod.run_claude)   # API key at its spend limit: the subscription token takes over
         png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
         self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
         self.lock = asyncio.Lock()
@@ -397,7 +442,8 @@ def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = 
 
 
 # ── Leaderboard: opt-in, public visitors only (the owner, 2026-10-23) ─────────────
-# One small file per visitor who joined: {"name", "joined", "seen": {exam: {qid: [first_try_right 0/1, "YYYY-Www"]}}}. Nothing is kept
+# One small file per visitor who joined: {"name", "joined", "seen": {exam: {qid: [first_try_right 0/1, "YYYY-Www"]}},
+# "mocks": {exam: [[score, questions, minutes, "YYYY-MM-DDTHH:MM"], ...]}} (the mock-exam board, same name). Nothing is kept
 # for anyone who has not joined; leaving deletes the file. Only a question's first answer counts, so repeating one earns nothing.
 LB_DIR = Path(os.environ.get("LEADERBOARD_DIR", ROOT / "data" / "leaderboard"))
 NAME_BAD = re.compile(r"https?|www|\.\w{2,}|@", re.I)
@@ -447,6 +493,41 @@ def lb_count(exam_key: str, qid: str, right: bool) -> None:
     lb_save(pid, prof)   # ponytail: rewrites the visitor's file per new question; fine at hundreds of questions, batch if it grows
 
 
+MOCK_MIN = 20     # a mock exam needs this many counted questions (or the exam's full size, if smaller) to go on the board
+
+
+def lb_mock(exam: Exam, results: list[dict], minutes: float) -> None:
+    """A finished mock exam on the board, under the joined name: scored like the result sheet but on free questions only
+    (the owner's paid questions never count, the same rule as the practice board). Short mocks are left off."""
+    pid = lb_id()
+    if pid == OWNER_PID and exam.key not in OWNER_BOARD:
+        return
+    prof = lb_load(pid)
+    free = [r for r in results if not hidden_source(exam.mod.QUESTIONS[r["id"]].get("source"))]
+    if prof is None or len(free) < min(MOCK_MIN, exam.n_exam):
+        return
+    by_dom: dict[str, list[float]] = {}
+    for r in free:
+        d = by_dom.setdefault(r["domain"], [0, 0]); d[1] += 1; d[0] += r["score"] / 100 if r["task"] else r["right"]
+    mocks = prof.setdefault("mocks", {}).setdefault(exam.key, [])
+    mocks.append([weighted_score(by_dom, getattr(exam.mod, "WEIGHTS", {})), len(free), round(minutes), datetime.now(SGT).isoformat(timespec="minutes")])
+    del mocks[:-50]
+    lb_save(pid, prof)
+
+
+def lb_mock_rows(exams: set[str]) -> list[dict]:
+    rows = []
+    for r in lb_rows():
+        got = [(m[0], k, m) for k in exams for m in r["mocks"].get(k, [])]
+        if got:
+            best, k, _ = max(got, key=lambda x: x[0])
+            last = sorted(got, key=lambda x: x[2][3])[-1]          # stable: same-minute mocks keep the order they were taken
+            rows.append({"pid": r["pid"], "name": r["name"], "best": best, "best_exam": EXAMS[k].short, "last": last[0], "taken": len(got),
+                         "passed": sum(m[0] >= EXAMS[kk].mod.PASS for _, kk, m in got)})
+    rows.sort(key=lambda r: (-r["best"], -r["passed"], r["name"].lower()))
+    return rows
+
+
 def lb_rows() -> list[dict]:
     """Every joined visitor, cached for 20 s (the board is read far more often than it changes)."""
     if time.monotonic() - BOARD_CACHE["t"] > 20:
@@ -454,7 +535,7 @@ def lb_rows() -> list[dict]:
         for f in LB_DIR.glob("*.json") if LB_DIR.exists() else []:
             try:
                 prof = json.loads(f.read_text(encoding="utf-8"))
-                rows.append({"pid": f.stem, "name": prof["name"], "seen": prof["seen"]})
+                rows.append({"pid": f.stem, "name": prof["name"], "seen": prof["seen"], "mocks": prof.get("mocks", {})})
             except (OSError, ValueError, KeyError):
                 continue
         BOARD_CACHE.update(t=time.monotonic(), rows=rows)
@@ -824,6 +905,12 @@ def exam_pick(exam: Exam, n: int, public: bool = False) -> list[dict]:
     return [qview(Q[i]) for i in (unseen + rest)[:n]]
 
 
+def weighted_score(by_dom: dict, weights: dict) -> int:
+    """The 1000-scale score of a result sheet: domain accuracy weighted by the exam's domain weights."""
+    w = {d: weights.get(d, 1) for d in by_dom}
+    return round(sum(w[d] * (r / n) for d, (r, n) in by_dom.items()) / sum(w.values()) * 1000) if by_dom else 0
+
+
 async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: float, public: bool = False) -> dict:
     """Grade every answered question, write ok/bad/log like grade() does, return the result sheet.
     MCQ exams need no Claude; task exams grade each typed answer with Claude (blank answers score 0 without a call)."""
@@ -862,9 +949,9 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
                             "right": right, "explanation": q["explanation"]})
     mod.save_state(state)
     n_right = sum(r["right"] for r in results)
-    w = {d: weights.get(d, 1) for d in by_dom}
-    score = round(sum(w[d] * (r / n) for d, (r, n) in by_dom.items()) / sum(w.values()) * 1000) if by_dom else 0
+    score = weighted_score(by_dom, weights)
     mod.vault_log("🎯 **mock exam**", f"{n_right}/{len(results)} right, score {score}, {round(minutes_used)} min")
+    lb_mock(exam, results, minutes_used)
     return {"n": len(results), "right": n_right, "score": score, "pass": mod.PASS, "passed": score >= mod.PASS,
             "minutes": round(minutes_used, 1), "tasks": any(r["task"] for r in results),
             "domains": sorted(({"name": d, "right": round(r, 1), "n": n, "weight": weights.get(d)} for d, (r, n) in by_dom.items()),
@@ -1307,6 +1394,12 @@ def api_board_leave(req: Request):
     return {"joined": False}
 
 
+@app.get("/api/board/mock")
+def api_board_mock(req: Request, exam: str = "all"):
+    """The mock-exam board: a separate ranking (best score on the 1000 scale) under the same joined names."""
+    return api_board(req, exam, "mock")
+
+
 @app.get("/api/board")
 def api_board(req: Request, exam: str = "all", period: str = "week"):
     shown = {e.key for e in EXAMS.values() if visible(e.key, "public")}     # one board, the public exams, for every link
@@ -1315,13 +1408,16 @@ def api_board(req: Request, exam: str = "all", period: str = "week"):
     exams = shown if exam == "all" else {exam}
     now = datetime.now(SGT)
     week = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}" if period == "week" else None
-    rows = []
-    for r in lb_rows():
-        done, right = lb_totals(r["seen"], exams, week)
-        if done:
-            strong, weak = lb_topics(r["seen"], exams)
-            rows.append({"pid": r["pid"], "name": r["name"], "done": done, "right": right, "wrong": done - right, "acc": round(100 * right / done), "strong": strong, "weak": weak})
-    rows.sort(key=lambda r: (-r["right"], -r["acc"], r["done"], r["name"].lower()))
+    if period == "mock":                          # mock exams: best score on the 1000 scale
+        rows = lb_mock_rows(exams)
+    else:
+        rows = []
+        for r in lb_rows():
+            done, right = lb_totals(r["seen"], exams, week)
+            if done:
+                strong, weak = lb_topics(r["seen"], exams)
+                rows.append({"pid": r["pid"], "name": r["name"], "done": done, "right": right, "wrong": done - right, "acc": round(100 * right / done), "strong": strong, "weak": weak})
+        rows.sort(key=lambda r: (-r["right"], -r["acc"], r["done"], r["name"].lower()))
     pid, mine = lb_id(req), None
     for i, r in enumerate(rows, 1):
         r["rank"], r["me"] = i, r["pid"] == pid

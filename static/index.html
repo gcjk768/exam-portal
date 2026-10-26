@@ -178,8 +178,10 @@
       <div class="exam-bar">
         <span class="mono" id="exam-clock" role="timer" aria-label="Time left">00:00</span>
         <span id="exam-progress"></span>
+        <button class="btn" type="button" id="exam-pause" aria-pressed="false"><i class="ph ph-pause" aria-hidden="true"></i><span class="lbl">Pause</span></button>
         <button class="btn btn-accent" type="button" id="exam-submit"><i class="ph ph-paper-plane-right" aria-hidden="true"></i><span class="lbl">Submit exam</span></button>
       </div>
+      <p class="exam-paused" id="exam-paused" role="status" hidden>Paused. The clock has stopped and the questions are hidden until you resume.</p>
       <nav class="qnav" id="exam-nav" aria-label="Questions"></nav>
       <div id="exam-q"></div>
       <div class="row exam-move">
@@ -214,7 +216,8 @@
   <!-- Leaderboard (shared site only; opt-in) -->
   <section id="view-board" class="view" hidden>
     <h2>Leaderboard</h2>
-    <p class="muted small">Ranked by questions answered right on the first try. Only a question's first answer counts.</p>
+    <nav class="exams" id="board-kind" aria-label="Board"><button type="button" data-b="practice">Practice</button><button type="button" data-b="mock">Mock exams</button></nav>
+    <p class="muted small" id="board-rule">Ranked by questions answered right on the first try. Only a question's first answer counts.</p>
     <div class="row" id="board-filters">
       <nav class="exams" id="board-exam" aria-label="Exam"></nav>
       <nav class="exams" id="board-period" aria-label="Period"><button type="button" data-p="week">This week</button><button type="button" data-p="all">All time</button></nav>
@@ -222,6 +225,7 @@
     <div class="board-me" id="board-me"></div>
     <section class="lb-summary" id="board-summary" aria-live="polite" hidden></section>
     <table class="board" id="board-table" aria-label="Leaderboard"><thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Done</th><th scope="col">Right</th><th scope="col">Wrong</th><th scope="col">Accuracy</th><th scope="col">Strongest topic</th><th scope="col">Weakest topic</th></tr></thead><tbody></tbody></table>
+    <table class="board" id="board-mock" aria-label="Mock exam leaderboard" hidden><thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Best score</th><th scope="col">Exam</th><th scope="col">Latest</th><th scope="col">Mocks</th><th scope="col">Passed</th></tr></thead><tbody></tbody></table>
     <p class="muted small" id="board-empty" role="status" hidden>Nobody is on this board yet.</p>
   </section>
 
@@ -245,7 +249,7 @@
 <dialog id="lb-join" class="lb-join" aria-labelledby="lb-title">
   <form method="dialog" id="lb-form">
     <h3 id="lb-title">Save your progress?</h3>
-    <p>Saving keeps your answers on this site, tied to this browser, so you get your own score, study plan and an "are you ready for the exam?" check. Nobody else sees them. You can also join the public leaderboard by typing a name below: a nickname, or your real name if you prefer. Everyone with the link can see that name, your counts, and your strongest and weakest topic.</p>
+    <p>Saving keeps your answers on this site, tied to this browser, so you get your own score, study plan and an "are you ready for the exam?" check. Nobody else sees them. You can also join the public leaderboard by typing a name below: a nickname, or your real name if you prefer. Everyone with the link can see that name, your counts, your strongest and weakest topic, and your mock-exam scores.</p>
     <label for="lb-name">Name for the leaderboard (optional)</label>
     <input id="lb-name" maxlength="24" autocomplete="off" placeholder="Nickname or real name">
     <p class="lb-err small" id="lb-err" role="alert" hidden></p>
