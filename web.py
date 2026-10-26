@@ -450,7 +450,8 @@ class Recorder:
 
 # ── State helpers shared by quiz, tasks and exam mode ────────────────────────
 
-def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = None, guess: bool = False) -> int:
+def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = None, guess: bool = False, paced: bool = False,
+           board: bool = True) -> int:
     """Write ok/bad + log like bot.grade() does, and schedule the next review. Returns the minutes until it is due."""
     bucket = "ok" if right else "bad"
     state[bucket][qid] = state[bucket].get(qid, 0) + 1
@@ -459,7 +460,8 @@ def record(exam: Exam, state: dict, qid: str, right: bool, extra: dict | None = 
     state.setdefault("log", []).append({"t": now.isoformat(timespec="minutes"), "id": qid, "ok": right, "first": first,
                                         **({"guess": True} if guess else {}), **(extra or {})})
     state["log"] = state["log"][-5000:]
-    lb_count(exam.key, qid, right)
+    if board:                                             # a blank mock answer is graded wrong but is not an attempt on the board
+        lb_count(exam.key, qid, right, paced)             # paced: a mock exam that took real time (checked once per mock)
     return plan.schedule(state, qid, right, now, guess)[1]
 
 
@@ -500,14 +502,14 @@ def lb_save(pid: str, prof: dict) -> None:
     BOARD_CACHE["t"] = 0.0
 
 
-def lb_count(exam_key: str, qid: str, right: bool) -> None:
+def lb_count(exam_key: str, qid: str, right: bool, paced: bool = False) -> None:
     pid = lb_id()
     if pid == OWNER_PID and (exam_key not in OWNER_BOARD or hidden_source(EXAMS[exam_key].mod.QUESTIONS.get(qid, {}).get("source"))):
         return                                   # the owner counts for the public exams only, and never for paid questions visitors cannot see
     prof = lb_load(pid)
     if prof is None or qid in prof["seen"].setdefault(exam_key, {}):
         return
-    if time.time() - prof.get("last", 0) < LB_MIN_GAP:
+    if not paced and time.time() - prof.get("last", 0) < LB_MIN_GAP:
         return                                   # answers faster than anyone can read a scenario are graded but not counted (a script, not a person)
     prof["last"] = time.time()
     now = datetime.now(SGT)
@@ -518,23 +520,89 @@ def lb_count(exam_key: str, qid: str, right: bool) -> None:
 MOCK_MIN = 20     # a mock exam needs this many counted questions (or the exam's full size, if smaller) to go on the board
 
 
+def mock_entry(exam: Exam, credits: list[tuple[str, float]], minutes: float | None, when: str) -> list | None:
+    """[score, questions, minutes, when] for the mock board from (qid, credit 0..1) pairs: scored like the result sheet but on
+    free questions only (the owner's paid questions never count, the same rule as the practice board). None for a short mock."""
+    Q = exam.mod.QUESTIONS
+    free = [(qid, c) for qid, c in credits if qid in Q and not hidden_source(Q[qid].get("source"))]
+    if len(free) < min(MOCK_MIN, exam.n_exam):
+        return None
+    by_dom: dict[str, list[float]] = {}
+    for qid, c in free:
+        d = by_dom.setdefault(Q[qid]["domain"], [0, 0]); d[1] += 1; d[0] += c
+    return [weighted_score(by_dom, getattr(exam.mod, "WEIGHTS", {})), len(free), None if minutes is None else round(minutes), when]
+
+
 def lb_mock(exam: Exam, results: list[dict], minutes: float) -> None:
-    """A finished mock exam on the board, under the joined name: scored like the result sheet but on free questions only
-    (the owner's paid questions never count, the same rule as the practice board). Short mocks are left off."""
+    """A finished mock exam on the board, under the joined name."""
     pid = lb_id()
     if pid == OWNER_PID and exam.key not in OWNER_BOARD:
         return
     prof = lb_load(pid)
-    free = [r for r in results if not hidden_source(exam.mod.QUESTIONS[r["id"]].get("source"))]
-    if prof is None or len(free) < min(MOCK_MIN, exam.n_exam):
+    entry = prof and mock_entry(exam, [(r["id"], r["score"] / 100 if r["task"] else r["right"]) for r in results], minutes,
+                                datetime.now(SGT).isoformat(timespec="minutes"))
+    if not entry:
         return
-    by_dom: dict[str, list[float]] = {}
-    for r in free:
-        d = by_dom.setdefault(r["domain"], [0, 0]); d[1] += 1; d[0] += r["score"] / 100 if r["task"] else r["right"]
     mocks = prof.setdefault("mocks", {}).setdefault(exam.key, [])
-    mocks.append([weighted_score(by_dom, getattr(exam.mod, "WEIGHTS", {})), len(free), round(minutes), datetime.now(SGT).isoformat(timespec="minutes")])
+    mocks.append(entry)
     del mocks[:-50]
     lb_save(pid, prof)
+
+
+def lb_mock_start() -> None:
+    """Server-side start time of a joined person's mock exam: its answers all arrive at once on submit, so the pacing check
+    (LB_MIN_GAP) is made per mock instead of per answer."""
+    prof = lb_load(lb_id())
+    if prof is not None:
+        lb_save(lb_id(), {**prof, "mock_start": time.time()})
+
+
+def lb_paced(n: int) -> bool:
+    """The mock took at least LB_MIN_GAP per answer since /exam/start. One use per start."""
+    prof = lb_load(lb_id())
+    if prof is None or "mock_start" not in prof:
+        return False
+    ok = time.time() - prof.pop("mock_start") >= LB_MIN_GAP * n
+    lb_save(lb_id(), prof)
+    return ok
+
+
+def lb_history(pid: str, prof: dict) -> None:
+    """Mocks from before the mock board (2026-10-26), from the person's own saved log since joining: the tracker file for a
+    visitor, state.json for the owner. Runs once per profile (until it has a "mocks" key). The practice board is left alone:
+    the log does not say which mock answers were blank, and a blank is not an attempt."""
+    mocks, joined = {}, prof.get("joined", "")
+    for k, e in EXAMS.items():
+        if pid == OWNER_PID:
+            if k not in OWNER_BOARD:
+                continue
+            log_ = e.mod.load_state().get("log", [])           # startup: no visitor set, so this is the owner's state.json
+        else:
+            try:
+                log_ = json.loads(track_path(pid, k).read_text(encoding="utf-8")).get("log", [])
+            except (OSError, ValueError):
+                continue
+        runs: dict[str, list] = {}
+        for x in log_:
+            if x.get("exam") and x.get("t", "") >= joined:
+                runs.setdefault(x["t"], []).append(x)            # one submit = one minute stamp
+        for t, xs in runs.items():
+            entry = mock_entry(e, [(x["id"], x["score"] / 100 if "score" in x else int(x["ok"])) for x in xs], None, t)
+            if entry:
+                mocks.setdefault(k, []).append(entry)
+    prof["mocks"] = mocks
+    lb_save(pid, prof)
+
+
+def lb_backfill_mocks() -> None:
+    for f in LB_DIR.glob("*.json") if LB_DIR.exists() else []:
+        prof = lb_load(f.stem)
+        if prof is not None and "mocks" not in prof:
+            try:
+                lb_history(f.stem, prof)
+                log.info("leaderboard: %s back-filled, %d mocks", prof.get("name"), sum(len(v) for v in prof["mocks"].values()))
+            except Exception as exc:                            # best effort: never block startup
+                log.warning("leaderboard back-fill failed for %s: %s", f.stem[:8], exc)
 
 
 def lb_mock_rows(exams: set[str]) -> list[dict]:
@@ -939,6 +1007,7 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
     mod, Q = exam.mod, exam.mod.QUESTIONS
     state = mod.load_state()
     results, by_dom = [], {}
+    paced = lb_paced(len(answers))
     weights = getattr(mod, "WEIGHTS", {})
     for qid, picked in answers.items():
         q = Q.get(qid)
@@ -956,7 +1025,7 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
                 g = {"score": 0, "verdict": "blank", "feedback": "No answer given.", "commands": ""}
             right = g["score"] >= PASS_TASK
             if not g.get("failed"):                           # a Claude outage is not a failed attempt: progress and schedule stay as they were
-                record(exam, state, qid, right, {"exam": True, "score": g["score"]})
+                record(exam, state, qid, right, {"exam": True, "score": g["score"]}, paced=paced, board=bool(text))
             d = by_dom.setdefault(q["domain"], [0, 0]); d[1] += 1; d[0] += g["score"] / 100
             results.append({"id": qid, "domain": q["domain"], "question": q["question"], "options": [], "multi": False, "task": True,
                             "answer": text, "score": g["score"], "verdict": g["verdict"], "feedback": g["feedback"],
@@ -964,7 +1033,7 @@ async def exam_submit(exam: Exam, answers: dict[str, list[str]], minutes_used: f
         else:
             letters = set(picked) & set(q["letters"])
             right = letters == q["answer"]
-            record(exam, state, qid, right, {"exam": True})
+            record(exam, state, qid, right, {"exam": True}, paced=paced, board=bool(letters))
             d = by_dom.setdefault(q["domain"], [0, 0]); d[1] += 1; d[0] += right
             results.append({"id": qid, "domain": q["domain"], "question": q["question"], "options": options_of(q),
                             "multi": len(q["answer"]) > 1, "task": False, "picked": sorted(letters), "correct": sorted(q["answer"]),
@@ -1035,6 +1104,7 @@ async def check_videos(first_delay: int = 60) -> None:
 async def lifespan(_: FastAPI):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     EXAMS.update(load_exams())
+    lb_backfill_mocks()
     task = asyncio.create_task(check_videos())
     yield
     task.cancel()
@@ -1337,6 +1407,7 @@ def api_exam_start(key: str, body: ExamStart, req: Request):
     e = exam_or_404(key)
     pub = is_public(req)
     st = e.mod.load_state()
+    lb_mock_start()
     pool = e.pool(st, pub) if e.has_tasks else e.questions(pub)
     mode_tasks = e.has_tasks and e.mode(st) == "tasks"
     n_exam = exam_size(e, st)

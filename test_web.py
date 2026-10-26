@@ -174,6 +174,36 @@ mb = c.get("/api/board/mock?exam=ccarp", headers=lbc).json()
 assert mb["rows"][0]["name"] == "Ann Lee" and mb["rows"][0]["best"] == 1000 and mb["rows"][0]["last"] == 1000, mb
 assert mb["rows"][0]["taken"] == 2 and mb["rows"][0]["passed"] == 1 and mb["rows"][0]["best_exam"] == "CCAR-P" and mb["me"]["rank"] == 1, mb
 assert "best" not in c.get("/api/board?period=all", headers=lbc).json()["rows"][0]                # the practice board is unchanged
+web.LB_MIN_GAP = 3.0                                                                         # a mock answered at once: counted per mock, not per answer
+_d0 = c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()["rows"][0]["done"]
+_p = web.lb_load("ef" * 16); _p["seen"]["ccarp"] = {}; _p["last"] = 0; web.lb_save("ef" * 16, _p)
+_ex = c.post("/api/ccarp/exam/start", json={"n": 20}, headers=lbc).json()["questions"]
+_p = web.lb_load("ef" * 16); _p["mock_start"] -= 120; web.lb_save("ef" * 16, _p)            # 2 minutes ago: 6 s per answer
+c.post("/api/ccarp/exam/submit", json={"answers": {q["id"]: ["A"] for q in _ex}, "minutes_used": 2}, headers=lbc)
+_n = c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()["rows"][0]["done"]
+assert _n == len({q["id"] for q in _ex}), (_n, _d0)                                          # all 20 first answers count
+_ex = c.post("/api/ccarp/exam/start", json={"n": 20}, headers=lbc).json()["questions"]   # blank answers: graded, not on the board
+_p = web.lb_load("ef" * 16); _p["seen"]["ccarp"] = {}; _p["mock_start"] -= 120; web.lb_save("ef" * 16, _p)
+c.post("/api/ccarp/exam/submit", json={"answers": {q["id"]: [] for q in _ex}, "minutes_used": 2}, headers=lbc)
+assert web.lb_load("ef" * 16)["seen"]["ccarp"] == {}
+_ex = c.post("/api/ccarp/exam/start", json={"n": 20}, headers=lbc).json()["questions"]   # submitted at once (a script): only one counts
+_p = web.lb_load("ef" * 16); _p["seen"]["ccarp"] = {}; _p["last"] = 0; web.lb_save("ef" * 16, _p)
+c.post("/api/ccarp/exam/submit", json={"answers": {q["id"]: ["A"] for q in _ex}, "minutes_used": 2}, headers=lbc)
+assert c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()["rows"][0]["done"] == 1
+web.LB_MIN_GAP = 0.0
+# mocks taken before the mock board: back-filled once from the visitor's own tracker log since joining
+_bp = "cd" * 16
+web.lb_save(_bp, {"name": "Old Mock", "joined": "2026-10-26T10:00+08:00", "seen": {"ccarp": {}}})
+_free = [i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if not web.hidden_source(q.get("source")) and q["letters"]][:25]
+_log = [{"t": "2026-10-26T11:40+08:00", "id": i, "ok": True, "first": True, "exam": True} for i in _free[:21]]
+_log += [{"t": "2026-10-26T12:00+08:00", "id": i, "ok": False, "first": False, "exam": True} for i in _free[:5]]       # a short mock: left off
+_log += [{"t": "2026-10-26T09:00+08:00", "id": i, "ok": True, "first": True, "exam": True} for i in _free[21:25]]     # before joining: ignored
+(web.TRACK_DIR / _bp).mkdir(parents=True, exist_ok=True); (web.TRACK_DIR / _bp / "ccarp.json").write_text(json.dumps({"log": _log}), encoding="utf-8")
+web.lb_backfill_mocks()
+_bf = web.lb_load(_bp)
+assert _bf["mocks"]["ccarp"] == [[1000, 21, None, "2026-10-26T11:40+08:00"]] and _bf["seen"]["ccarp"] == {}, _bf   # practice board untouched
+web.lb_backfill_mocks(); assert web.lb_load(_bp)["mocks"] == _bf["mocks"]                      # once only
+web.lb_file(_bp).unlink(); shutil.rmtree(web.TRACK_DIR / _bp)
 assert c.post("/api/board/leave", headers=lbc).json() == {"joined": False}
 assert c.get("/api/board/mock", headers=lbc).json()["rows"] == []                             # leaving deletes the mock scores too
 assert c.get("/api/board", headers=lbc).json()["rows"] == [] and not list(web.LB_DIR.glob("*.json"))
