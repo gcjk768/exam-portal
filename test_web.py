@@ -173,6 +173,10 @@ lb_mock(20, False); lb_mock(20, True)
 mb = c.get("/api/board/mock?exam=ccarp", headers=lbc).json()
 assert mb["rows"][0]["name"] == "Ann Lee" and mb["rows"][0]["best"] == 1000 and mb["rows"][0]["last"] == 1000, mb
 assert mb["rows"][0]["taken"] == 2 and mb["rows"][0]["passed"] == 1 and mb["rows"][0]["best_exam"] == "CCAR-P" and mb["me"]["rank"] == 1, mb
+assert mb["rows"][0]["ready"].startswith("🟡 Nearly: one mock at 1000"), mb                     # 0 then 1000: one more to confirm
+_ccarp = web.EXAMS["ccarp"]
+assert web.mock_ready(_ccarp, [810, 850]).startswith("🟢 Ready") and web.mock_ready(_ccarp, [900, 790]).startswith("🟡 Nearly: passed")
+assert web.mock_ready(_ccarp, [87]) == "🔴 Not yet: the latest mock was 87, 633 below the 720 pass mark"
 assert "best" not in c.get("/api/board?period=all", headers=lbc).json()["rows"][0]                # the practice board is unchanged
 web.LB_MIN_GAP = 3.0                                                                         # a mock answered at once: counted per mock, not per answer
 _d0 = c.get("/api/board?exam=ccarp&period=all", headers=lbc).json()["rows"][0]["done"]

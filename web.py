@@ -605,6 +605,21 @@ def lb_backfill_mocks() -> None:
                 log.warning("leaderboard back-fill failed for %s: %s", f.stem[:8], exc)
 
 
+MOCK_READY = 800    # the bots' READY bar (verdict(): predicted score 800+), here on real mock scores
+
+
+def mock_ready(exam: Exam, scores: list[int]) -> str:
+    """Is this person ready to book the exam? From their mocks of one exam, oldest first: two in a row at 800+ is ready."""
+    p, last = exam.mod.PASS, scores[-1]
+    if len(scores) >= 2 and min(scores[-2:]) >= MOCK_READY:
+        return f"🟢 Ready to book {exam.short}: the last two mocks were {MOCK_READY}+"
+    if last >= MOCK_READY:
+        return f"🟡 Nearly: one mock at {last}; one more at {MOCK_READY}+ to confirm"
+    if last >= p:
+        return f"🟡 Nearly: passed the latest ({last}, pass {p}); aim for {MOCK_READY}+ twice in a row for a safe margin"
+    return f"🔴 Not yet: the latest mock was {last}, {p - last} below the {p} pass mark"
+
+
 def lb_mock_rows(exams: set[str]) -> list[dict]:
     rows = []
     for r in lb_rows():
@@ -612,8 +627,10 @@ def lb_mock_rows(exams: set[str]) -> list[dict]:
         if got:
             best, k, _ = max(got, key=lambda x: x[0])
             last = sorted(got, key=lambda x: x[2][3])[-1]          # stable: same-minute mocks keep the order they were taken
+            now_on = last[1]                                     # readiness for the exam they sat most recently
             rows.append({"pid": r["pid"], "name": r["name"], "best": best, "best_exam": EXAMS[k].short, "last": last[0], "taken": len(got),
-                         "passed": sum(m[0] >= EXAMS[kk].mod.PASS for _, kk, m in got)})
+                         "passed": sum(m[0] >= EXAMS[kk].mod.PASS for _, kk, m in got),
+                         "ready": mock_ready(EXAMS[now_on], [m[0] for m in sorted(r["mocks"][now_on], key=lambda m: m[3])])})
     rows.sort(key=lambda r: (-r["best"], -r["passed"], r["name"].lower()))
     return rows
 
