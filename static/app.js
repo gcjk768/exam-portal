@@ -847,12 +847,13 @@
         if (!q.multi) return submit([o.l]);
         picked.has(o.l) ? picked.delete(o.l) : picked.add(o.l);
         b.setAttribute("aria-pressed", String(picked.has(o.l)));
-        $(".submit-row .btn", el).disabled = !picked.size;
+        $(".submit-row .btn", el).disabled = q.pick > 1 ? picked.size !== q.pick : !picked.size;   // exactly as many as the question asks
       };
       opts.append(b);
     }
     const sub = $(".submit-row", el);
     sub.hidden = !q.multi;
+    if (q.pick > 1) $(".pick-hint", sub).textContent = `Select ${q.pick}`;
     $(".btn", sub).disabled = true;
     $(".btn", sub).onclick = () => submit([...picked].sort());
     const guess = $(".guess", el);                        // 🤔 Guessing: a right answer still comes back in 10 minutes
@@ -1009,7 +1010,7 @@
     if ((e.key === "Enter" || e.key === " ") && e.target.closest("button, a, summary")) return;   // a focused control does its own thing (keyboard users pick options with Enter)
     const k = e.key.toUpperCase();
     if (state.view === "exam" && EX.run && !EX.run.done) {
-      if (!EX.run.tasks && /^[A-H]$/.test(k)) { $(`#exam-q .opt[data-l="${k}"]`)?.click(); e.preventDefault(); }
+      if (!EX.run.tasks && /^[A-H]$/.test(k)) { $$("#exam-q .opt")[k.charCodeAt(0) - 65]?.click(); e.preventDefault(); }   // by position: the letters on screen
       else if (e.key === "ArrowRight" || (!EX.run.tasks && e.key === "Enter")) $("#exam-next").click();
       else if (e.key === "ArrowLeft") $("#exam-prev").click();
       return;
@@ -1059,6 +1060,7 @@
   }
   async function startExam(n) {
     const r = await (await post("/exam/start", { n })).json();
+    for (const q of r.questions) if (q.options?.length) q.order = shuffled(q.options).map(o => o.l);   // the banks lean on one letter: rotate it, like the quiz
     EX.run = { questions: r.questions, minutes: r.minutes, started: Date.now(), answers: {}, done: false, tasks: !!r.tasks };
     EX.cur = 0; saveExam(); showExamRun();
   }
@@ -1107,13 +1109,14 @@
     }
     const el = $("#t-question").content.firstElementChild.cloneNode(true);
     setQid($(".qid", el), `${EX.cur + 1} of ${EX.run.questions.length}`, q.tag);
-    $(".dom", el).textContent = q.multi ? "Select all that apply" : "";
+    $(".dom", el).textContent = q.multi ? (q.pick > 1 ? `Select ${q.pick}` : "Select all that apply") : "";
     $(".qtext", el).textContent = q.question;
     $(".submit-row", el).remove(); $(".guess-row", el).remove();
     const picked = new Set(EX.run.answers[q.id] || []);
     const opts = $(".options", el);
-    for (const o of q.options) {
-      const b = optionButton(o);
+    const order = q.order ? q.order.map(l => q.options.find(o => o.l === l)).filter(Boolean) : q.options;   // shuffled once per run (startExam)
+    for (const [i, o] of order.entries()) {
+      const b = optionButton(o, String.fromCharCode(65 + i));
       b.setAttribute("aria-pressed", String(picked.has(o.l)));
       b.onclick = () => {
         if (q.multi) picked.has(o.l) ? picked.delete(o.l) : picked.add(o.l);

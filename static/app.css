@@ -1246,7 +1246,7 @@ html.navd { --base: .32s; }
   .feed-actions [data-act="next"] .ph { display: none; }   /* narrow phones: the word alone, so "Next" is never cut */
 }
 .history > summary, .info-btn { min-height: 24px; padding-block: .3rem; }   /* 24 px tap targets (WCAG 2.5.8) */
-@media (max-width: 640px) { .card .btn { white-space: normal; max-width: 100%; text-align: left; } }   /* long labels ("Explain more with a diagram", "Study next" domains) wrap instead of running off a phone screen */
+@media (max-width: 640px) { .card .btn, .lb-summary .btn { white-space: normal; max-width: 100%; text-align: left; } }   /* long labels ("Explain more with a diagram", "Study next" domains) wrap instead of running off a phone screen */
 #feed { grid-template-columns: minmax(0, 1fr); } #feed > * { min-width: 0; }   /* one wide card must not widen the column for every card after it */
 
 /* ---------- Reduced motion and print ---------- */

@@ -408,6 +408,7 @@ assert ev[0]["op"] == "meta" and "score" in ev[0]["metrics"] and ev[1]["html"].s
 # exam mode: start picks unseen first, submit grades everything, writes state and returns a result sheet
 ex = c.post("/api/sapc03/exam/start", json={"n": 10}).json()
 assert len(ex["questions"]) == 10 and ex["minutes"] == 24 and ex["questions"][0]["options"]
+assert all(q["pick"] == len(web.EXAMS["sapc03"].mod.QUESTIONS[q["id"]]["answer"]) for q in ex["questions"])   # "Select 2" on screen
 answers = {q["id"]: [q["options"][0]["l"]] for q in ex["questions"]}
 res = c.post("/api/sapc03/exam/submit", json={"answers": answers, "minutes_used": 3.5}).json()
 assert res["n"] == 10 and 0 <= res["score"] <= 1000 and res["pass"] == 750 and len(res["results"]) == 10

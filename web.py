@@ -321,7 +321,7 @@ def tag_of(src: str | None) -> str:
 
 def qview(q: dict) -> dict:
     return {"id": q["id"], "tag": tag_of(q.get("source")) or ("≈ exam" if q.get("examlike") else ""), "domain": q["domain"], "question": q["question"], "options": options_of(q),
-            "multi": len(q["answer"]) > 1, "task": not q["letters"]}
+            "multi": len(q["answer"]) > 1, "pick": len(q["answer"]), "task": not q["letters"]}   # pick: how many to select, as the real exam says
 
 
 class Msg:
