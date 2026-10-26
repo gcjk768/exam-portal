@@ -510,28 +510,30 @@ c.__exit__(None, None, None)
 shutil.rmtree(tmp, ignore_errors=True)
 # Claude credentials: the API key at its spend limit hands over to the subscription token until the reset time, then back
 import asyncio as _aio  # noqa: E402
-_env0 = {k: os.environ.get(k) for k in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_FALLBACK_OAUTH_TOKEN")}
-web.API_KEY, web.OWN_TOKEN = "sk-test", None
-os.environ.update(ANTHROPIC_API_KEY="sk-test", CLAUDE_FALLBACK_OAUTH_TOKEN="oat-test"); os.environ.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
-_creds = []
-async def _limited(*a):
-    _creds.append((os.environ.get("ANTHROPIC_API_KEY"), os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")))
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError("API Error: 400 You have reached your specified API usage limits. You will regain access on 2099-11-01 at 00:00 UTC.")
+_env0 = {k: os.environ.get(k) for k in ("ANTHROPIC_API_KEY", "CLAUDE_FALLBACK_OAUTH_TOKEN")}
+os.environ.update(ANTHROPIC_API_KEY="sk-test", CLAUDE_FALLBACK_OAUTH_TOKEN="oat-test")
+_creds, _once = [], web.claude_once
+async def _limited(mod, key, system, prompt, schema, env):
+    _creds.append((env.get("ANTHROPIC_API_KEY"), env.get("CLAUDE_CODE_OAUTH_TOKEN")))
+    if env.get("ANTHROPIC_API_KEY"):
+        raise RuntimeError("claude exit 1: API Error: 400 You have reached your specified API usage limits. You will regain access on 2099-11-01 at 00:00 UTC.")
     return {"result": "ok"}
-_run = web.with_fallback(_limited)
+web.claude_once = _limited
+_run = web.claude_runner(web.EXAMS["ccarp"].mod, "ccarp")
 assert _aio.run(_run("s", "p")) == {"result": "ok"} and _creds == [("sk-test", None), (None, "oat-test")], _creds
-assert _aio.run(_run("s", "p")) == {"result": "ok"} and len(_creds) == 3                      # stays on the token: no wasted call on the key
+assert _aio.run(_run("s", "p")) == {"result": "ok"} and _creds[2] == (None, "oat-test")      # stays on the token: no wasted call on the key
+assert os.environ["ANTHROPIC_API_KEY"] == "sk-test"                                           # per call: the process env is never changed
 web.KEY_BACK["at"] = 0                                                                        # reset time passed: the key is tried again
-_aio.run(_run("s", "p")) and None
+_aio.run(_run("s", "p"))
 assert _creds[3] == ("sk-test", None) and _creds[4] == (None, "oat-test"), _creds
 async def _other_error(*a):
     raise RuntimeError("claude exit 1: boom")
-web.use_key()
+web.claude_once, _ = _other_error, web.KEY_BACK.clear()
 try:
-    _aio.run(web.with_fallback(_other_error)("s", "p")); raise AssertionError("other errors must not switch credentials")
+    _aio.run(_run("s", "p")); raise AssertionError("other errors must not switch credentials")
 except RuntimeError as exc:
-    assert "boom" in str(exc) and not web.KEY_BACK and os.environ["ANTHROPIC_API_KEY"] == "sk-test"
+    assert "boom" in str(exc) and not web.KEY_BACK
+web.claude_once = _once
 for _k, _v in _env0.items():
     os.environ.pop(_k, None) if _v is None else os.environ.__setitem__(_k, _v)
 print("ok: all web tests passed")

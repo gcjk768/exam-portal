@@ -28,6 +28,7 @@ import os
 import random
 import secrets
 import shutil
+import tempfile
 import time
 from collections import defaultdict, deque
 from contextvars import ContextVar
@@ -124,48 +125,69 @@ def tracked() -> bool:
     return bool(pid) and (TRACK_DIR / pid / "on").exists()
 
 
-# Claude credentials (the owner, 2026-10-26): the API key first; when it reports its spend limit, every caller (owner and public)
-# moves to the subscription token CLAUDE_FALLBACK_OAUTH_TOKEN until the key's reset time. The bots' run_claude copies
-# os.environ on each call, so switching it here switches every exam.
+# Claude credentials (the owner, 2026-10-26): the portal runs `claude -p` itself for every exam (same flags as the bots' run_claude)
+# so it can pick the credential per call: the API key first; once it reports its spend limit, the subscription token
+# CLAUDE_FALLBACK_OAUTH_TOKEN until the key's reset time, for every caller. The CLI reports API errors in its JSON on stdout.
 LIMIT_RX = re.compile(r"usage limits?|credit balance", re.I)
 RESET_RX = re.compile(r"(\d{4}-\d{2}-\d{2}) at (\d{2}:\d{2}) UTC")
 KEY_BACK: dict[str, float] = {}               # "at": epoch when the API key is tried again; empty = the key is in use
-API_KEY, OWN_TOKEN = os.environ.get("ANTHROPIC_API_KEY", ""), os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
 
 
-def use_key() -> None:
-    os.environ["ANTHROPIC_API_KEY"] = API_KEY
-    if OWN_TOKEN is None:
-        os.environ.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
-    else:
-        os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = OWN_TOKEN
-    KEY_BACK.clear()
+def claude_env(token: bool) -> dict:
+    env = {k: v for k, v in os.environ.items() if k != "TELEGRAM_BOT_TOKEN"}
+    env["DISABLE_AUTOUPDATER"] = "1"
+    if token:
+        env.pop("ANTHROPIC_API_KEY", None)        # the CLI prefers the API key over a token: leave it out
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = os.environ["CLAUDE_FALLBACK_OAUTH_TOKEN"]
+    return env
 
 
-def use_fallback(msg: str) -> bool:
-    """Switch to the subscription token until the reset time in the error (else an hour). False when there is none to switch to."""
-    tok = os.environ.get("CLAUDE_FALLBACK_OAUTH_TOKEN", "")
-    if not tok:
-        return False
-    m = RESET_RX.search(msg)
-    KEY_BACK["at"] = datetime.strptime(" ".join(m.groups()), "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc).timestamp() if m else time.time() + 3600
-    os.environ.pop("ANTHROPIC_API_KEY", None)     # the CLI prefers the API key over a token: take it away
-    os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = tok
-    log.warning("Claude API key at its spend limit: using the subscription token until %s", datetime.fromtimestamp(KEY_BACK["at"], SGT).isoformat(timespec="minutes"))
-    return True
+async def claude_once(mod, key: str, system: str, prompt: str, schema: str | None, env: dict) -> dict:
+    exe = shutil.which("claude")
+    if not exe:
+        raise RuntimeError("claude CLI not on PATH")
+    work = Path(tempfile.gettempdir()) / f"{key}-work"
+    work.mkdir(exist_ok=True)
+    cmd = [exe, "-p", "--output-format", "json", "--no-session-persistence", "--permission-mode",
+           "dontAsk", "--model", mod.MODEL, "--tools", "", "--max-turns", "6", "--append-system-prompt", system]
+    if schema:
+        cmd += ["--json-schema", schema]
+    proc = await asyncio.create_subprocess_exec(*cmd, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
+                                                stderr=asyncio.subprocess.PIPE, cwd=str(work), env=env)
+    try:
+        out, err = await asyncio.wait_for(proc.communicate(prompt.encode()), mod.CLAUDE_TIMEOUT)
+    except asyncio.TimeoutError:
+        proc.kill()
+        raise RuntimeError(f"claude timed out after {mod.CLAUDE_TIMEOUT}s")
+    text = out.decode(errors="replace")
+    try:
+        data = json.loads(text)
+    except ValueError:
+        data = {}
+    if proc.returncode or not data or data.get("is_error"):
+        why = data.get("result") or err.decode(errors="replace") or text
+        raise RuntimeError(f"claude exit {proc.returncode}: {str(why)[:300]}")
+    log.info("claude %s cost=$%s turns=%s", data.get("subtype"), data.get("total_cost_usd"), data.get("num_turns"))
+    return data
 
 
-def with_fallback(run):
-    async def call(*a, **kw):
-        if KEY_BACK and API_KEY and time.time() >= KEY_BACK["at"]:
-            use_key()                                 # the key's limit has reset
+def claude_runner(mod, key: str):
+    """The exam module's run_claude(system, prompt, schema=None), with the key-to-token fallback."""
+    async def run_claude(system: str, prompt: str, schema: str | None = None) -> dict:
+        if KEY_BACK and time.time() >= KEY_BACK["at"]:
+            KEY_BACK.clear()                          # the key's limit has reset: try it again
+        if KEY_BACK:
+            return await claude_once(mod, key, system, prompt, schema, claude_env(True))
         try:
-            return await run(*a, **kw)
+            return await claude_once(mod, key, system, prompt, schema, claude_env(False))
         except RuntimeError as exc:
-            if KEY_BACK or not API_KEY or not LIMIT_RX.search(str(exc)) or not use_fallback(str(exc)):
+            if not os.environ.get("ANTHROPIC_API_KEY") or not os.environ.get("CLAUDE_FALLBACK_OAUTH_TOKEN") or not LIMIT_RX.search(str(exc)):
                 raise
-            return await run(*a, **kw)
-    return call
+            m = RESET_RX.search(str(exc))
+            KEY_BACK["at"] = datetime.strptime(" ".join(m.groups()), "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc).timestamp() if m else time.time() + 3600
+            log.warning("Claude API key at its spend limit: subscription token until %s", datetime.fromtimestamp(KEY_BACK["at"], SGT).isoformat(timespec="minutes"))
+            return await claude_once(mod, key, system, prompt, schema, claude_env(True))
+    return run_claude
 
 
 class Exam:
@@ -182,7 +204,7 @@ class Exam:
         self.mod.vault_log = quiet_for_public(vault_writer(vault))
         self._own_state(self.mod, key)
         self.mod.PREFER_MERMAID = True                         # tutor draws Mermaid here (icons are added in the browser)
-        self.mod.run_claude = with_fallback(self.mod.run_claude)   # API key at its spend limit: the subscription token takes over
+        self.mod.run_claude = claude_runner(self.mod, key)     # the portal's own runner: API key, then the subscription token at its limit
         png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
         self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
         self.lock = asyncio.Lock()
