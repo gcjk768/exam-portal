@@ -197,6 +197,7 @@
           <a class="btn" href="#stats" data-view="stats"><i class="ph ph-chart-bar" aria-hidden="true"></i>Stats</a>
         </div>
       </div>
+      <section class="lb-summary" id="res-debrief" aria-live="polite" hidden></section>
       <div class="bars" id="res-domains"></div>
       <h3>Review</h3>
       <div class="feed" id="res-list"></div>
@@ -246,6 +247,15 @@
   </section>
 </main>
 
+<dialog id="flag-dlg" class="lb-join" aria-labelledby="flag-title">
+  <form method="dialog" id="flag-form">
+    <h3 id="flag-title">Flag this question</h3>
+    <p>Think the answer key is wrong, or the question is unclear or out of date? Claude checks it and the site owner reviews it.</p>
+    <label for="flag-note">What looks wrong? (optional)</label>
+    <textarea id="flag-note" maxlength="300" rows="3" placeholder="e.g. B is also correct because..."></textarea>
+    <div class="row"><button class="btn btn-accent" type="submit">Send flag</button><button class="btn" type="button" id="flag-cancel">Cancel</button></div>
+  </form>
+</dialog>
 <dialog id="lb-join" class="lb-join" aria-labelledby="lb-title">
   <form method="dialog" id="lb-form">
     <h3 id="lb-title">Save your progress?</h3>

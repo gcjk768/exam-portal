@@ -542,6 +542,73 @@ assert c.post("/api/ccarp/task", json={"id": "x", "answer": "y"}).status_code ==
 
 c.__exit__(None, None, None)
 shutil.rmtree(tmp, ignore_errors=True)
+# Claude features on every link: Explain more cached, mock debrief, flags, the coach for visitors who save progress
+_e = web.EXAMS["ccarp"]; _m = _e.mod
+_calls = []
+async def _tutor(system, prompt, schema=None):
+    _calls.append(system[:20])
+    if "coach for the" in system:
+        dom = next(iter(_m.WEIGHTS)); note = next(d for d in _e.study["domains"] if d["domain"] == dom)["notes"][0]["title"]
+        return {"structured_output": {"headline": "Close, but Integration lets you down.", "next": "Take a 25-question Sprint.",
+                                      "focus": [{"domain": dom, "why": "missed tool routing", "notes": [note, "Made-up note"]},
+                                                {"domain": "Invented domain", "why": "x", "notes": []}]}}
+    if "You review exam practice" in system:
+        return {"structured_output": {"verdict": "key_wrong", "answer": "C", "reason": "C matches the docs."}}
+    return {"result": "unexpected call"}
+_m.run_claude = _tutor
+async def _inner_tutor(q, picked):
+    _calls.append("tutor"); return {"teach": "Because the router decides.", "kind": "mermaid", "code": "graph TD; A-->B"}
+_m.ask_claude = _inner_tutor; _m.ask_claude = web.cached_tutor(_e)          # an earlier test stubbed ask_claude: wrap the stub
+_free = next(i for i, q in _m.QUESTIONS.items() if not web.hidden_source(q.get("source")) and q["letters"])
+for f in (Path(_m.STATE_PATH).parent / "explain").glob("*.json"):
+    f.unlink()
+ev = events(c.post("/api/ccarp/act", json={"data": f"e|{_free}|A,Z"}))
+assert any("router decides" in str(x.get("html", "")) for x in ev) and len(_calls) == 1, (ev, _calls)
+assert (Path(_m.STATE_PATH).parent / "explain" / f"{web.safe_id(_free)}-A.json").exists()           # Z is not an option: dropped
+web.RATE["claude"] = (0, 86400)                                                                      # public budget gone...
+ev = events(c.post("/api/ccarp/act", json={"data": f"e|{_free}|A"}, headers=pub))
+assert any("router decides" in str(x.get("html", "")) for x in ev) and len(_calls) == 1, ev           # ...but the cached one is free
+assert "used up" in events(c.post("/api/ccarp/act", json={"data": f"e|{_free}|B"}, headers=pub))[0]["html"]
+web.RATE["claude"] = (30, 86400); web.HITS.clear()
+# debrief: invented domains and note titles are dropped; public over budget gets 429
+_dom = next(iter(_m.WEIGHTS))
+d = c.post("/api/ccarp/exam/debrief", json={"domains": [{"name": _dom, "right": 2, "n": 10}, {"name": "<script>", "right": 1, "n": 1}], "missed": [_free, "nope"]}).json()
+assert d["headline"].startswith("Close") and [f["domain"] for f in d["focus"]] == [_dom] and len(d["focus"][0]["notes"]) == 1, d
+assert d["score"] == 200 and d["next"], d
+assert c.post("/api/ccarp/exam/debrief", json={"domains": [{"name": "nope", "n": 1}]}).status_code == 400
+web.RATE["claude-all"] = (0, 86400)
+assert c.post("/api/ccarp/exam/debrief", json={"domains": [{"name": _dom, "right": 1, "n": 2}]}, headers=pub).status_code == 429
+web.RATE["claude-all"] = (300, 86400); web.HITS.clear()
+# flags: one per person per question, Claude checks the key once, a review note lands in the exam's vault
+_vault0 = _e.vault; _e.vault = str(tmp / "vault-ccarp")
+_fp = web.flag_path(_e, _free); _fp.unlink(missing_ok=True)
+assert c.post("/api/ccarp/flag", json={"id": _free, "note": "  B   also right "}).json() == {"flagged": True, "again": False}
+assert c.post("/api/ccarp/flag", json={"id": _free}).json()["again"] is True
+for _ in range(50):
+    if json.loads(_fp.read_text(encoding="utf-8")).get("check"):
+        break
+    _t.sleep(0.05)
+_rec = json.loads(_fp.read_text(encoding="utf-8"))
+assert _rec["check"]["verdict"] == "key_wrong" and _rec["flags"][0]["note"] == "B also right" and len(_rec["flags"]) == 1, _rec
+assert "key_wrong" in (Path(_e.vault) / "Reviews" / f"{web.safe_id(_free)}.md").read_text(encoding="utf-8")
+assert c.post("/api/ccarp/flag", json={"id": _free}, headers={**pub, "Cookie": "pid=" + "61" * 16}).json()["again"] is False   # another person
+if tdq:
+    assert c.post("/api/ccarp/flag", json={"id": tdq[0]}, headers=pub).status_code == 404     # paid questions stay hidden
+_e.vault = _vault0
+# the weekly coach: refused for a visitor who saves nothing, once a day (then replayed) for one who does
+_coach = []
+async def _weekly(ctx, dest=None):
+    _coach.append(1); await dest.send_message("🎓 <b>COACH</b>\n\nDrill Integration.")
+_wr0, _m.weekly_report = _m.weekly_report, _weekly
+assert "Admin actions" in events(c.post("/api/ccarp/act", json={"data": "report"}, headers=pub))[0]["html"]
+_vc = {**pub, "Cookie": "pid=" + "77" * 16}
+assert c.post("/api/track/on", headers=_vc).json() == {"track": True}
+for _ in range(2):
+    ev = events(c.post("/api/ccarp/act", json={"data": "report"}, headers=_vc))
+    assert any("COACH" in str(x.get("html", "")) for x in ev), ev
+assert len(_coach) == 1, _coach                                                              # the second one came from the day's cache
+c.post("/api/track/off", headers=_vc); _m.weekly_report = _wr0; _m.run_claude = fake_decoder
+
 # Claude credentials: the API key at its spend limit hands over to the subscription token until the reset time, then back
 import asyncio as _aio  # noqa: E402
 _env0 = {k: os.environ.get(k) for k in ("ANTHROPIC_API_KEY", "CLAUDE_FALLBACK_OAUTH_TOKEN")}

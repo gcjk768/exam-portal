@@ -451,7 +451,7 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
 }
 
 /* public (Funnel) link: the report and bank refresh are refused by the server, so hide their buttons */
-[data-public="1"] [data-act="report"], [data-public="1"] [data-act="refresh"] { display: none; }
+[data-shared="1"] [data-act="report"], [data-public="1"] [data-act="refresh"] { display: none; }   /* the report (with its coach) is there once a visitor saves their progress */
 /* a public visitor who has not chosen to save their progress sees no personal numbers, and nothing is recorded for them:
    no score ring, readiness, plan, quiz bar, stats, previous-question history or reset */
 [data-shared="1"] .hero-ring, [data-shared="1"] #home-verdict, [data-shared="1"] .plan, [data-shared="1"] .quiz-bar, [data-shared="1"] [data-view="stats"],
@@ -470,7 +470,7 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
 .board-me { margin: 1rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .lb-join { max-width: 30rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem; }
 .lb-join::backdrop { background: rgba(0, 0, 0, .6); }
-.lb-join input { width: 100%; margin: .3rem 0 .6rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; }
+.lb-join input, .lb-join textarea { width: 100%; margin: .3rem 0 .6rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; }
 .lb-err { color: #e5645a; }
 #board-filters { display: flex; flex-wrap: wrap; gap: .8rem; }
 
@@ -1010,6 +1010,7 @@ kbd { border-radius: 0; border: 1.5px solid var(--edge); border-bottom-width: 3p
 .exam-bar[data-urgent]::after { background: currentColor; }
 .exam-bar .btn-accent { color: var(--accent-ink); }
 .exam-bar #exam-pause { background: transparent; color: inherit; border-color: currentColor; box-shadow: none; }   /* the bar's own colours: readable in light, dark and the warn/crit states */
+.flag-btn.done { opacity: .7; pointer-events: none; }
 .exam-paused { padding: 2.5rem 1rem; text-align: center; border: 1.5px dashed var(--line-2); color: var(--muted); }
 .qnav { gap: 0; margin: 0 0 1.6rem; border: 1.5px solid var(--edge); background: var(--surface); width: max-content; max-width: 100%; box-shadow: 4px 4px 0 var(--hard-c); }
 .qnav button { width: 2.7rem; height: 2.7rem; margin: 0; border-radius: 0; border: 0; border-right: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); background: none; color: var(--muted); font: 500 .78rem var(--font-mono); transition: background .2s, color .2s, transform .25s var(--ease); }

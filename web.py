@@ -201,10 +201,12 @@ class Exam:
             self.scrape = sys.modules["scrape"] = self._load(f"scrape_{key}", self.dir / "scrape.py")
         if (self.dir / "online_parsers.py").exists():          # CCAR-P: scrape.py imports it for the downloaded banks; several exams have one, so act() swaps it in too
             self.parsers = sys.modules["online_parsers"] = self._load("online_parsers", self.dir / "online_parsers.py")
-        self.mod.vault_log = quiet_for_public(vault_writer(vault))
+        self.vault, self.vault_raw = vault, vault_writer(vault)     # vault_raw: flag reviews (no visitor data in them)
+        self.mod.vault_log = quiet_for_public(self.vault_raw)
         self._own_state(self.mod, key)
         self.mod.PREFER_MERMAID = True                         # tutor draws Mermaid here (icons are added in the browser)
         self.mod.run_claude = claude_runner(self.mod, key)     # the portal's own runner: API key, then the subscription token at its limit
+        self.mod.ask_claude = cached_tutor(self)               # Explain more: once per question and picked answer
         png = self.mod.render                                  # tutor Mermaid: the browser draws it in the portal's style + icons
         self.mod.render = lambda kind, code: MERMAID_SRC + code.encode() if kind == "mermaid" else png(kind, code)
         self.lock = asyncio.Lock()
@@ -676,6 +678,24 @@ def hidden(exam: Exam, qid: str, public: bool) -> bool:
     return public and qid not in exam.questions(True)
 
 
+def today() -> str:
+    return datetime.now(SGT).strftime("%Y-%m-%d")
+
+
+def report_cache(exam: Exam) -> Path | None:
+    """A visitor who saves their progress gets the weekly coach on the public link, cached for the day (None for the owner)."""
+    pid = VISITOR.get()
+    return TRACK_DIR / pid / f"report-{exam.key}.json" if pid else None
+
+
+def report_cached(exam: Exam) -> bool:
+    p = report_cache(exam)
+    try:
+        return bool(p) and json.loads(p.read_text(encoding="utf-8")).get("day") == today()
+    except (OSError, ValueError):
+        return False
+
+
 async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> None:
     mod = exam.mod
     state = mod.load_state()
@@ -716,7 +736,19 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
     elif data == "report":
         m = mod.metrics(state, datetime.now(SGT))
         rec.emit({"op": "meta", "metrics": {**m, "pass": mod.PASS, "verdict": mod.verdict(m)}})
-        await mod.weekly_report(None, rec)
+        cache = report_cache(exam)
+        if report_cached(exam):
+            for ev in json.loads(cache.read_text(encoding="utf-8"))["events"]:
+                rec.emit(ev)                               # a visitor's coach: once a day, the same reply after that
+            return
+        events, emit = [], rec.emit
+        rec.emit = lambda ev: (events.append(ev), emit(ev))
+        try:
+            await mod.weekly_report(None, rec)
+        finally:
+            rec.emit = emit
+        if cache and any("COACH" in str(ev.get("html", "")) for ev in events):
+            write_json(cache, {"day": today(), "events": events})
     elif data == "refresh":
         if exam.scrape is not None:
             sys.modules["scrape"] = exam.scrape               # the bot's refresh_bank does `import scrape` first thing, before any await
@@ -748,7 +780,7 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
                 await mod.send_question(rec, state, q)
                 prefetch(exam, q, public)
         elif kind == "e":                                 # Explain more: the only place the portal draws a diagram
-            await mod.explain(rec, q, set(filter(None, (rest[0] if rest else "").split(","))))
+            await mod.explain(rec, q, explain_args(exam, data)[1])
         else:
             raise HTTPException(400, f"unknown action {data}")
     else:
@@ -837,11 +869,7 @@ async def decode(exam: Exam, q: dict) -> dict:
              '"source": {"title": "<the study note title, or empty>", "url": "<its url, or empty>"}}')
     prompt = (f"QUESTION {q['id']}:\n{q['question']}\n\nOPTIONS:\n{q['options']}\n\nCORRECT: {q['correct']}\n\n"
               f"BANK EXPLANATION:\n{q['explanation']}\n\n{material}Reply with ONLY one JSON object of exactly this shape, no code fence:\n{shape}")
-    data = await exam.mod.run_claude(DECODE.format(name=exam.name), prompt, DECODE_SCHEMA)
-    out = data.get("structured_output")
-    if not isinstance(out, dict):
-        text = str(data.get("result") or "")
-        out = json.loads(text[text.find("{"):text.rfind("}") + 1])
+    out = await claude_json(exam, DECODE.format(name=exam.name), prompt, DECODE_SCHEMA)
     src = out.get("source") if isinstance(out.get("source"), dict) else {}
     out = {"clues": [str(x) for x in out.get("clues", [])][:4],
            "options": [{"letter": str(o["letter"]).strip().upper()[:1], "why": str(o.get("why", ""))} for o in out.get("options", []) if isinstance(o, dict) and o.get("letter")],
@@ -856,6 +884,155 @@ async def decode(exam: Exam, q: dict) -> dict:
     tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
     os.replace(tmp, p)
     return out
+
+
+async def claude_json(exam: Exam, system: str, prompt: str, schema: str) -> dict:
+    """One `claude -p` call that must answer one JSON object: the schema'd reply, else the object found in the text."""
+    data = await exam.mod.run_claude(system, prompt, schema)
+    out = data.get("structured_output")
+    if not isinstance(out, dict):
+        text = str(data.get("result") or "")
+        out = json.loads(text[text.find("{"):text.rfind("}") + 1])
+    return out
+
+
+def write_json(p: Path, data) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+
+
+def safe_id(qid: str) -> str:
+    return re.sub(r"[^\w.-]", "_", qid)
+
+
+# ── Explain more: one tutor call per question and picked answer, cached like the decoder (the owner, 2026-10-26) ──
+
+def explain_path(exam: Exam, qid: str, picked: set[str]) -> Path:
+    return exam.mod.STATE_PATH.parent / "explain" / f"{safe_id(qid)}-{''.join(sorted(picked)) or 'none'}.json"
+
+
+def explain_args(exam: Exam, data: str) -> tuple[dict | None, set[str]]:
+    """The question and picked letters of an `e|<qid>|<letters>` action; letters outside the question are dropped."""
+    _, qid, *rest = data.split("|")
+    q = exam.mod.QUESTIONS.get(qid)
+    return q, set(filter(None, (rest[0] if rest else "").split(","))) & set(q["letters"] if q else [])
+
+
+def cached_tutor(exam: Exam):
+    """Wrap the bot's ask_claude(q, picked) -> {teach, kind, code}: the first answer is kept, later ones are free."""
+    ask = exam.mod.ask_claude
+
+    async def ask_claude(q: dict, picked: set[str]) -> dict:
+        p = explain_path(exam, q["id"], picked)
+        if p.exists():
+            return json.loads(p.read_text(encoding="utf-8"))
+        out = await ask(q, picked)
+        if isinstance(out, dict) and out.get("teach"):
+            write_json(p, out)
+        return out
+    return ask_claude
+
+
+# ── Mock-exam debrief: what went wrong, what to read, the next step; one call per finished mock ──
+
+DEBRIEF = """You are a coach for the {name} exam (scored out of 1000, pass mark {pass_}). A student has just finished a mock
+exam. Using ONLY the data supplied (their domain results, the stems of the questions they missed, the study note titles
+per domain), write a short, frank debrief. "headline": one sentence under 25 words on where they stand. "focus": at most
+3 entries, the domains that would gain them the most points first (weight x how far below 80% they are); "domain" copied
+exactly from the data, "why" under 30 words naming the pattern in the missed questions, "notes" 1 to 3 study note titles
+copied exactly from that domain's list (empty if the list is empty). "next": one concrete next step under 25 words.
+Plain text only, no markdown. Never invent a domain, a note title or a fact."""
+DEBRIEF_SCHEMA = json.dumps({"type": "object", "required": ["headline", "focus", "next"], "additionalProperties": False,
+                             "properties": {"headline": {"type": "string"}, "next": {"type": "string"},
+                                            "focus": {"type": "array", "items": {"type": "object", "required": ["domain", "why", "notes"], "additionalProperties": False,
+                                                                                 "properties": {"domain": {"type": "string"}, "why": {"type": "string"},
+                                                                                                "notes": {"type": "array", "items": {"type": "string"}}}}}}})
+
+
+async def debrief(exam: Exam, domains: list[dict], missed: list[str], public: bool) -> dict:
+    weights = getattr(exam.mod, "WEIGHTS", {}) or {}
+    known = set(weights) | {q["domain"] for q in exam.mod.QUESTIONS.values()}
+    doms = [d for d in domains if d.get("name") in known and isinstance(d.get("n"), (int, float)) and d["n"] > 0][:20]
+    if not doms:
+        raise HTTPException(400, "no domain results")
+    Q = exam.questions(public)
+    miss = [Q[i] for i in dict.fromkeys(missed) if i in Q][:40]
+    titles = {d["domain"]: [n["title"] for n in d.get("notes", [])][:15] for d in exam.study.get("domains", [])}
+    score = weighted_score({d["name"]: [float(d.get("right", 0)), d["n"]] for d in doms}, weights)
+    lines = [f"SCORE {score} / 1000, pass {exam.mod.PASS}", "", "DOMAINS (name | weight % | right of n):"]
+    lines += [f"- {d['name']} | {weights.get(d['name'], '-')} | {d.get('right', 0)} of {d['n']}" for d in doms]
+    lines += ["", "MISSED QUESTIONS (domain: stem):"] + [f"- {q['domain']}: {q['question'][:220]}" for q in miss]
+    lines += ["", "STUDY NOTE TITLES PER DOMAIN:"] + [f"- {d['name']}: " + " ; ".join(titles.get(d["name"], [])) for d in doms]
+    shape = '{"headline": "...", "focus": [{"domain": "...", "why": "...", "notes": ["..."]}], "next": "..."}'
+    out = await claude_json(exam, DEBRIEF.format(name=exam.name, pass_=exam.mod.PASS), "\n".join(lines) +
+                            f"\n\nReply with ONLY one JSON object of exactly this shape, no code fence:\n{shape}", DEBRIEF_SCHEMA)
+    names = {d["name"] for d in doms}
+    focus = [{"domain": f["domain"], "why": str(f.get("why", "")),
+              "notes": [t for t in f.get("notes", []) if t in titles.get(f["domain"], [])][:3]}
+             for f in out.get("focus", []) if isinstance(f, dict) and f.get("domain") in names][:3]
+    if not out.get("headline") and not focus:
+        raise RuntimeError("empty debrief")
+    return {"score": score, "headline": str(out.get("headline", "")), "focus": focus, "next": str(out.get("next", ""))}
+
+
+# ── Flag a question: visitors report a doubtful key; Claude checks it once, the owner reviews it in the vault ──
+
+CHECK = """You review exam practice questions for the {name} exam. A student flagged this question as possibly wrong.
+Using the question, options, answer key and explanation (and your own knowledge of the subject), judge the KEY:
+"verdict" is one of key_ok (the key is right), key_wrong (another option is right), ambiguous (two options defensible or
+the stem is unclear), outdated (the facts changed). "answer": the option letter(s) you think are right, comma-separated.
+"reason": under 60 words, plain text."""
+CHECK_SCHEMA = json.dumps({"type": "object", "required": ["verdict", "answer", "reason"], "additionalProperties": False,
+                           "properties": {"verdict": {"type": "string"}, "answer": {"type": "string"}, "reason": {"type": "string"}}})
+CHECKING: dict[str, asyncio.Task] = {}
+
+
+def flag_path(exam: Exam, qid: str) -> Path:
+    return exam.mod.STATE_PATH.parent / "flags" / f"{safe_id(qid)}.json"
+
+
+def review_note(exam: Exam, q: dict, rec: dict) -> None:
+    """Reviews/<qid>.md in the exam's vault: the question, the key, Claude's check and every flag (best effort)."""
+    if not exam.vault:
+        return
+    try:
+        c = rec.get("check") or {}
+        now = datetime.now(SGT)
+        body = [f"---\ntags: [active]\nupdated: {now:%Y-%m-%d}\n---", f"# Flag: {q['id']}", "",
+                f"**Domain:** {q['domain']} · **Key:** {q['correct']} · **Flags:** {len(rec['flags'])}", "",
+                q["question"], "", q["options"], "",
+                f"**Claude check:** {c.get('verdict', 'pending')} · thinks {c.get('answer', '-')}", "", c.get("reason", ""), "",
+                "Accept: move the row to `data/removed_questions.csv` or fix the key. Reject: set `tags: [archived]`.", "", "## History"]
+        body += [f"- {f['t']} 🚩 flagged{': ' + f['note'] if f.get('note') else ''}" for f in rec["flags"]]
+        p = Path(exam.vault) / "Reviews" / f"{safe_id(q['id'])}.md"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text("\n".join(body) + "\n", encoding="utf-8")
+        os.replace(tmp, p)
+    except Exception as exc:
+        log.warning("review note failed for %s: %s", q["id"], exc)
+
+
+async def check_flag(exam: Exam, q: dict) -> None:
+    p = flag_path(exam, q["id"])
+    try:
+        notes = "\n".join(f"- {f['note']}" for f in json.loads(p.read_text(encoding="utf-8"))["flags"] if f.get("note"))
+        prompt = (f"QUESTION {q['id']}:\n{q['question']}\n\nOPTIONS:\n{q['options']}\n\nKEY: {q['correct']}\n\n"
+                  f"EXPLANATION:\n{q['explanation']}\n\nSTUDENT NOTES:\n{notes or '(none)'}\n\nReply with ONLY one JSON object of exactly "
+                  'this shape, no code fence:\n{"verdict": "key_ok|key_wrong|ambiguous|outdated", "answer": "B", "reason": "..."}')
+        out = await claude_json(exam, CHECK.format(name=exam.name), prompt, CHECK_SCHEMA)
+        rec = json.loads(p.read_text(encoding="utf-8"))           # re-read: more flags may have come in meanwhile
+        rec["check"] = {"verdict": str(out.get("verdict", "")), "answer": str(out.get("answer", "")), "reason": str(out.get("reason", ""))[:600],
+                        "t": datetime.now(SGT).isoformat(timespec="minutes")}
+        write_json(p, rec)
+        review_note(exam, q, rec)
+        exam.vault_raw("🚩 **question checked**", f"{q['id']} · {rec['check']['verdict']}")
+    except Exception as exc:
+        log.warning("flag check failed for %s: %s", q["id"], exc)
+    finally:
+        CHECKING.pop(f"{exam.key}/{q['id']}", None)
 
 
 def prefetch(exam: Exam, q: dict, public: bool) -> asyncio.Task | None:
@@ -1389,10 +1566,15 @@ async def api_decode(key: str, qid: str, req: Request, cached: int = 0):
 @app.post("/api/{key}/act")
 async def api_act(key: str, body: Act, req: Request):
     e = exam_or_404(key)
-    if is_public(req) and body.data in ("report", "refresh"):    # the owner's report and the shared bank refresh
+    pub = is_public(req)
+    if pub and (body.data == "refresh" or (body.data == "report" and not tracked())):   # the shared bank refresh; the report needs saved progress
         return stream(e, deny)
-    if is_public(req) and body.data.startswith("e|") and not claude_ok():   # Explain more: a Claude call each time, within the budget
+    if pub and body.data == "report" and not report_cached(e) and not claude_ok():   # the coach: once a day per visitor, within the budget
         return stream(e, over_budget)
+    if pub and body.data.startswith("e|"):                     # Explain more: free when cached, else within the budget
+        q, picked = explain_args(e, body.data)
+        if not (q and explain_path(e, q["id"], picked).exists()) and not claude_ok():
+            return stream(e, over_budget)
     return stream(e, functools.partial(act, e, body.data, public=is_public(req)))
 
 
@@ -1410,6 +1592,59 @@ async def api_task(key: str, body: TaskAnswer):
     if body.result:
         return stream(e, functools.partial(self_mark, e, body.id, body.result))
     return stream(e, functools.partial(check_task, e, body.id, body.answer, guess=body.guess))
+
+
+class Debrief(BaseModel):
+    domains: list[dict]
+    missed: list[str] = []
+
+
+@app.post("/api/{key}/exam/debrief")
+async def api_exam_debrief(key: str, body: Debrief, req: Request):
+    """The coach's read of a finished mock (the page sends its own result sheet: domain results and missed ids)."""
+    e = exam_or_404(key)
+    pub = is_public(req)
+    if pub and not claude_ok():
+        raise HTTPException(429, "Claude is used up for today on this site. It comes back tomorrow.")
+    try:
+        return await debrief(e, body.domains, body.missed, pub)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.warning("debrief failed for %s: %s", key, exc)
+        raise HTTPException(503, "The coach is not available right now.")
+
+
+class Flag(BaseModel):
+    id: str
+    note: str = ""
+
+
+@app.post("/api/{key}/flag")
+async def api_flag(key: str, body: Flag, req: Request):
+    """Flag a doubtful question: one flag per question per person; the first flag starts Claude's check of the key."""
+    e = exam_or_404(key)
+    pub = is_public(req)
+    q = e.questions(pub).get(body.id)
+    if not q:
+        raise HTTPException(404, "unknown question")
+    who = hashlib.sha256(lb_id().encode()).hexdigest()[:12]      # not the cookie itself
+    p = flag_path(e, q["id"])
+    try:
+        rec = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        rec = {"id": q["id"], "flags": [], "check": None}
+    if any(f["who"] == who for f in rec["flags"]):
+        return {"flagged": True, "again": True}
+    note = re.sub(r"\s+", " ", body.note).strip()[:300]
+    rec["flags"].append({"who": who, "note": note, "t": datetime.now(SGT).isoformat(timespec="minutes")})
+    write_json(p, rec)
+    e.vault_raw("🚩 **question flagged**", f"{q['id']} · {len(rec['flags'])} flag{'s' if len(rec['flags']) > 1 else ''}")
+    review_note(e, q, rec)
+    k = f"{e.key}/{q['id']}"
+    if not rec["check"] and k not in CHECKING and (not pub or claude_ok()):
+        CHECKING[k] = asyncio.create_task(check_flag(e, q))
+    return {"flagged": True, "again": False}
 
 
 def exam_size(e: Exam, state: dict) -> int:

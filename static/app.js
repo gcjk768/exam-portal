@@ -849,7 +849,7 @@
     $(".qtext", el).textContent = q.question;
     const opts = $(".options", el), picked = new Set();
     // Fresh order every time the card is shown, relabelled A, B, C… top to bottom so the right answer's letter rotates too
-    // (the banks lean on one letter). markGraded puts the bank's order and letters back, which the explanation names.
+    // (the banks lean on one letter). markGraded keeps the rows in place and puts the bank's letters back, which the explanation names.
     for (const [i, o] of shuffled(q.options).entries()) {
       const b = optionButton(o, String.fromCharCode(65 + i));
       b.onclick = () => {
@@ -941,17 +941,35 @@
     const el = $$(".card", feed).reverse().find(c => c.querySelector(".qid")?.textContent === g.id);   // the DOM, not state.cards: card ids restart at 1 every reply, so an older question's entry is overwritten
     remember({ ...g, dom: el?.querySelector(".dom")?.textContent || "" });
     if (!el) return;
-    const opts = $(".options", el);
-    $$(".opt", el).sort((a, b) => a.dataset.l.localeCompare(b.dataset.l))
-      .forEach(b => { $(".l", b).textContent = b.dataset.l; opts.append(b); });   // back to the bank's order and letters
+    $$(".opt", el).forEach(b => { $(".l", b).textContent = b.dataset.l; });   // rows stay put; the badges take the bank's letters, which the verdict and explanation name
     $$(".opt", el).forEach(b => {
       if (g.correct.includes(b.dataset.l)) b.classList.add("is-correct");
       else if (g.picked.includes(b.dataset.l)) b.classList.add("is-wrong");
     });
     addTopic(el);
     addDecode(el, g.id);
+    addFlag(el, g.id);
     refreshPlan();
   }
+
+  // ── Flag a doubtful question (web.py /flag): Claude checks the key once, the owner reviews it ──
+  let flagging = null;
+  function addFlag(card, qid, where) {
+    if (!card || $(".flag-btn", card)) return;
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn flag-btn"; b.innerHTML = `${ic("flag")}Flag this question`;
+    b.onclick = () => { flagging = { qid, b, exam: state.exam }; $("#flag-note").value = ""; $("#flag-dlg").showModal(); };
+    if (where) where.append(b);
+    else { const row = document.createElement("div"); row.className = "actions"; row.append(b); card.append(row); }
+  }
+  $("#flag-cancel").onclick = () => $("#flag-dlg").close();
+  $("#flag-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const f = flagging; $("#flag-dlg").close();
+    if (!f) return;
+    const r = await fetch(`/api/${f.exam}/flag`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: f.qid, note: $("#flag-note").value }) });
+    f.b.innerHTML = r.ok ? `${ic("check")}Flagged, thank you` : `${ic("warning")}Could not flag`;
+    f.b.classList.toggle("done", r.ok);
+  });
 
   // ── Decoder: clue words in the stem, one line per option, the principle, a source link (web.py decode) ──
   async function addDecode(card, qid, cachedOnly) {
@@ -1198,6 +1216,7 @@
         <span class="bar"><i class="right" style="width:${100 * d.right / d.n}%"></i></span>`;
       box.append(row);
     }
+    loadDebrief(res);
     const list = $("#res-list"); list.innerHTML = "";
     for (const r of res.results) {
       const el = $("#t-question").content.firstElementChild.cloneNode(true);
@@ -1227,12 +1246,32 @@
       const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.innerHTML = `${ic("graduation-cap")}Explain more with a diagram`;
       b.onclick = () => { go("quiz"); setTimeout(() => act(`e|${r.id}|${r.picked.join(",")}`), 50); };
       a.append(b);
-      el.append(a);
+      el.append(a); addFlag(el, r.id, a);
       list.append(el); addTopic(el); addDecode(el, r.id, true);
     }
     window.scrollTo({ top: 0 });
   }
   $("#res-again").onclick = () => { EX.run = null; loadExam(); };
+  // The coach's read of this mock (web.py /exam/debrief): headline, the domains to fix with their notes, the next step
+  async function loadDebrief(res) {
+    const box = $("#res-debrief");
+    box.hidden = false; box.innerHTML = `<p class="muted">${ic("graduation-cap", "ic-accent")}The coach is reading your answers…</p>`;
+    let d;
+    try {
+      const r = await post("/exam/debrief", { domains: res.domains, missed: res.results.filter(x => !x.right).map(x => x.id) });
+      if (!r.ok) { box.innerHTML = `<p class="muted small">${esc((await r.json().catch(() => ({}))).detail || "The coach is not available right now.")}</p>`; return; }
+      d = await r.json();
+    } catch (e) { box.hidden = true; return; }
+    box.innerHTML = `<h3>${ic("graduation-cap", "ic-accent")}Coach's debrief</h3><p>${esc(d.headline)}</p>`;
+    for (const f of d.focus) {
+      const p = document.createElement("p");
+      p.innerHTML = `${ic("target", "ic-bad")}<b>${esc(f.domain)}</b>: ${esc(f.why)}${f.notes.length ? ` <span class="muted">Read: ${f.notes.map(esc).join("; ")}</span>` : ""}`;
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.innerHTML = `${ic("book-open")}Study ${esc(f.domain)}`;
+      b.onclick = () => { state.studyFocus = f.domain; go("study"); };
+      box.append(p, b);
+    }
+    if (d.next) box.insertAdjacentHTML("beforeend", `<p><b>Next</b> ${esc(d.next)}</p>`);
+  }
 
   // ── Telegram HTML -> page HTML ────────────────────────────────────────────
   // The bots speak Telegram's emoji vocabulary; the page draws the same meaning with one icon family (Phosphor).
