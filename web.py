@@ -609,15 +609,15 @@ MOCK_READY = 800    # the bots' READY bar (verdict(): predicted score 800+), her
 
 
 def mock_ready(exam: Exam, scores: list[int]) -> str:
-    """Is this person ready to book the exam? From their mocks of one exam, oldest first: two in a row at 800+ is ready."""
+    """Ready to book the exam, as of the last of these mocks (one exam, oldest first): two in a row at 800+ is ready."""
     p, last = exam.mod.PASS, scores[-1]
     if len(scores) >= 2 and min(scores[-2:]) >= MOCK_READY:
-        return f"🟢 Ready to book {exam.short}: the last two mocks were {MOCK_READY}+"
+        return f"🟢 Ready to book: this and the mock before both {MOCK_READY}+"
     if last >= MOCK_READY:
-        return f"🟡 Nearly: one mock at {last}; one more at {MOCK_READY}+ to confirm"
+        return f"🟡 Nearly: {MOCK_READY}+ once; one more to confirm"
     if last >= p:
-        return f"🟡 Nearly: passed the latest ({last}, pass {p}); aim for {MOCK_READY}+ twice in a row for a safe margin"
-    return f"🔴 Not yet: the latest mock was {last}, {p - last} below the {p} pass mark"
+        return f"🟡 Nearly: a pass, but aim for {MOCK_READY}+ twice in a row"
+    return f"🔴 Not yet: {p - last} below the {p} pass mark"
 
 
 def lb_mock_rows(exams: set[str]) -> list[dict]:
