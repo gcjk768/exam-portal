@@ -1262,3 +1262,19 @@ html.navd { --base: .32s; }
   #route-bar, .view::before, .view::after { display: none !important; }
   body { padding-left: 0 !important; padding-bottom: 0 !important; }
 }
+/* mock board: the verdict wraps; on phones each mock is a small card (rank | name, score | exam, result | verdict), no sideways scroll */
+#board-mock td:last-child { white-space: normal; min-width: 14rem; }
+@media (max-width: 640px) {
+  #board-mock thead, #board-mock td:nth-child(6), #board-mock td:nth-child(7) { display: none; }
+  #board-mock tbody { display: block; }
+  #board-mock tr { display: grid; grid-template-columns: 2.6rem 1fr auto; column-gap: .7rem; row-gap: .15rem; align-items: baseline; padding: .8rem .9rem; border-bottom: 1.5px solid var(--line-2); }
+  #board-mock td { padding: 0; border: 0; white-space: normal; min-width: 0; text-align: left; }
+  #board-mock td:nth-child(1) { grid-row: 1 / span 3; width: auto; font-size: 1.7rem; }
+  #board-mock td:nth-child(2) { grid-column: 2; }
+  #board-mock td:nth-child(4) { grid-column: 3; grid-row: 1; font: 600 1.1rem var(--font-mono); text-align: right; }
+  #board-mock td:nth-child(3) { grid-column: 2; grid-row: 2; font-size: .85rem; color: var(--muted); }
+  #board-mock td:nth-child(5) { grid-column: 3; grid-row: 2; font-size: .85rem; text-align: right; }
+  #board-mock td:nth-child(8) { grid-column: 2 / -1; grid-row: 3; min-width: 0; font-size: .9rem; }
+  #board-mock tr.me { background: var(--accent); box-shadow: inset 8px 0 0 var(--accent-ink); }   /* your rows: one block, not a patch per cell */
+  #board-mock tr.me td, #board-mock tr.me:hover td { background: transparent; box-shadow: none; padding-left: 0; color: var(--accent-ink); }
+}
