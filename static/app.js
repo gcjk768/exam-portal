@@ -21,7 +21,7 @@
   async function init() {
     state.exams = await (await fetch("/api/exams")).json();
     const access = await (await fetch("/api/access")).json();
-    state.public = access.public;                                        // public visitor: no Claude, no reset, nothing recorded
+    state.public = access.public;                                        // public visitor: no report or bank refresh, Claude within a daily budget, nothing recorded
     state.shared = access.shared;                                        // no personal numbers: a public visitor who has not chosen to save their progress
     state.track = access.track;                                          // a public visitor who saves their progress (own score, plan, readiness)
     document.documentElement.dataset.public = state.public ? "1" : "";
@@ -806,7 +806,7 @@
   function actionsFor(rows, card) {
     const box = document.createElement("div"); box.className = "actions";
     for (const row of rows || []) for (const b of row) {
-      if (!b.data || b.data.startsWith("a|") || b.data.startsWith("s|") || (state.public && b.data.startsWith("e|"))) continue;   // option buttons are the question card
+      if (!b.data || b.data.startsWith("a|") || b.data.startsWith("s|")) continue;   // option buttons are the question card
       if (state.shared && (b.data === "stats" || b.data.startsWith("pv|"))) continue;   // no stats or history on the shared link, like the action bar
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn"; btn.innerHTML = iconize(esc(b.label));
       btn.onclick = () => {
@@ -940,7 +940,7 @@
       else if (g.picked.includes(b.dataset.l)) b.classList.add("is-wrong");
     });
     addTopic(el);
-    addDecode(el, g.id, state.public);
+    addDecode(el, g.id);
     refreshPlan();
   }
 
@@ -1200,7 +1200,7 @@
       const a = document.createElement("div"); a.className = "actions";
       const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.innerHTML = `${ic("graduation-cap")}Explain more with a diagram`;
       b.onclick = () => { go("quiz"); setTimeout(() => act(`e|${r.id}|${r.picked.join(",")}`), 50); };
-      if (!state.public) a.append(b);
+      a.append(b);
       el.append(a);
       list.append(el); addTopic(el); addDecode(el, r.id, true);
     }

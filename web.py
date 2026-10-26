@@ -616,6 +616,7 @@ DECODE_SCHEMA = json.dumps({"type": "object", "required": ["clues", "options", "
 DECODING: dict[str, asyncio.Task] = {}        # "<exam>/<qid>" -> running call
 DECODE_FAILED: dict[str, float] = {}         # "<exam>/<qid>" -> time of a failed call: no retry for an hour, so the page's 2 s polls never re-run Claude
 DECODE_RETRY_S = 3600
+PUBLIC_DECODE_SLOTS = 4                       # decoder calls running at once before public visitors get none (each is a claude process on the NAS)
 
 
 def decode_path(exam: Exam, qid: str) -> Path:
@@ -672,11 +673,13 @@ async def decode(exam: Exam, q: dict) -> dict:
 
 
 def prefetch(exam: Exam, q: dict, public: bool) -> asyncio.Task | None:
-    """Start the decoder for an MCQ unless cached, running or on the public link. The task outlives the request."""
+    """Start the decoder for an MCQ unless cached or running; on the public link only within the Claude budget. The task outlives the request."""
     key = f"{exam.key}/{q['id']}"
-    if public or not q["letters"] or decode_path(exam, q["id"]).exists() or time.time() - DECODE_FAILED.get(key, 0) < DECODE_RETRY_S:
+    if not q["letters"] or decode_path(exam, q["id"]).exists() or time.time() - DECODE_FAILED.get(key, 0) < DECODE_RETRY_S:
         return DECODING.get(key)
     if key not in DECODING or DECODING[key].done():
+        if public and (len(DECODING) >= PUBLIC_DECODE_SLOTS or not claude_ok()):
+            return None                                       # busy or over the day's budget: no decoder this time
         async def run():
             try:
                 await decode(exam, q)
@@ -957,7 +960,18 @@ def funnel(req: Request) -> bool:
 
 
 async def deny(rec: Recorder) -> None:
-    raise HTTPException(403, "Claude and admin actions are off on the public link. Use the home network or Tailscale.")
+    raise HTTPException(403, "Admin actions are off on the public link. Use the home network or Tailscale.")
+
+
+async def over_budget(rec: Recorder) -> None:
+    raise HTTPException(429, "Claude explanations are used up for today on this site. They come back tomorrow.")
+
+
+def claude_ok() -> bool:
+    """A public visitor may start one more Claude call: daily caps per visitor and overall (every call is billed to the owner's key).
+    Counts the call. Cached decoder results are free and never come here."""
+    pid = VISITOR.get() or "anon"
+    return not too_many(pid, "claude") and not too_many("x", "claude-all")
 
 
 class Act(BaseModel):
@@ -1002,7 +1016,7 @@ class ExamSubmit(BaseModel):
 
 @app.get("/api/access")
 def api_access(req: Request):
-    """public: no Claude/admin and nothing recorded (owner key lifts it); shared: came in through the public name, so the
+    """public: no admin actions, Claude within a daily budget, nothing recorded (owner key lifts it); shared: came in through the public name, so the
     page shows no personal numbers to anyone (the site is shared by many people)."""
     return {"public": is_public(req), "shared": is_public(req) and not tracked(), "track": tracked()}
 
@@ -1171,17 +1185,20 @@ async def api_decode(key: str, qid: str, req: Request, cached: int = 0):
     p = decode_path(e, qid)
     if p.exists():
         return JSONResponse(json.loads(p.read_text(encoding="utf-8")), headers={"Cache-Control": "no-store"})
-    if pub or cached or not q["letters"] or time.time() - DECODE_FAILED.get(f"{e.key}/{qid}", 0) < DECODE_RETRY_S:
+    if cached or not q["letters"] or time.time() - DECODE_FAILED.get(f"{e.key}/{qid}", 0) < DECODE_RETRY_S:
         raise HTTPException(404, "not decoded")                  # a failed call is not retried by every poll
-    prefetch(e, q, False)
+    if prefetch(e, q, pub) is None:
+        raise HTTPException(404, "not decoded")                  # public: busy or over the day's Claude budget
     return JSONResponse({"pending": True}, status_code=202, headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/{key}/act")
 async def api_act(key: str, body: Act, req: Request):
     e = exam_or_404(key)
-    if is_public(req) and (body.data in ("report", "refresh") or body.data.startswith("e|")):   # Claude calls and the shared bank refresh
+    if is_public(req) and body.data in ("report", "refresh"):    # the owner's report and the shared bank refresh
         return stream(e, deny)
+    if is_public(req) and body.data.startswith("e|") and not claude_ok():   # Explain more: a Claude call each time, within the budget
+        return stream(e, over_budget)
     return stream(e, functools.partial(act, e, body.data, public=is_public(req)))
 
 
@@ -1320,7 +1337,9 @@ app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 HITS: dict[str, deque] = defaultdict(deque)
 PID_RX = re.compile(r"[0-9a-f]{32}")
-RATE = {"visitor": (90, 60), "all": (900, 60)}      # public requests allowed per (count, seconds), per visitor and overall
+RATE = {"visitor": (90, 60), "all": (900, 60),     # public requests allowed per (count, seconds), per visitor and overall
+        "claude": (int(os.environ.get("PUBLIC_CLAUDE_VISITOR_DAY", 30)), 86400),   # public Claude calls (decoder, Explain more) per visitor a day
+        "claude-all": (int(os.environ.get("PUBLIC_CLAUDE_DAY", 300)), 86400)}       # and for everyone together
 
 
 def too_many(key: str, name: str) -> bool:
@@ -1330,7 +1349,7 @@ def too_many(key: str, name: str) -> bool:
         q.popleft()
     q.append(now)
     if len(HITS) > 5000:                      # forget idle visitors
-        for k in [k for k, v in HITS.items() if not v or now - v[-1] > 120]:
+        for k in [k for k, v in HITS.items() if not v or now - v[-1] > RATE[k.split(":", 1)[0]][1]]:   # idle longer than its own window
             HITS.pop(k, None)
     return len(q) > n
 

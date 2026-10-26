@@ -49,12 +49,23 @@ def events(resp):
     return [json.loads(line) for line in resp.text.splitlines() if line.strip()]
 
 
-# public (Tailscale Funnel) link: no Claude, no reset; local keeps both
+# public (Tailscale Funnel) link: no report or bank refresh; Explain more within a daily Claude budget
 pub = {"Tailscale-Funnel-Request": "?1"}
 assert c.get("/api/access").json()["public"] is False and c.get("/api/access", headers=pub).json()["public"] is True
-for d in ("report", "refresh", "e|x|A"):
+for d in ("report", "refresh"):
     ev = events(c.post("/api/ccarp/act", json={"data": d}, headers=pub))
     assert ev[0]["op"] == "error" and "public" in ev[0]["html"], (d, ev)
+_explained = []
+async def _fake_explain(rec, q, picked):
+    _explained.append(q["id"]); await rec.send_message("explained")
+mod0, _real_explain = web.EXAMS["ccarp"].mod, web.EXAMS["ccarp"].mod.explain
+mod0.explain = _fake_explain
+free0 = next(i for i, q in mod0.QUESTIONS.items() if not web.hidden_source(q.get("source")))
+assert events(c.post("/api/ccarp/act", json={"data": f"e|{free0}|A"}, headers=pub))[0]["html"] == "explained" and _explained == [free0]
+web.RATE["claude"] = (0, 86400)                                                            # budget used up
+ev = events(c.post("/api/ccarp/act", json={"data": f"e|{free0}|A"}, headers=pub))
+assert ev[0]["op"] == "error" and "used up" in ev[0]["html"] and len(_explained) == 1, ev
+web.RATE["claude"] = (30, 86400); web.HITS.clear(); mod0.explain = _real_explain
 
 # owner bank refresh: CCAR-P's scrape.py imports `online_parsers` lazily, and CKA (loaded last) has one too
 _seen = {}
@@ -293,7 +304,7 @@ assert c.post("/api/ccarp/plan", json={"exam_date": "not a date"}).status_code =
 assert c.post("/api/ccarp/plan", json={"exam_date": None}).json()["days_left"] is None
 assert c.get("/api/ccarp/home").json()["plan"]["new_left"] > 0
 
-# decoder: prefetched when a question is shown, cached as a file, served to everyone, never started on the public link
+# decoder: prefetched when a question is shown, cached as a file, served to everyone; the public link starts one within its budget
 dec_dir = Path(mod.STATE_PATH).parent / "decode"
 for f in dec_dir.glob("*.json"):
     f.unlink()
@@ -310,9 +321,16 @@ assert r.status_code == 200 and r.json()["clues"] == ["two seconds"] and (dec_di
 assert len(dec_calls) == 1 and qid in dec_calls[0], len(dec_calls)
 assert c.get(f"/api/ccarp/decode/{qid}", headers=pub).status_code == 200                     # cached: public may read it
 other = next(i for i in mod.QUESTIONS if i != qid and not web.hidden_source(mod.QUESTIONS[i].get("source")) and not (dec_dir / f"{i}.json").exists())
-assert c.get(f"/api/ccarp/decode/{other}", headers=pub).status_code == 404 and len(dec_calls) == 1   # public never starts one
 assert c.get(f"/api/ccarp/decode/{other}?cached=1").status_code == 404 and len(dec_calls) == 1       # review cards: cached only
-r = c.get(f"/api/ccarp/decode/{other}"); assert r.status_code in (200, 202)                          # owner: starts it
+web.RATE["claude-all"] = (0, 86400)
+assert c.get(f"/api/ccarp/decode/{other}", headers=pub).status_code == 404 and len(dec_calls) == 1   # public over the day's budget: none
+web.RATE["claude-all"] = (300, 86400); web.HITS.clear()
+r = c.get(f"/api/ccarp/decode/{other}", headers=pub); assert r.status_code in (200, 202)             # public within budget: starts it
+for _ in range(50):
+    if (dec_dir / f"{other}.json").exists():
+        break
+    _t.sleep(0.1)
+assert len(dec_calls) == 2 and c.get(f"/api/ccarp/decode/{other}").status_code == 200, len(dec_calls)
 assert c.get("/api/ccarp/decode/nope").status_code == 404
 bad = next(i for i in mod.QUESTIONS if i not in (qid, other) and mod.QUESTIONS[i]["letters"] and not (dec_dir / f"{i}.json").exists())
 async def failing_decoder(system, prompt, schema=None):

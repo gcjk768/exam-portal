@@ -450,7 +450,7 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
   .cram .dom h3 { font-size: 12pt; color: #000; }
 }
 
-/* public (Funnel) link: Claude and admin actions are refused by the server, so hide their buttons */
+/* public (Funnel) link: the report and bank refresh are refused by the server, so hide their buttons */
 [data-public="1"] [data-act="report"], [data-public="1"] [data-act="refresh"] { display: none; }
 /* a public visitor who has not chosen to save their progress sees no personal numbers, and nothing is recorded for them:
    no score ring, readiness, plan, quiz bar, stats, previous-question history or reset */
