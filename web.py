@@ -621,17 +621,15 @@ def mock_ready(exam: Exam, scores: list[int]) -> str:
 
 
 def lb_mock_rows(exams: set[str]) -> list[dict]:
+    """One row per mock attempt (not combined per person), best score first; readiness as of that attempt."""
     rows = []
     for r in lb_rows():
-        got = [(m[0], k, m) for k in exams for m in r["mocks"].get(k, [])]
-        if got:
-            best, k, _ = max(got, key=lambda x: x[0])
-            last = sorted(got, key=lambda x: x[2][3])[-1]          # stable: same-minute mocks keep the order they were taken
-            now_on = last[1]                                     # readiness for the exam they sat most recently
-            rows.append({"pid": r["pid"], "name": r["name"], "best": best, "best_exam": EXAMS[k].short, "last": last[0], "taken": len(got),
-                         "passed": sum(m[0] >= EXAMS[kk].mod.PASS for _, kk, m in got),
-                         "ready": mock_ready(EXAMS[now_on], [m[0] for m in sorted(r["mocks"][now_on], key=lambda m: m[3])])})
-    rows.sort(key=lambda r: (-r["best"], -r["passed"], r["name"].lower()))
+        for k in exams:
+            ms = sorted(r["mocks"].get(k, []), key=lambda m: m[3])     # stable: same-minute mocks keep the order they were taken
+            for i, m in enumerate(ms):
+                rows.append({"pid": r["pid"], "name": r["name"], "exam": EXAMS[k].short, "score": m[0], "passed": m[0] >= EXAMS[k].mod.PASS,
+                             "n": m[1], "when": m[3], "ready": mock_ready(EXAMS[k], [x[0] for x in ms[:i + 1]])})
+    rows.sort(key=lambda r: (-r["score"], r["when"]))
     return rows
 
 

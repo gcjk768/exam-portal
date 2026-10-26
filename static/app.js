@@ -62,6 +62,7 @@
     location.hash = "home"; location.reload();                          // Stats has nothing to show once the saved progress is gone
   });
   $("#lb-no").addEventListener("click", () => { localStorage.setItem("lb-asked", "1"); $("#lb-join").close(); });
+  const fmtWhen = (iso) => new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   async function loadBoard() {
     const mock = LB.board === "mock";
     const d = await (await fetch(mock ? `/api/board/mock?exam=${LB.exam}` : `/api/board?exam=${LB.exam}&period=${LB.period}`)).json();
@@ -77,14 +78,14 @@
     }
     $$("#board-kind button").forEach(b => b.setAttribute("aria-current", b.dataset.b === LB.board));
     $("#board-period").hidden = mock; $("#board-table").hidden = mock; $("#board-mock").hidden = !mock;
-    $("#board-rule").textContent = mock ? `Ranked by the best mock-exam score (out of 1000). A mock counts when it has at least 20 questions; paid questions are left out of the score. Ready means the last two mocks of that exam scored 800 or more.`
+    $("#board-rule").textContent = mock ? `Every mock exam is its own row, ranked by score (out of 1000). A mock counts when it has at least 20 questions; paid questions are left out of the score. Ready means that mock and the one before it both scored 800 or more.`
                                         : "Ranked by questions answered right on the first try. Only a question's first answer counts.";
     $$("#board-exam button").forEach(b => b.setAttribute("aria-current", b.dataset.k === LB.exam));
     $$("#board-period button").forEach(b => b.setAttribute("aria-current", b.dataset.p === LB.period));
     const tb = $(mock ? "#board-mock tbody" : "#board-table tbody"); tb.innerHTML = "";
     for (const r of d.rows) {
       const tr = document.createElement("tr"); if (r.me) tr.className = "me";
-      const cells = mock ? [r.rank, r.name + (r.me ? " (you)" : ""), r.best, r.best_exam, r.last, r.taken, r.passed, r.ready]
+      const cells = mock ? [r.rank, r.name + (r.me ? " (you)" : ""), r.exam, r.score, r.passed ? "🟢 Pass" : "🔴 Fail", r.n, fmtWhen(r.when), r.ready]
                          : [r.rank, r.name + (r.me ? " (you)" : ""), r.done, r.right, r.wrong, r.acc + "%", r.strong || "-", r.weak || "-"];
       for (const v of cells) { const td = document.createElement("td"); td.textContent = v; tr.append(td); }
       tb.append(tr);
@@ -93,7 +94,7 @@
     const me = $("#board-me"); me.innerHTML = "";
     const own = d.me.owner ? "On your own links only CCAR-P counts, and not the paid questions. " : "";
     if (d.me.joined) {
-      me.append(`${own}You are on the board as ${d.me.name}${d.me.rank ? `, rank ${d.me.rank} of ${d.total}` : mock ? ", finish a mock exam of 20+ questions to get ranked" : ", answer a question to get ranked"}. `);
+      me.append(`${own}You are on the board as ${d.me.name}${d.me.rank ? (mock ? `, your best mock is #${d.me.rank} of ${d.total} mocks` : `, rank ${d.me.rank} of ${d.total}`) : mock ? ", finish a mock exam of 20+ questions to get ranked" : ", answer a question to get ranked"}. `);
       const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Leave the board";   // removes the board entry only; saved progress is stopped on Stats
       b.onclick = async () => { await lbPost("leave"); localStorage.setItem("lb-asked", "1"); loadBoard(); };
       me.append(b);

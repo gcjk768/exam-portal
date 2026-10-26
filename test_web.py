@@ -171,9 +171,9 @@ lb_mock(5, True)                                                                
 assert c.get("/api/board/mock", headers=lbc).json()["rows"] == []
 lb_mock(20, False); lb_mock(20, True)
 mb = c.get("/api/board/mock?exam=ccarp", headers=lbc).json()
-assert mb["rows"][0]["name"] == "Ann Lee" and mb["rows"][0]["best"] == 1000 and mb["rows"][0]["last"] == 1000, mb
-assert mb["rows"][0]["taken"] == 2 and mb["rows"][0]["passed"] == 1 and mb["rows"][0]["best_exam"] == "CCAR-P" and mb["me"]["rank"] == 1, mb
-assert mb["rows"][0]["ready"].startswith("🟡 Nearly: one mock at 1000"), mb                     # 0 then 1000: one more to confirm
+assert [(r["name"], r["score"], r["passed"], r["n"], r["exam"]) for r in mb["rows"]] == [("Ann Lee", 1000, True, 20, "CCAR-P"), ("Ann Lee", 0, False, 20, "CCAR-P")], mb   # one row per mock
+assert mb["rows"][0]["ready"].startswith("🟡 Nearly: one mock at 1000") and mb["rows"][1]["ready"].startswith("🔴 Not yet"), mb   # as of each attempt
+assert mb["me"]["rank"] == 1 and mb["total"] == 2, mb
 _ccarp = web.EXAMS["ccarp"]
 assert web.mock_ready(_ccarp, [810, 850]).startswith("🟢 Ready") and web.mock_ready(_ccarp, [900, 790]).startswith("🟡 Nearly: passed")
 assert web.mock_ready(_ccarp, [87]) == "🔴 Not yet: the latest mock was 87, 633 below the 720 pass mark"
