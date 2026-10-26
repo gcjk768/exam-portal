@@ -579,7 +579,8 @@ async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public:
     mod, state = exam.mod, exam.mod.load_state()
     right = letters == q["answer"]
     state["last"] = {"id": q["id"], "picked": sorted(letters)}
-    state["pending"] = None
+    if state.get("pending") == q["id"]:                   # an older question answered from History: the one on screen stays pending
+        state["pending"] = None
     mins = record(exam, state, q["id"], right, guess=guess)
     mod.save_state(state)
     rec.emit({"op": "meta", "graded": {"id": q["id"], "picked": sorted(letters), "correct": sorted(q["answer"]), "right": right,

@@ -675,7 +675,7 @@
       }
     } catch (e) {
       apply({ op: "error", html: `Connection lost: ${esc(String(e))}` });
-    } finally { state.fresh = false; setBusy(false); }
+    } finally { state.fresh = false; state.replyAfter = null; setBusy(false); }
   }
 
   let tick = null;
@@ -707,7 +707,7 @@
     }
     else if (ev.op === "error") addCard({ op: "add", id: `err${Date.now()}`, kind: "text", html: ev.html, buttons: [], error: true });
     if (ev.op === "add" && ev.question) state.cards.get(ev.id)?.scrollIntoView({ block: "start", behavior: "smooth" });   // a new question starts at the top
-    else feed.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
+    else (state.replyAfter?.isConnected && state.replyAfter.parentElement !== feed ? state.replyAfter : feed.lastElementChild)?.scrollIntoView({ block: "end", behavior: "smooth" });
   }
 
   const KIND = { "📝": "q", "🟢": "ok", "🔴": "bad", "🎓": "tutor", "📊": "stats", "📚": "study", "⏳": "wait", "⚠️": "err", "🆕": "bank", "🗺": "map", "🔄": "bank", "🛠": "taskq", "🧭": "guide", "📘": "solution" };
@@ -753,7 +753,8 @@
     }
     el.append(actionsFor(ev.buttons, el));
     el.dataset.id = ev.id;
-    feed.append(el);
+    const at = state.replyAfter;                           // an older question answered from History: its reply stays with it
+    if (at?.isConnected && at.parentElement !== feed) { at.after(el); state.replyAfter = el; } else feed.append(el);
     state.cards.set(ev.id, el);
     $$(".spoiler", el).forEach(s => s.onclick = () => s.classList.toggle("open"));
   }
@@ -778,10 +779,10 @@
     return box;
   }
 
-  function optionButton(o) {
+  function optionButton(o, shown = o.l) {   // data-l is the bank's letter (graded), `shown` the letter on screen
     const b = document.createElement("button"); b.type = "button"; b.className = "opt"; b.dataset.l = o.l;
     b.setAttribute("aria-pressed", "false");
-    b.innerHTML = `<span class="l">${o.l}</span><span>${esc(o.t)}</span>`;
+    b.innerHTML = `<span class="l">${shown}</span><span>${esc(o.t)}</span>`;
     return b;
   }
 
@@ -798,8 +799,10 @@
     $(".dom", el).textContent = q.domain;
     $(".qtext", el).textContent = q.question;
     const opts = $(".options", el), picked = new Set();
-    for (const o of shuffled(q.options)) {   // fresh order every time the card is shown; letters stay with their text so explanations still match
-      const b = optionButton(o);
+    // Fresh order every time the card is shown, relabelled A, B, C… top to bottom so the right answer's letter rotates too
+    // (the banks lean on one letter). markGraded puts the bank's order and letters back, which the explanation names.
+    for (const [i, o] of shuffled(q.options).entries()) {
+      const b = optionButton(o, String.fromCharCode(65 + i));
       b.onclick = () => {
         if (!q.multi) return submit([o.l]);
         picked.has(o.l) ? picked.delete(o.l) : picked.add(o.l);
@@ -819,7 +822,8 @@
       $$(".opt", el).forEach(b => { b.disabled = true; b.setAttribute("aria-pressed", String(letters.includes(b.dataset.l))); });
       sub.hidden = true;
       $(".guess-row", el).hidden = true;
-      state.pendingCard = null;
+      if (state.pendingCard?.el === el) state.pendingCard = null;   // answering an older card from History leaves the current one live
+      state.replyAfter = el;                                          // the verdict goes under this card, not under the newest question
       answer(q.id, letters, guess.getAttribute("aria-pressed") === "true");
     }
     state.pendingCard = { el, q, picked, submit };
@@ -884,9 +888,12 @@
   $("#peek-close").onclick = closePeek;
 
   function markGraded(g) {
-    const el = [...state.cards.values()].reverse().find(c => c.querySelector(".qid")?.textContent === g.id);
+    const el = $$(".card", feed).reverse().find(c => c.querySelector(".qid")?.textContent === g.id);   // the DOM, not state.cards: card ids restart at 1 every reply, so an older question's entry is overwritten
     remember({ ...g, dom: el?.querySelector(".dom")?.textContent || "" });
     if (!el) return;
+    const opts = $(".options", el);
+    $$(".opt", el).sort((a, b) => a.dataset.l.localeCompare(b.dataset.l))
+      .forEach(b => { $(".l", b).textContent = b.dataset.l; opts.append(b); });   // back to the bank's order and letters
     $$(".opt", el).forEach(b => {
       if (g.correct.includes(b.dataset.l)) b.classList.add("is-correct");
       else if (g.picked.includes(b.dataset.l)) b.classList.add("is-wrong");
@@ -976,7 +983,7 @@
     const p = state.pendingCard;
     if (p && p.task) return;
     if (p && p.el.isConnected && e.key === "?") { $(".guess", p.el)?.click(); e.preventDefault(); }
-    else if (p && p.el.isConnected && /^[A-H]$/.test(k)) { $(`.opt[data-l="${k}"]`, p.el)?.click(); e.preventDefault(); }
+    else if (p && p.el.isConnected && /^[A-H]$/.test(k)) { $$(".opt", p.el)[k.charCodeAt(0) - 65]?.click(); e.preventDefault(); }   // by position: the letters on screen
     else if (e.key === "Enter") {
       if (p && p.el.isConnected && p.q.multi) { if (p.picked.size) p.submit([...p.picked].sort()); }
       else if (!state.busy) act("next");

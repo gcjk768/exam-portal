@@ -1216,6 +1216,25 @@ html.navd { --base: .32s; }
 }
 @media (max-width: 999px) { .feed-actions { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .feed-actions .btn { flex: none; } }
 @media (max-width: 640px) { .feed-actions .btn { flex: none; } .peek-nav .btn, .peek-nav select { flex: 1 1 auto; } }
+/* Phone: tighter cards and a slim letter column so option text gets the width; the quiz actions fit one row, icons only
+   except Next (labels stay for screen readers), wrapping instead of scrolling sideways when the owner's extra buttons show */
+@media (max-width: 640px) {
+  main { padding-inline: .75rem; }
+  .card { padding: .95rem; box-shadow: 3px 3px 0 var(--hard-c); }
+  .history { padding: .4rem .5rem; } .history .card { box-shadow: none; }
+  .opt { grid-template-columns: 2.4rem minmax(0, 1fr); box-shadow: 3px 3px 0 var(--hard-c); }
+  .opt .l { font-size: 1.3rem; }
+  .opt > span:nth-child(2) { padding: .65rem .75rem; font-size: .95rem; }
+  .opt .why { padding: 0 .75rem .65rem; }
+  .quiz-bar { flex-wrap: wrap; font-size: .72rem; padding: .6rem .75rem; gap: .3rem .5rem; }
+  .quiz-bar #quiz-bar-text { flex: 1 1 0; min-width: 0; } .quiz-bar .fresh { flex-basis: 100%; margin: 0; }
+  .feed-actions { overflow: visible; flex-wrap: wrap; padding: .45rem; gap: .35rem; }
+  .feed-actions .btn { flex: 1 0 44px; min-width: 44px; min-height: 44px; padding-inline: 0; justify-content: center; gap: 0; }
+  .feed-actions .btn[data-act="next"] { flex: 1 1 7.5rem; min-width: 0; padding-inline: .6rem; gap: .4rem; font-size: .78rem; letter-spacing: .03em; }
+  .feed-actions .btn[data-act="next"] .lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .feed-actions .btn:not([data-act="next"]) .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .view:not(#view-home)::after { display: none; }
+}
 
 /* ---------- Reduced motion and print ---------- */
 @media (prefers-reduced-motion: reduce) {

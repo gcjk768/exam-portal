@@ -247,7 +247,9 @@ assert st["ok"][qid] == 1 and st["pending"] is None and st["log"][-1]["first"] i
 
 # wrong answer: verdict + Explain more only, still no diagram and no Claude call
 wrong = next(l for l in q["letters"] if l not in q["answer"])
+nxt = events(c.post("/api/ccarp/act", json={"data": "next"}))[0]["question"]["id"]   # skip ahead, then answer the older one from History
 ev = events(c.post("/api/ccarp/answer", json={"id": qid, "picked": [wrong]}))[1:]
+assert mod.load_state()["pending"] == nxt, "answering an older question must not clear the one on screen"
 assert len(ev) == 1 and ev[0]["html"].startswith("🔴") and ev[0]["buttons"][0][0]["data"] == f"e|{qid}|{wrong}", ev
 assert mod.load_state()["bad"][qid] == 1 and not calls
 # the button is the only thing that draws: text, then the diagram
