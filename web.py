@@ -612,6 +612,8 @@ DECODE_SCHEMA = json.dumps({"type": "object", "required": ["clues", "options", "
                                            "source": {"type": "object", "required": ["title", "url"], "additionalProperties": False,
                                                       "properties": {"title": {"type": "string"}, "url": {"type": "string"}}}}})
 DECODING: dict[str, asyncio.Task] = {}        # "<exam>/<qid>" -> running call
+DECODE_FAILED: dict[str, float] = {}         # "<exam>/<qid>" -> time of a failed call: no retry for an hour, so the page's 2 s polls never re-run Claude
+DECODE_RETRY_S = 3600
 
 
 def decode_path(exam: Exam, qid: str) -> Path:
@@ -670,13 +672,14 @@ async def decode(exam: Exam, q: dict) -> dict:
 def prefetch(exam: Exam, q: dict, public: bool) -> asyncio.Task | None:
     """Start the decoder for an MCQ unless cached, running or on the public link. The task outlives the request."""
     key = f"{exam.key}/{q['id']}"
-    if public or not q["letters"] or decode_path(exam, q["id"]).exists():
+    if public or not q["letters"] or decode_path(exam, q["id"]).exists() or time.time() - DECODE_FAILED.get(key, 0) < DECODE_RETRY_S:
         return DECODING.get(key)
     if key not in DECODING or DECODING[key].done():
         async def run():
             try:
                 await decode(exam, q)
             except Exception as exc:
+                DECODE_FAILED[key] = time.time()
                 log.warning("decoder failed for %s: %s", key, exc)
             finally:
                 DECODING.pop(key, None)
@@ -1132,8 +1135,8 @@ async def api_decode(key: str, qid: str, req: Request, cached: int = 0):
     p = decode_path(e, qid)
     if p.exists():
         return JSONResponse(json.loads(p.read_text(encoding="utf-8")), headers={"Cache-Control": "no-store"})
-    if pub or cached or not q["letters"]:
-        raise HTTPException(404, "not decoded")
+    if pub or cached or not q["letters"] or time.time() - DECODE_FAILED.get(f"{e.key}/{qid}", 0) < DECODE_RETRY_S:
+        raise HTTPException(404, "not decoded")                  # a failed call is not retried by every poll
     prefetch(e, q, False)
     return JSONResponse({"pending": True}, status_code=202, headers={"Cache-Control": "no-store"})
 

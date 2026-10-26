@@ -68,11 +68,12 @@ def next_question(state: dict, Q: dict, weights: dict, by_dom: dict, now_iso: st
     if not Q:
         return None
     recent = [e.get("id") for e in state.get("log", [])[-3:]]             # mix it up: no straight repeat, fewer same-topic runs
-    due = [k for k in due_keys(state, now_iso) if k in Q]
+    skip = state.get("pending")                                            # Next on an unanswered question means "a different one"
+    due = [k for k in due_keys(state, now_iso) if k in Q and k != skip]
     if due:
         return Q[next((k for k in due if k not in recent[-1:]), due[0])]
     seen = set(state["ok"]) | set(state["bad"])
-    unseen = [i for i in Q if i not in seen]
+    unseen = [i for i in Q if i not in seen and i != skip]
     if unseen:
         pri = domain_priority(weights, by_dom, Counter(Q[i]["domain"] for i in unseen))
         run = Counter(Q[i]["domain"] for i in recent[-2:] if i in Q)
@@ -80,7 +81,7 @@ def next_question(state: dict, Q: dict, weights: dict, by_dom: dict, now_iso: st
         d = rng.choices(list(pri), weights=list(pri.values()))[0]
         return Q[rng.choice([i for i in unseen if Q[i]["domain"] == d])]
     missed = [i for i in Q if state["bad"].get(i, 0) > state["ok"].get(i, 0)]
-    pool = [i for i in (missed or list(Q)) if i not in recent[-1:]] or missed or list(Q)
+    pool = [i for i in (missed or list(Q)) if i not in recent[-1:] and i != skip] or missed or list(Q)
     return Q[rng.choice(pool)]
 
 

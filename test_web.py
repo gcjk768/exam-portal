@@ -304,6 +304,16 @@ assert c.get(f"/api/ccarp/decode/{other}", headers=pub).status_code == 404 and l
 assert c.get(f"/api/ccarp/decode/{other}?cached=1").status_code == 404 and len(dec_calls) == 1       # review cards: cached only
 r = c.get(f"/api/ccarp/decode/{other}"); assert r.status_code in (200, 202)                          # owner: starts it
 assert c.get("/api/ccarp/decode/nope").status_code == 404
+bad = next(i for i in mod.QUESTIONS if i not in (qid, other) and mod.QUESTIONS[i]["letters"] and not (dec_dir / f"{i}.json").exists())
+async def failing_decoder(system, prompt, schema=None):
+    dec_calls.append(prompt); raise RuntimeError("claude down")
+mod.run_claude, n0 = failing_decoder, len(dec_calls)
+for _ in range(20):                                                                                  # the page polls every 2 s
+    if c.get(f"/api/ccarp/decode/{bad}").status_code == 404:
+        break
+    _t.sleep(0.1)
+assert c.get(f"/api/ccarp/decode/{bad}").status_code == 404 and len(dec_calls) == n0 + 1, len(dec_calls) - n0   # one failed call, then 404, no retries
+mod.run_claude = fake_decoder
 
 # free questions that read like the exam get the "≈ exam" badge on every link
 eid = next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("examlike")); assert c.get(f"/api/ccarp/question/{eid}", headers=pub).json()["tag"] == "≈ exam"

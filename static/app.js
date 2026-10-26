@@ -55,7 +55,8 @@
   $("#track-off").addEventListener("click", async (ev) => {
     const b = ev.currentTarget;
     if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Click again to delete everything saved"; return; }
-    await fetch("/api/track/off", { method: "POST" }); await lbPost("leave"); localStorage.removeItem("lb-asked"); location.reload();
+    await fetch("/api/track/off", { method: "POST" }); await lbPost("leave"); localStorage.removeItem("lb-asked");
+    location.hash = "home"; location.reload();                          // Stats has nothing to show once the saved progress is gone
   });
   $("#lb-no").addEventListener("click", () => { localStorage.setItem("lb-asked", "1"); $("#lb-join").close(); });
   async function loadBoard() {
@@ -594,7 +595,7 @@
   // Two buttons (quiz + progress view), same two-click confirm. Reset restarts the bank at question 1.
   let resetArmed = 0;
   const resetBtns = $$(".js-reset");
-  const setResetLabel = t => resetBtns.forEach(b => ($(".lbl", b) || b).textContent = t);
+  const setResetLabel = t => resetBtns.forEach(b => { ($(".lbl", b) || b).textContent = t; b.classList.toggle("armed", t !== "Reset progress"); });   // armed: the phone's icon-only button shows its label
   resetBtns.forEach(b => b.onclick = async () => {
     if (!resetArmed) { setResetLabel("Confirm reset"); resetArmed = setTimeout(() => { resetArmed = 0; setResetLabel("Reset progress"); }, 5000); return; }
     clearTimeout(resetArmed); resetArmed = 0; setResetLabel("Reset progress");
@@ -628,7 +629,7 @@
       ? `Scenario tasks: ${p.tasks.seen} of ${p.tasks.total} done. Multiple choice: ${p.mcq.seen} of ${p.mcq.total}.`
       : `Multiple choice first: ${p.mcq.seen} of ${p.mcq.total} seen. Scenario tasks (${p.tasks.total}) unlock automatically when the MCQ bank is done.`;
     $$("#mode-bar [data-mode]").forEach(b => b.setAttribute("aria-current", String(b.dataset.mode === p.forced)));
-    $("[data-act=next] .lbl").textContent = inTasks ? "Next task" : "Next question";
+    $("[data-act=next] .lbl-x").textContent = inTasks ? " task" : " question";   // phones show just "Next"
   }
   $$("#mode-bar [data-mode]").forEach(b => b.onclick = async () => {
     const p = await (await post("/mode", { mode: b.dataset.mode })).json();
@@ -637,7 +638,7 @@
   });
   async function openQuiz() {
     $("#btn-study-feed").hidden = !(cur() && cur().has_study);
-    $("[data-act=next] .lbl").textContent = "Next question";
+    $("[data-act=next] .lbl-x").textContent = " question";
     const h0 = state.home && state.home.key === state.exam ? state.home : await api("/home");
     state.home = h0;
     renderMode(h0.progress);
@@ -771,8 +772,12 @@
     const box = document.createElement("div"); box.className = "actions";
     for (const row of rows || []) for (const b of row) {
       if (!b.data || b.data.startsWith("a|") || b.data.startsWith("s|") || (state.public && b.data.startsWith("e|"))) continue;   // option buttons are the question card
+      if (state.shared && (b.data === "stats" || b.data.startsWith("pv|"))) continue;   // no stats or history on the shared link, like the action bar
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn"; btn.innerHTML = iconize(esc(b.label));
-      btn.onclick = () => { $$(".btn", box).forEach(x => x.disabled = true); act(b.data); };
+      btn.onclick = () => {
+        if (b.data.startsWith("pv|")) return $("#btn-prev-q").click();     // the bot's Telegram paging: the portal has its own Previous viewer
+        $$(".btn", box).forEach(x => x.disabled = true); act(b.data);
+      };
       box.append(btn);
     }
     if (!box.children.length) box.hidden = true;
@@ -909,9 +914,10 @@
     const box = document.createElement("div"); box.className = "decode";
     box.innerHTML = cachedOnly ? "" : `<span class="wait">${ic("magnifying-glass", "ic-accent")}Decoding the question…</span>`;
     card.append(box);
+    const exam = state.exam;                               // the question's exam, even if the user switches exams while this polls
     for (let i = 0; i < 45; i++) {                         // prefetched when the question was shown; usually ready at once
       let r;
-      try { r = await fetch(`/api/${state.exam}/decode/${encodeURIComponent(qid)}${cachedOnly ? "?cached=1" : ""}`); } catch (e) { break; }
+      try { r = await fetch(`/api/${exam}/decode/${encodeURIComponent(qid)}${cachedOnly ? "?cached=1" : ""}`); } catch (e) { break; }
       if (r.status === 200) return renderDecode(card, box, await r.json());
       if (r.status !== 202 || cachedOnly) break;
       await new Promise(ok => setTimeout(ok, 2000));
@@ -1099,7 +1105,17 @@
     const answers = {};
     for (const q of EX.run.questions) answers[q.id] = EX.run.answers[q.id] || [];
     if (EX.run.tasks) { $("#exam-submit").disabled = true; $("#exam-submit").textContent = "Grading with Claude, this takes a minute per task"; }
-    const res = await (await post("/exam/submit", { answers, minutes_used: (Date.now() - EX.run.started) / 60000 })).json();
+    let res;
+    try {
+      const r = await post("/exam/submit", { answers, minutes_used: (Date.now() - EX.run.started) / 60000 });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      res = await r.json();
+    } catch (e) {                                          // keep the answers (still in localStorage) and let the user retry
+      EX.run.done = false;
+      $("#exam-submit").disabled = false; $("#exam-submit").textContent = "Submit failed, try again";
+      if (!timedOut) EX.timer = setInterval(tickExam, 1000);
+      return;
+    }
     localStorage.removeItem(EX.key());
     $("#exam-submit").disabled = false; $("#exam-submit").textContent = "Submit exam";
     showExamResult(res, timedOut);

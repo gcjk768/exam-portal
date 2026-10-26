@@ -88,7 +88,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offs
   .views { justify-content: space-between; gap: 0; min-width: 0; }
   .views a { padding: .35rem .4rem; font-size: .9rem; white-space: nowrap; }
   .exams, .views { overflow-x: auto; scrollbar-width: none; }   /* very narrow phones: the row scrolls, the page never does */
-  main { overflow-x: hidden; }
+  main { overflow-x: clip; }   /* clip, not hidden: hidden makes main a scroll container, so the sticky quiz actions and exam timer stuck to main instead of the screen */
   .top { position: static; }   /* a sticky two-row bar ate the screen and hid the exam timer (.exam-bar top:0) */
   .exams button, .views a { min-height: 40px; display: inline-flex; align-items: center; }
   .qnav button { width: 2.5rem; height: 2.5rem; }
@@ -455,7 +455,7 @@ kbd { font-family: var(--font-mono); font-size: .72rem; padding: .12rem .42rem; 
 /* a public visitor who has not chosen to save their progress sees no personal numbers, and nothing is recorded for them:
    no score ring, readiness, plan, quiz bar, stats, previous-question history or reset */
 [data-shared="1"] .hero-ring, [data-shared="1"] #home-verdict, [data-shared="1"] .plan, [data-shared="1"] .quiz-bar, [data-shared="1"] [data-view="stats"],
-[data-shared="1"] [data-act="stats"], [data-shared="1"] .js-reset, [data-shared="1"] #btn-prev-q, [data-shared="1"] .read-count,
+[data-shared="1"] [data-act="stats"], [data-shared="1"] .js-reset, [data-shared="1"] #btn-prev-q, [data-shared="1"] .read-count { display: none; }
 [data-shared="1"] .hero { min-height: 0; }
 .peek-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0 0 .8rem; }
 [hidden] { display: none !important; }
@@ -1228,12 +1228,17 @@ html.navd { --base: .32s; }
   .opt .why { padding: 0 .75rem .65rem; }
   .quiz-bar { flex-wrap: wrap; font-size: .72rem; padding: .6rem .75rem; gap: .3rem .5rem; }
   .quiz-bar #quiz-bar-text { flex: 1 1 0; min-width: 0; } .quiz-bar .fresh { flex-basis: 100%; margin: 0; }
-  .feed-actions { overflow: visible; flex-wrap: wrap; padding: .45rem; gap: .35rem; }
-  .feed-actions .btn { flex: 1 0 44px; min-width: 44px; min-height: 44px; padding-inline: 0; justify-content: center; gap: 0; }
-  .feed-actions .btn[data-act="next"] { flex: 1 1 7.5rem; min-width: 0; padding-inline: .6rem; gap: .4rem; font-size: .78rem; letter-spacing: .03em; }
+  .feed-actions { overflow: visible; flex-wrap: wrap; padding: .4rem; gap: .25rem; }
+  .feed-actions .btn { flex: 1 1 36px; min-width: 36px; max-width: 48px; min-height: 44px; padding-inline: 0; justify-content: center; gap: 0; position: relative; }
+  .feed-actions .btn[data-act="next"] { flex: 3 1 3.6rem; max-width: none; min-width: 0; padding-inline: .5rem; gap: .35rem; font-size: .78rem; letter-spacing: .03em; }
+  .feed-actions .lbl-x { display: none; }   /* "Next" only, so the owner's seven buttons fit one row */
   .feed-actions .btn[data-act="next"] .lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .feed-actions .btn:not([data-act="next"]) .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .feed-actions .btn.armed { flex-basis: 100%; max-width: none; gap: .4rem; }
+  .feed-actions .btn:not([data-act="next"]):not(.armed) .lbl { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; pointer-events: none; }   /* screen-reader only; never catches a tap meant for a neighbour */
   .view:not(#view-home)::after { display: none; }
+}
+@media (max-width: 380px) {
+  .feed-actions [data-act="next"] .ph { display: none; }   /* narrow phones: the word alone, so "Next" is never cut */
 }
 
 /* ---------- Reduced motion and print ---------- */
