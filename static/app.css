@@ -1011,6 +1011,8 @@ kbd { border-radius: 0; border: 1.5px solid var(--edge); border-bottom-width: 3p
 .exam-bar .btn-accent { color: var(--accent-ink); }
 .exam-bar #exam-pause { background: transparent; color: inherit; border-color: currentColor; box-shadow: none; }   /* the bar's own colours: readable in light, dark and the warn/crit states */
 .flag-btn.done { opacity: .7; pointer-events: none; }
+.lb-summary h4 { display: flex; align-items: center; gap: .45rem; margin: 1rem 0 .3rem; font-size: 1rem; }
+.banter { border-left: 12px solid var(--accent); font-size: 1.02rem; }
 .exam-paused { padding: 2.5rem 1rem; text-align: center; border: 1.5px dashed var(--line-2); color: var(--muted); }
 .qnav { gap: 0; margin: 0 0 1.6rem; border: 1.5px solid var(--edge); background: var(--surface); width: max-content; max-width: 100%; box-shadow: 4px 4px 0 var(--hard-c); }
 .qnav button { width: 2.7rem; height: 2.7rem; margin: 0; border-radius: 0; border: 0; border-right: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); background: none; color: var(--muted); font: 500 .78rem var(--font-mono); transition: background .2s, color .2s, transform .25s var(--ease); }

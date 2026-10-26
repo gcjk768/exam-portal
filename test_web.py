@@ -98,7 +98,7 @@ for _ in range(3):
     ev = events(c.post("/api/ccarp/act", json={"data": "next"}, headers={**pub, **pc}))
     qv = ev[0]["question"]
     ev = events(c.post("/api/ccarp/answer", json={"id": qv["id"], "picked": ["A"]}, headers={**pub, **pc}))
-    assert ev[0]["graded"]["correct"] and "back in" not in ev[1]["html"], ev[1]["html"]       # graded, not scheduled
+    assert ev[0]["graded"]["correct"] and "back in" not in ev[1]["html"].split("\n")[0], ev[1]["html"]   # graded, not scheduled (the verdict line; explanations can say "back into")
 assert json.dumps(mod.load_state(), sort_keys=True) == owner_before                      # owner untouched
 pst = c.get("/api/ccarp/home", headers={**pub, **pc}).json()
 assert pst["coverage"]["seen"] == 0 and pst["plan"]["due"] == 0, pst["coverage"]           # nothing kept for the visitor
@@ -211,7 +211,9 @@ web.lb_file(_bp).unlink(); shutil.rmtree(web.TRACK_DIR / _bp)
 assert c.post("/api/board/leave", headers=lbc).json() == {"joined": False}
 assert c.get("/api/board/mock", headers=lbc).json()["rows"] == []                             # leaving deletes the mock scores too
 assert c.get("/api/board", headers=lbc).json()["rows"] == [] and not list(web.LB_DIR.glob("*.json"))
-# the owner (any non-public link) can join too, for CCAR-P only and never for paid questions
+# the owner (any non-public link) can join too: every public exam by default (OWNER_BOARD_EXAMS narrows it), never paid questions
+assert web.owner_board() == {k for k in web.EXAMS if web.visible(k, "public")}
+web.OWNER_BOARD_ENV = {"ccarp"}                                                             # this block: CCAR-P only, via the env list
 mq = web.EXAMS["ccarp"].mod.QUESTIONS
 free = next(i for i, q in mq.items() if not web.hidden_source(q.get("source")) and q["letters"])
 assert c.get("/api/board").json()["me"] == {"visitor": True, "owner": True, "joined": False, "name": None, "rank": None}
@@ -231,6 +233,7 @@ if tdq:
 ob = c.get("/api/board?period=all").json()
 assert ob["rows"][0]["name"] == "the owner" and ob["rows"][0]["done"] == ob0["done"] + 1 and ob["me"]["owner"], (ob, ob0)   # +1: only the new free CCAR-P answer counted
 assert c.post("/api/board/leave").json() == {"joined": False} and c.get("/api/board?period=all").json()["rows"] == []
+web.OWNER_BOARD_ENV = set()
 # rate limit: one visitor over its budget gets 429
 web.HITS.clear()
 codes = [c.get("/api/exams", headers={**pub, "Cookie": "pid=" + "cd" * 16}).status_code for _ in range(95)]
@@ -608,6 +611,64 @@ for _ in range(2):
     assert any("COACH" in str(x.get("html", "")) for x in ev), ev
 assert len(_coach) == 1, _coach                                                              # the second one came from the day's cache
 c.post("/api/track/off", headers=_vc); _m.weekly_report = _wr0; _m.run_claude = fake_decoder
+
+# friendly competition: peers in your summary (fixed quips), the commentator for everyone, your own mocks on Stats
+_e = web.EXAMS["ccarp"]; _m = _e.mod
+_Qf = [i for i, q in _m.QUESTIONS.items() if not web.hidden_source(q.get("source")) and q["letters"]][:12]
+for _n, (_name, _ok) in enumerate((("Peer One", 1), ("Peer Two", 0)), 1):
+    web.lb_save(f"{_n}" * 32, {"name": _name, "joined": "2026-10-01T00:00+08:00", "seen": {"ccarp": {q: [_ok, "2026-W40"] for q in _Qf}},
+                               "mocks": {"ccarp": [[700 + 100 * _ok, 63, 90, "2026-10-20T10:00+08:00"]]}})
+_sm = c.get("/api/ccarp/summary").json()
+assert _sm["peers"] and _sm["peers"]["n"] == 2 and _sm["peers"]["lines"], _sm
+assert all(l["mark"] in "🟢🔴⚪" and l["text"] for l in _sm["peers"]["lines"]), _sm["peers"]
+assert web.quip("acc_ahead", "x", you="80%", them="50%") == web.quip("acc_ahead", "x", you="80%", them="50%")   # same quip all day
+web.lb_save("3" * 32, {"name": "Solo", "joined": "2026-10-01T00:00+08:00", "seen": {}, "mocks": {}})
+assert web.peers(_e, {}, 0.5, None)["n"] == 2                                               # people with no answers don't count
+async def _banter(system, prompt, schema=None):
+    assert "Peer One" in prompt and "kind and playful" in system
+    return {"result": "**Peer One** leads the pack, Peer Two is warming up."}
+_rc0, _m.run_claude = _m.run_claude, _banter
+for f in (web.LB_DIR / "banter").glob("*.json"):
+    f.unlink()
+_b = c.get("/api/board/banter?exam=ccarp&board=practice").json()
+assert _b == {"text": "", "pending": True}, _b
+for _ in range(50):
+    _b = c.get("/api/board/banter?exam=ccarp&board=practice").json()
+    if _b["text"]:
+        break
+    _t.sleep(0.05)
+assert _b["text"] == "Peer One leads the pack, Peer Two is warming up." and _b["pending"] is False, _b   # markdown stripped, cached
+assert c.get("/api/board/banter?exam=nope").status_code == 404 and c.get("/api/board/banter?board=x").status_code == 404
+_m.run_claude = _rc0
+for _n in "123":
+    web.lb_file(_n * 32).unlink()
+# your own mocks (Stats): rebuilt from your log, 20+ questions, newest first, readiness as of each
+_log = [{"t": "2026-10-20T10:00+08:00", "id": i, "ok": True, "exam": True} for i in _Qf[:12]] * 2   # 24 answers in one submit
+_got = web.mocks_from_log(_e, _log)
+assert len(_got) == 1 and _got[0][0] == 1000 and _got[0][1] == 24, _got
+assert set(c.get("/api/ccarp/mocks").json()) == {"exam", "pass", "rows"}
+assert c.get("/api/ccarp/mocks", headers=pub).status_code == 404                           # nothing kept for the shared link
+
+# letters on screen: the page sends the order it showed, the reply names those letters; the card never changes
+_q4 = {"letters": ["A", "B", "C", "D"]}
+_f = web.relabeler(["C", "A", "B", "D"], _q4)                     # screen A = bank C, screen B = bank A, screen C = bank B
+assert _f("Option C is right. A model would fail, so (A) and B are wrong; C++ and A/B testing stay.") == \
+    "Option A is right. A model would fail, so (B) and C are wrong; C++ and A/B testing stay.", _f("Option C is right.")
+assert _f("A ignores the cost, D is fine. A process helps. Control A works.") == "B ignores the cost, D is fine. A process helps. Control B works."
+assert web.relabeler(["A", "B", "C", "D"], _q4) is None and web.relabeler(["A", "B"], _q4) is None and web.relabeler(["A", "A", "B", "C"], _q4) is None
+_qid = next(i for i, q in _m.QUESTIONS.items() if not web.hidden_source(q.get("source")) and len(q["letters"]) >= 4 and len(q["answer"]) == 1)
+_qq = _m.QUESTIONS[_qid]
+_ord = _qq["letters"][::-1]                                         # shown upside down
+_shown = chr(65 + _ord.index(next(iter(_qq["answer"]))))            # the right answer's letter on screen
+ev = events(c.post("/api/ccarp/answer", json={"id": _qid, "picked": sorted(_qq["answer"]), "order": _ord}))
+_head = next(x["html"] for x in ev if x.get("op") == "add")
+assert _head.split("\n")[0].split("·")[1].strip().startswith(_shown), (_head[:120], _shown)
+assert next(x for x in ev if x.get("graded"))["graded"]["correct"] == sorted(_qq["answer"])   # grading stays in bank letters
+web.write_json(web.decode_path(_e, _qid), {"clues": [], "options": [{"letter": _ord[0], "why": f"Option {_ord[0]} wins."}], "principle": f"Pick {_ord[0]}.", "source": None})
+_d = c.get(f"/api/ccarp/decode/{_qid}?order={','.join(_ord)}").json()
+assert _d["options"][0] == {"letter": _ord[0], "why": "Option A wins."} and _d["principle"] == "Pick A.", _d
+assert c.get(f"/api/ccarp/decode/{_qid}").json()["principle"] == f"Pick {_ord[0]}."           # no order: bank letters
+assert web.explain_order(f"e|{_qid}|A|{','.join(_ord)}") == _ord and web.explain_order(f"e|{_qid}|A") == []
 
 # Claude credentials: the API key at its spend limit hands over to the subscription token until the reset time, then back
 import asyncio as _aio  # noqa: E402

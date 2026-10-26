@@ -27,6 +27,7 @@ import logging
 import os
 import random
 import secrets
+import statistics
 import shutil
 import tempfile
 import time
@@ -384,6 +385,35 @@ def options_of(q: dict) -> list[dict]:
 SOURCE_TAG = {"Tutorials Dojo": "TD"}   # known question sources get a small label on the card; add "source": "tag" to label more
 
 
+# Option letters as shown: the page shuffles the options and labels them A, B, C top to bottom, while the bank's verdicts,
+# explanations, decoder lines and tutor texts name the bank's letters. The page sends the order it showed (bank letters,
+# top to bottom) and every text in the reply is relabelled, so the card never changes after an answer (the owner, 2026-10-26).
+LETTER_RX = re.compile(r"\b([A-H])\b")
+LETTER_LIST = re.compile(r"\b[A-H](?:,[A-H])+\b")      # "B,E" as the verdict writes picked and correct letters
+_ARTICLE_OK_AFTER = re.compile(r"\s*(?:[).,:;'<\]&]|-|–|—|$|and\b|or\b|is\b|are\b|nor\b|both\b|alone\b|only\b|\()")
+_A_VERB = re.compile(r"\s+[a-z]*[^siu\W]s\b")          # "A ignores", "A creates": a verb, so an option (not "A process", "A focus", "A basis")
+_A_BEFORE = re.compile(r"(?:\b(?:[Oo]ptions?|[Aa]nswers?|[Cc]hoices?|Control|Approach|Design|Plan|Pattern|Strategy|Solution|Proposal|Candidate|Alternative|Tier)"
+                       r"|[(,'\[{]|&#x27;|\band|\bor|<code>)\s*$")
+
+
+def relabeler(order: list[str] | None, q: dict):
+    """bank letter -> screen letter for this question, as a text function; None when the order is missing, wrong or unchanged."""
+    if not order or sorted(order) != sorted(q["letters"]) or len(order) != len(set(order)):
+        return None
+    m = {b: chr(65 + i) for i, b in enumerate(order)}
+    if all(k == v for k, v in m.items()):
+        return None
+
+    def sub(mt: re.Match) -> str:
+        L, t, i, j = mt.group(1), mt.string, mt.start(), mt.end()
+        if L not in m or (j < len(t) and t[j] in "+#/") or (i and t[i - 1] in "/-") or t.startswith(".g", j):
+            return L                                  # C++, C#, A/B testing, E.g., not an option letter
+        if L == "A" and not _ARTICLE_OK_AFTER.match(t, j) and not _A_VERB.match(t, j) and not _A_BEFORE.search(t[max(0, i - 16):i]):
+            return L                                  # "A model ..." is the article
+        return m[L]
+    return lambda text: LETTER_LIST.sub(lambda mt: ",".join(sorted(mt.group(0).split(","))), LETTER_RX.sub(sub, text))   # "C,B" reads "B,C"
+
+
 def tag_of(src: str | None) -> str:
     return SOURCE_TAG.get(src or "") or ("UD" if hidden_source(src) else "")   # paid mock sets: one small label on the card
 
@@ -411,9 +441,11 @@ class Recorder:
     """Duck-types bot.Dest: send_message / send_photo. Each call becomes one streamed event."""
 
     def __init__(self, exam: Exam, queue: asyncio.Queue):
-        self.exam, self.q, self.n = exam, queue, 0
+        self.exam, self.q, self.n, self.relabel = exam, queue, 0, None
 
     def emit(self, ev: dict) -> None:
+        if self.relabel and isinstance(ev.get("html"), str):
+            ev = {**ev, "html": self.relabel(ev["html"])}   # the letters the page showed (relabeler)
         self.q.put_nowait(ev)
 
     def buttons(self, kb) -> list[list[dict]]:
@@ -478,7 +510,12 @@ LB_MIN_GAP = 3.0   # seconds between two counted answers by the same person
 
 
 OWNER_PID = hashlib.sha256(b"exam-portal-owner").hexdigest()[:32]            # the owner's id on the board (no cookie: any non-public link is the owner)
-OWNER_BOARD = {x.strip() for x in os.environ.get("OWNER_BOARD_EXAMS", "ccarp").split(",") if x.strip()}   # exams the owner's answers count for
+OWNER_BOARD_ENV = {x.strip() for x in os.environ.get("OWNER_BOARD_EXAMS", "").split(",") if x.strip()}
+
+
+def owner_board() -> set[str]:
+    """Exams the owner's answers count for: the env list, else every exam on the public board (the owner, 2026-10-26: all alike)."""
+    return OWNER_BOARD_ENV or {k for k in EXAMS if visible(k, "public")}
 
 
 def lb_id(req: Request | None = None) -> str:
@@ -506,7 +543,7 @@ def lb_save(pid: str, prof: dict) -> None:
 
 def lb_count(exam_key: str, qid: str, right: bool, paced: bool = False) -> None:
     pid = lb_id()
-    if pid == OWNER_PID and (exam_key not in OWNER_BOARD or hidden_source(EXAMS[exam_key].mod.QUESTIONS.get(qid, {}).get("source"))):
+    if pid == OWNER_PID and (exam_key not in owner_board() or hidden_source(EXAMS[exam_key].mod.QUESTIONS.get(qid, {}).get("source"))):
         return                                   # the owner counts for the public exams only, and never for paid questions visitors cannot see
     prof = lb_load(pid)
     if prof is None or qid in prof["seen"].setdefault(exam_key, {}):
@@ -538,7 +575,7 @@ def mock_entry(exam: Exam, credits: list[tuple[str, float]], minutes: float | No
 def lb_mock(exam: Exam, results: list[dict], minutes: float) -> None:
     """A finished mock exam on the board, under the joined name."""
     pid = lb_id()
-    if pid == OWNER_PID and exam.key not in OWNER_BOARD:
+    if pid == OWNER_PID and exam.key not in owner_board():
         return
     prof = lb_load(pid)
     entry = prof and mock_entry(exam, [(r["id"], r["score"] / 100 if r["task"] else r["right"]) for r in results], minutes,
@@ -569,6 +606,16 @@ def lb_paced(n: int) -> bool:
     return ok
 
 
+def mocks_from_log(e: Exam, log_: list[dict], since: str = "") -> list[list]:
+    """Mock-board entries rebuilt from a saved answer log (one submit = one minute stamp), oldest first."""
+    runs: dict[str, list] = {}
+    for x in log_:
+        if x.get("exam") and x.get("t", "") >= since:
+            runs.setdefault(x["t"], []).append(x)
+    got = [mock_entry(e, [(x["id"], x["score"] / 100 if "score" in x else int(x["ok"])) for x in xs], None, t) for t, xs in sorted(runs.items())]
+    return [m for m in got if m]
+
+
 def lb_history(pid: str, prof: dict) -> None:
     """Mocks from before the mock board (2026-10-26), from the person's own saved log since joining: the tracker file for a
     visitor, state.json for the owner. Runs once per profile (until it has a "mocks" key). The practice board is left alone:
@@ -576,7 +623,7 @@ def lb_history(pid: str, prof: dict) -> None:
     mocks, joined = {}, prof.get("joined", "")
     for k, e in EXAMS.items():
         if pid == OWNER_PID:
-            if k not in OWNER_BOARD:
+            if k not in owner_board():
                 continue
             log_ = e.mod.load_state().get("log", [])           # startup: no visitor set, so this is the owner's state.json
         else:
@@ -584,14 +631,9 @@ def lb_history(pid: str, prof: dict) -> None:
                 log_ = json.loads(track_path(pid, k).read_text(encoding="utf-8")).get("log", [])
             except (OSError, ValueError):
                 continue
-        runs: dict[str, list] = {}
-        for x in log_:
-            if x.get("exam") and x.get("t", "") >= joined:
-                runs.setdefault(x["t"], []).append(x)            # one submit = one minute stamp
-        for t, xs in runs.items():
-            entry = mock_entry(e, [(x["id"], x["score"] / 100 if "score" in x else int(x["ok"])) for x in xs], None, t)
-            if entry:
-                mocks.setdefault(k, []).append(entry)
+        got = mocks_from_log(e, log_, joined)
+        if got:
+            mocks[k] = got
     prof["mocks"] = mocks
     lb_save(pid, prof)
 
@@ -780,6 +822,7 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
                 await mod.send_question(rec, state, q)
                 prefetch(exam, q, public)
         elif kind == "e":                                 # Explain more: the only place the portal draws a diagram
+            rec.relabel = relabeler(explain_order(data), q)
             await mod.explain(rec, q, explain_args(exam, data)[1])
         else:
             raise HTTPException(400, f"unknown action {data}")
@@ -787,7 +830,8 @@ async def act(exam: Exam, data: str, rec: Recorder, public: bool = False) -> Non
         raise HTTPException(400, f"unknown action {data}")
 
 
-async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public: bool = False, guess: bool = False) -> None:
+async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public: bool = False, guess: bool = False,
+                 order: list[str] | None = None) -> None:
     """Grade like bot.grade() (same state writes, same verdict text) without its wrong-answer tutor call: the portal waits
     for the "Explain more" button. Both outcomes go through record(), so the review schedule sees every answer."""
     q = exam.mod.QUESTIONS.get(qid)
@@ -797,6 +841,7 @@ async def answer(exam: Exam, qid: str, picked: list[str], rec: Recorder, public:
     if not letters:
         raise HTTPException(400, "pick at least one option")
     mod, state = exam.mod, exam.mod.load_state()
+    rec.relabel = relabeler(order, q)
     right = letters == q["answer"]
     state["last"] = {"id": q["id"], "picked": sorted(letters)}
     if state.get("pending") == q["id"]:                   # an older question answered from History: the one on screen stays pending
@@ -918,6 +963,12 @@ def explain_args(exam: Exam, data: str) -> tuple[dict | None, set[str]]:
     _, qid, *rest = data.split("|")
     q = exam.mod.QUESTIONS.get(qid)
     return q, set(filter(None, (rest[0] if rest else "").split(","))) & set(q["letters"] if q else [])
+
+
+def explain_order(data: str) -> list[str]:
+    """The on-screen order an `e|<qid>|<letters>|<order>` action carries (empty when the page sent none)."""
+    parts = data.split("|")
+    return [x for x in parts[3].split(",") if x] if len(parts) > 3 else []
 
 
 def cached_tutor(exam: Exam):
@@ -1353,6 +1404,7 @@ class Answer(BaseModel):
     id: str
     picked: list[str]
     guess: bool = False     # "🤔 Guessing" was on: a right answer is still scheduled like a miss
+    order: list[str] = []   # the bank letters top to bottom as the page showed them (the reply is relabelled to match)
 
 
 class TaskAnswer(BaseModel):
@@ -1494,7 +1546,88 @@ def summary(e: Exam, state: dict) -> dict:
         a, n = acc[d]
         steps.append({"domain": d, "weight": round(100 * weights.get(d, 1) / total), "acc": None if a is None else round(a, 2), "seen": n, "target": SUMMARY_TARGET, "points": round(pts)})
         need -= pts
-    return {"exam": e.short, "score": m["score"], "pass": e.mod.PASS, "gap": gap, "answered": m["first_n"], "strong": strong, "weak": weak, "steps": steps}
+    out = {"exam": e.short, "score": m["score"], "pass": e.mod.PASS, "gap": gap, "answered": m["first_n"], "strong": strong, "weak": weak, "steps": steps}
+    if visible(e.key, "public"):                          # a board exam: how you stack up against the gang
+        ms = mocks_from_log(e, state.get("log", []))
+        out["peers"] = peers(e, acc, m["first_ok"] / m["first_n"] if m["first_n"] >= 10 else None, max((x[0] for x in ms), default=None))
+    return out
+
+
+QUIPS = {   # friendly-competition one-liners; {you} {them} are percentages or scores
+    "acc_ahead": ["You're out-answering the gang: {you} first time vs their {them}. Try to look humble.",
+                  "{you} vs the crowd's {them}. Someone's been reading the docs at breakfast.",
+                  "Ahead of the pack at {you} (they sit at {them}). Don't let it go to your head."],
+    "acc_behind": ["The gang is at {them}, you're at {you}. Plot twist pending.",
+                   "{you} vs their {them}: you're the underdog. Everyone loves an underdog.",
+                   "They're ahead ({them} vs your {you}). Nothing a quiet weekend of questions can't fix."],
+    "acc_level": ["Neck and neck: {you} vs the gang's {them}. Photo finish material."],
+    "acc_wait": ["The gang sits at {them} first time. Answer 10 questions and we'll see if you can take them."],
+    "mock_ahead": ["Best mock {you} vs the gang's {them}. Showing off, are we?"],
+    "mock_behind": ["Best mock {you} vs the gang's {them}. Another mock and you're in the conversation."],
+    "mock_none": ["The gang's best mocks sit around {them}. Yours: still in the wrapper. Take one!"],
+}
+
+
+def quip(kind: str, seed: str, **kw) -> str:
+    opts = QUIPS[kind]
+    return opts[int(hashlib.md5(f"{seed}{kind}{today()}".encode()).hexdigest(), 16) % len(opts)].format(**kw)
+
+
+def peers(e: Exam, acc: dict, you_acc: float | None, you_best: int | None) -> dict | None:
+    """The joined people on this exam's board, minus you: median first-try accuracy (10+ answers), per topic (3+), best mock.
+    None with fewer than 2 peers (one peer's numbers would be theirs alone)."""
+    me, Q = lb_id(), e.mod.QUESTIONS
+    accs, doms, bests = [], {}, []
+    for r in lb_rows():
+        if r["pid"] == me:
+            continue
+        seen = r["seen"].get(e.key, {})
+        if len(seen) >= 10:
+            accs.append(sum(v[0] for v in seen.values()) / len(seen))
+        per: dict[str, list[int]] = {}
+        for qid, v in seen.items():
+            if qid in Q:
+                t = per.setdefault(Q[qid]["domain"], [0, 0]); t[0] += v[0]; t[1] += 1
+        for d, (ok, n) in per.items():
+            if n >= 3:
+                doms.setdefault(d, []).append(ok / n)
+        if r["mocks"].get(e.key):
+            bests.append(max(m[0] for m in r["mocks"][e.key]))
+    if len(accs) < 2 and len(bests) < 2:
+        return None
+    pct = lambda x: f"{round(100 * x)}%"
+    lines = []
+    if len(accs) >= 2 and you_acc is not None:
+        them = statistics.median(accs)
+        kind = "acc_level" if abs(you_acc - them) < 0.03 else "acc_ahead" if you_acc > them else "acc_behind"
+        beat = sum(a < you_acc for a in accs)
+        lines.append({"mark": {"acc_ahead": "🟢", "acc_behind": "🔴"}.get(kind, "⚪"), "text": quip(kind, me, you=pct(you_acc), them=pct(them)),
+                      "detail": f"Ahead of {beat} of {len(accs)} people with 10+ answers."})
+    elif len(accs) >= 2:                                  # under 10 answers: like the peers, not compared yet
+        lines.append({"mark": "⚪", "text": quip("acc_wait", me, them=pct(statistics.median(accs))), "detail": ""})
+    if len(bests) >= 2:
+        them = round(statistics.median(bests))
+        kind = "mock_none" if you_best is None else "mock_ahead" if you_best >= them else "mock_behind"
+        lines.append({"mark": {"mock_ahead": "🟢", "mock_behind": "🔴"}.get(kind, "⚪"), "text": quip(kind, me, you=you_best, them=them), "detail": ""})
+    topics = []
+    for d, vs in doms.items():
+        a, n = acc.get(d, (None, 0))
+        if len(vs) >= 2 and a is not None and n >= 3:
+            them = statistics.median(vs)
+            topics.append({"domain": d, "you": round(a, 2), "them": round(them, 2), "mark": "⚪" if abs(a - them) < 0.05 else "🟢" if a > them else "🔴"})
+    topics.sort(key=lambda t: t["you"] - t["them"])
+    return {"n": max(len(accs), len(bests)), "lines": lines, "topics": topics}
+
+
+@app.get("/api/{key}/mocks")
+def api_mocks(key: str, req: Request):
+    """Your own mock exams of 20+ questions, newest first, each with the readiness verdict as of that mock."""
+    e = exam_or_404(key)
+    if is_public(req) and not tracked():
+        raise HTTPException(404, "no personal numbers on the shared link")
+    ms = mocks_from_log(e, e.mod.load_state().get("log", []))
+    rows = [{"score": m[0], "passed": m[0] >= e.mod.PASS, "n": m[1], "when": m[3], "ready": mock_ready(e, [x[0] for x in ms[:i + 1]])} for i, m in enumerate(ms)]
+    return {"exam": e.short, "pass": e.mod.PASS, "rows": rows[::-1]}
 
 
 @app.get("/api/{key}/summary")
@@ -1545,7 +1678,7 @@ def api_card(key: str, body: Card):
 
 
 @app.get("/api/{key}/decode/{qid}")
-async def api_decode(key: str, qid: str, req: Request, cached: int = 0):
+async def api_decode(key: str, qid: str, req: Request, cached: int = 0, order: str = ""):
     """The decoder JSON for a question: 200 with it, 202 while Claude is working, 404 when there is none (public link,
     `cached=1` for review cards, a task, or a failed call). The owner's request starts a missing one."""
     e = exam_or_404(key)
@@ -1555,7 +1688,10 @@ async def api_decode(key: str, qid: str, req: Request, cached: int = 0):
         raise HTTPException(404, "unknown question")
     p = decode_path(e, qid)
     if p.exists():
-        return JSONResponse(json.loads(p.read_text(encoding="utf-8")), headers={"Cache-Control": "no-store"})
+        d, f = json.loads(p.read_text(encoding="utf-8")), relabeler([x for x in order.split(",") if x], q)
+        if f:                                                    # option "letter" stays the bank's (the page matches it to data-l)
+            d = {**d, "options": [{**o, "why": f(o.get("why", ""))} for o in d.get("options", [])], "principle": f(d.get("principle", ""))}
+        return JSONResponse(d, headers={"Cache-Control": "no-store"})
     if cached or not q["letters"] or time.time() - DECODE_FAILED.get(f"{e.key}/{qid}", 0) < DECODE_RETRY_S:
         raise HTTPException(404, "not decoded")                  # a failed call is not retried by every poll
     if prefetch(e, q, pub) is None:
@@ -1581,7 +1717,7 @@ async def api_act(key: str, body: Act, req: Request):
 @app.post("/api/{key}/answer")
 async def api_answer(key: str, body: Answer, req: Request):
     e = exam_or_404(key)
-    return stream(e, functools.partial(answer, e, body.id, body.picked, public=is_public(req), guess=body.guess))
+    return stream(e, functools.partial(answer, e, body.id, body.picked, public=is_public(req), guess=body.guess, order=body.order))
 
 
 @app.post("/api/{key}/task")
@@ -1724,7 +1860,7 @@ def api_board_join(body: Join, req: Request):
     if prof is None:
         prof = {"joined": datetime.now(SGT).isoformat(timespec="minutes"), "seen": {}}
         if pid == OWNER_PID:                          # the owner's existing history counts (the owner, 2026-10-23); visitors start from zero
-            prof["seen"] = {k: lb_backfill(k) for k in OWNER_BOARD if k in EXAMS}
+            prof["seen"] = {k: lb_backfill(k) for k in owner_board() if k in EXAMS}
     lb_save(pid, {**prof, "name": name})
     return {"joined": True, "name": name}
 
@@ -1751,16 +1887,7 @@ def api_board(req: Request, exam: str = "all", period: str = "week"):
     exams = shown if exam == "all" else {exam}
     now = datetime.now(SGT)
     week = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}" if period == "week" else None
-    if period == "mock":                          # mock exams: best score on the 1000 scale
-        rows = lb_mock_rows(exams)
-    else:
-        rows = []
-        for r in lb_rows():
-            done, right = lb_totals(r["seen"], exams, week)
-            if done:
-                strong, weak = lb_topics(r["seen"], exams)
-                rows.append({"pid": r["pid"], "name": r["name"], "done": done, "right": right, "wrong": done - right, "acc": round(100 * right / done), "strong": strong, "weak": weak})
-        rows.sort(key=lambda r: (-r["right"], -r["acc"], r["done"], r["name"].lower()))
+    rows = board_rows(exams, period)
     pid, mine = lb_id(req), None
     for i, r in enumerate(rows, 1):
         r["rank"], r["me"] = i, r["pid"] == pid
@@ -1769,6 +1896,74 @@ def api_board(req: Request, exam: str = "all", period: str = "week"):
     prof = lb_load(pid)
     return {"rows": rows[:50], "me": {"visitor": True, "owner": pid == OWNER_PID, "joined": prof is not None, "name": prof and prof["name"], "rank": mine and mine["rank"]},
             "total": len(rows), "week": week, "exams": [{"key": e.key, "short": e.short} for e in EXAMS.values() if e.key in shown]}
+
+
+def board_rows(exams: set[str], period: str) -> list[dict]:
+    """The board's rows, best first: practice (this week or all time) or one row per mock."""
+    if period == "mock":
+        return lb_mock_rows(exams)
+    now = datetime.now(SGT)
+    week = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}" if period == "week" else None
+    rows = []
+    for r in lb_rows():
+        done, right = lb_totals(r["seen"], exams, week)
+        if done:
+            strong, weak = lb_topics(r["seen"], exams)
+            rows.append({"pid": r["pid"], "name": r["name"], "done": done, "right": right, "wrong": done - right, "acc": round(100 * right / done), "strong": strong, "weak": weak})
+    rows.sort(key=lambda r: (-r["right"], -r["acc"], r["done"], r["name"].lower()))
+    return rows
+
+
+BANTER = """You are the cheeky commentator of a friendly study competition among friends preparing for {name}. Given the
+current standings, write 2 or 3 short sentences (60 words at most) of light-hearted banter, like a sports commentator:
+celebrate the leader, tease gently, cheer on whoever is behind. Use the names exactly as written. Rules: kind and playful,
+never mean or crude; joke only about the numbers and the race, never about intelligence, looks, identity or anything
+personal; plain text, no markdown, at most two emoji."""
+BANTER_EVERY = 1800        # seconds: the commentary is rewritten at most this often, and only when the standings changed
+BANTERING: dict[str, asyncio.Task] = {}
+
+
+def banter_path(exam: str, board: str) -> Path:
+    return LB_DIR / "banter" / f"{exam}-{board}.json"
+
+
+async def make_banter(key: str, e: Exam, title: str, lines: list[str], sig: str) -> None:
+    try:
+        data = await e.mod.run_claude(BANTER.format(name=title), "STANDINGS:\n" + "\n".join(lines))
+        text = re.sub(r"[*_#`]", "", str(data.get("result") or "")).strip()[:500]
+        if text:
+            write_json(banter_path(*key.split("/")), {"sig": sig, "text": text, "t": time.time()})
+    except Exception as exc:
+        log.warning("banter failed for %s: %s", key, exc)
+    finally:
+        BANTERING.pop(key, None)
+
+
+@app.get("/api/board/banter")
+async def api_board_banter(exam: str = "all", board: str = "practice"):
+    """The commentator's lines on the current standings, for everyone. Stale ones are shown while a new one is written."""
+    shown = {e.key for e in EXAMS.values() if visible(e.key, "public")}
+    if (exam != "all" and exam not in shown) or board not in ("practice", "mock"):
+        raise HTTPException(404, "unknown board")
+    exams = shown if exam == "all" else {exam}
+    rows = board_rows(exams, "mock" if board == "mock" else "all")[:12]
+    if len(rows) < 2:
+        return {"text": "", "pending": False}                 # nothing to commentate with fewer than two players
+    lines = ([f"{i}. {r['name']}: mock {r['score']} ({'pass' if r['passed'] else 'fail'}) on {r['exam']}, {r['ready'][2:]}" for i, r in enumerate(rows, 1)]
+             if board == "mock" else
+             [f"{i}. {r['name']}: {r['right']} right of {r['done']} ({r['acc']}%), best topic {r['strong'] or '-'}, weakest {r['weak'] or '-'}" for i, r in enumerate(rows, 1)])
+    sig = hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16]
+    p, key = banter_path(exam, board), f"{exam}/{board}"
+    try:
+        cached = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        cached = None
+    stale = not cached or (cached["sig"] != sig and time.time() - cached["t"] > BANTER_EVERY)
+    if stale and key not in BANTERING:
+        e = EXAMS[exam] if exam != "all" else next(EXAMS[k] for k in EXAMS if k in shown)
+        title = f"the {e.name} exam" if exam != "all" else "the Claude certification exams"
+        BANTERING[key] = asyncio.create_task(make_banter(key, e, title, lines, sig))
+    return {"text": cached["text"] if cached else "", "pending": stale}
 
 
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")

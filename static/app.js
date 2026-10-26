@@ -92,7 +92,7 @@
     }
     $("#board-empty").hidden = d.rows.length > 0;
     const me = $("#board-me"); me.innerHTML = "";
-    const own = d.me.owner ? "On your own links only CCAR-P counts, and not the paid questions. " : "";
+    const own = d.me.owner ? "On your own links the board exams count, never the paid questions. " : "";
     if (d.me.joined) {
       me.append(`${own}You are on the board as ${d.me.name}${d.me.rank ? (mock ? `, your best mock is #${d.me.rank} of ${d.total} mocks` : `, rank ${d.me.rank} of ${d.total}`) : mock ? ", finish a mock exam of 20+ questions to get ranked" : ", answer a question to get ranked"}. `);
       const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.textContent = "Leave the board";   // removes the board entry only; saved progress is stopped on Stats
@@ -104,10 +104,21 @@
       me.append(`${own}You are not on the board. Nothing is recorded until you join. `, b);
     }
     renderSummary();
+    loadBanter(mock ? "mock" : "practice");
   }
-  // Your strengths, weak spots and the shortest way to the pass mark (web.py summary: same numbers as the predicted score)
-  async function renderSummary() {
-    const box = $("#board-summary");
+  // The commentator: Claude's friendly banter on the standings, the same for everyone (web.py /api/board/banter)
+  async function loadBanter(board, tries = 4) {
+    const box = $("#board-banter"), want = `${LB.exam}/${board}`;
+    const r = await fetch(`/api/board/banter?exam=${LB.exam}&board=${board}`).catch(() => null);
+    if (!r || !r.ok || `${LB.exam}/${LB.board === "mock" ? "mock" : "practice"}` !== want) { if (!r || !r.ok) box.hidden = true; return; }
+    const d = await r.json();
+    box.hidden = !d.text;
+    if (d.text) box.innerHTML = `<h3>${ic("megaphone", "ic-accent")}The commentator</h3><p>${esc(d.text)}</p>`;
+    if (d.pending && tries > 1) setTimeout(() => { if (state.view === "board") loadBanter(board, tries - 1); }, 10000);   // a new one is being written (Claude takes 10-30 s)
+  }
+  // Your strengths, weak spots and the shortest way to the pass mark (web.py summary: same numbers as the predicted score),
+  // and on a board exam how you stack up against the gang. Leaderboard page and Stats.
+  async function renderSummary(box = $("#board-summary")) {
     const r = state.shared ? null : await fetch(`/api/${state.exam}/summary`);
     if (!r || !r.ok) { box.hidden = true; return; }
     const s = await r.json(), pct = (a) => a == null ? "not started" : `${Math.round(100 * a)}%`;
@@ -118,7 +129,10 @@
       <p>${ic("warning", "ic-bad")}<b>Weak</b> ${s.weak.length ? list(s.weak) : "nothing below 72% yet"}</p>
       ${s.gap ? `<p><b>To pass</b> you need ${s.gap} more points. Lift these, biggest gain first:</p>
         <ol>${s.steps.map(x => `<li>${esc(x.domain)} <span class="muted">(${x.weight}% of the exam)</span>: ${pct(x.acc)} → ${Math.round(100 * x.target)}% · <b>+${x.points}</b></li>`).join("")}</ol>`
-        : `<p><b>At pass level.</b> Keep every topic above 72% and close the weak ones before booking.</p>`}`;
+        : `<p><b>At pass level.</b> Keep every topic above 72% and close the weak ones before booking.</p>`}` +
+      (s.peers ? `<h4>${ic("users-three", "ic-accent")}You vs the gang <span class="muted small">${s.peers.n} others on the board</span></h4>` +
+        s.peers.lines.map(l => `<p>${l.mark} ${esc(l.text)}${l.detail ? ` <span class="muted small">${esc(l.detail)}</span>` : ""}</p>`).join("") +
+        s.peers.topics.slice(0, 4).map(t => `<p class="small">${t.mark} ${esc(t.domain)}: you ${pct(t.you)} · the gang ${pct(t.them)}</p>`).join("") : "");
     const focus = s.weak[0]?.domain || s.steps[0]?.domain;
     if (focus) {
       const b = document.createElement("button"); b.type = "button"; b.className = "btn btn-accent";
@@ -629,6 +643,18 @@
         <span class="bar"><i class="right" style="width:${100 * d.right / d.total}%"></i><i class="seen" style="width:${100 * (d.seen - d.right) / d.total}%"></i></span>`;
       box.append(row);
     }
+    renderSummary($("#stats-coach")); renderMocks();
+  }
+  // Your own mock exams (20+ questions) with the ready-to-book verdict, for every exam (web.py /api/{exam}/mocks)
+  async function renderMocks() {
+    const box = $("#stats-mocks");
+    const r = state.shared ? null : await fetch(`/api/${state.exam}/mocks`).catch(() => null);
+    if (!r || !r.ok) { box.hidden = true; return; }
+    const d = await r.json();
+    box.innerHTML = `<h3>${ic("exam", "ic-accent")}Your mock exams · ${esc(d.exam)}</h3>` + (d.rows.length
+      ? `<p><b>${esc(d.rows[0].ready)}</b></p>` + d.rows.slice(0, 10).map(m => `<p class="small">${m.passed ? "🟢" : "🔴"} <b>${m.score}</b> · ${m.n} questions · ${esc(fmtWhen(m.when))} <span class="muted">${esc(m.ready)}</span></p>`).join("")
+      : `<p class="muted">No mock of 20+ questions yet. Take one from Exam to get a ready-to-book verdict (two mocks in a row at 800+).</p>`);
+    box.hidden = false;
   }
   // Two buttons (quiz + progress view), same two-click confirm. Reset restarts the bank at question 1.
   let resetArmed = 0;
@@ -692,7 +718,10 @@
   $$("[data-act]").forEach(b => b.onclick = () => act(b.dataset.act));
 
   async function act(data) { await run("/act", { data }); }
-  async function answer(id, picked, guess) { await run("/answer", { id, picked, guess: !!guess }); }
+  async function answer(id, picked, guess, order) { await run("/answer", { id, picked, guess: !!guess, order: order || [] }); }
+  // The bank letters top to bottom as this card shows them: the server relabels its reply to the letters on screen
+  const shownOrder = (card) => card ? $$(".opt", card).map(b => b.dataset.l) : [];
+  const cardFor = (qid) => $$(".card", feed).reverse().find(c => c.querySelector(".qid")?.textContent === qid && c.querySelector(".opt"));
   async function taskCheck(id, text) { await run("/task", { id, answer: text }, "Grading your commands"); }
   async function taskSelf(id, result) { await run("/task", { id, result }); }
 
@@ -820,7 +849,9 @@
       const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn"; btn.innerHTML = iconize(esc(b.label));
       btn.onclick = () => {
         if (b.data.startsWith("pv|")) return $("#btn-prev-q").click();     // the bot's Telegram paging: the portal has its own Previous viewer
-        $$(".btn", box).forEach(x => x.disabled = true); act(b.data);
+        $$(".btn", box).forEach(x => x.disabled = true);
+        const ex = b.data.startsWith("e|") && cardFor(b.data.split("|")[1]);   // Explain more: in the letters the question card shows
+        act(ex ? `${b.data.split("|").slice(0, 3).join("|")}|${shownOrder(ex).join(",")}` : b.data);
       };
       box.append(btn);
     }
@@ -849,7 +880,8 @@
     $(".qtext", el).textContent = q.question;
     const opts = $(".options", el), picked = new Set();
     // Fresh order every time the card is shown, relabelled A, B, C… top to bottom so the right answer's letter rotates too
-    // (the banks lean on one letter). markGraded keeps the rows in place and puts the bank's letters back, which the explanation names.
+    // (the banks lean on one letter). Nothing moves after an answer: the server relabels its verdict, explanation, decoder
+    // and Explain more to these letters (shownOrder -> web.py relabeler).
     for (const [i, o] of shuffled(q.options).entries()) {
       const b = optionButton(o, String.fromCharCode(65 + i));
       b.onclick = () => {
@@ -874,7 +906,7 @@
       $(".guess-row", el).hidden = true;
       if (state.pendingCard?.el === el) state.pendingCard = null;   // answering an older card from History leaves the current one live
       state.replyAfter = el;                                          // the verdict goes under this card, not under the newest question
-      answer(q.id, letters, guess.getAttribute("aria-pressed") === "true");
+      answer(q.id, letters, guess.getAttribute("aria-pressed") === "true", shownOrder(el));
     }
     state.pendingCard = { el, q, picked, submit };
     return el;
@@ -941,7 +973,6 @@
     const el = $$(".card", feed).reverse().find(c => c.querySelector(".qid")?.textContent === g.id);   // the DOM, not state.cards: card ids restart at 1 every reply, so an older question's entry is overwritten
     remember({ ...g, dom: el?.querySelector(".dom")?.textContent || "" });
     if (!el) return;
-    $$(".opt", el).forEach(b => { $(".l", b).textContent = b.dataset.l; });   // rows stay put; the badges take the bank's letters, which the verdict and explanation name
     $$(".opt", el).forEach(b => {
       if (g.correct.includes(b.dataset.l)) b.classList.add("is-correct");
       else if (g.picked.includes(b.dataset.l)) b.classList.add("is-wrong");
@@ -980,7 +1011,8 @@
     const exam = state.exam;                               // the question's exam, even if the user switches exams while this polls
     for (let i = 0; i < 45; i++) {                         // prefetched when the question was shown; usually ready at once
       let r;
-      try { r = await fetch(`/api/${exam}/decode/${encodeURIComponent(qid)}${cachedOnly ? "?cached=1" : ""}`); } catch (e) { break; }
+      const q = new URLSearchParams({ ...(cachedOnly ? { cached: 1 } : {}), order: shownOrder(card).join(",") });
+      try { r = await fetch(`/api/${exam}/decode/${encodeURIComponent(qid)}?${q}`); } catch (e) { break; }
       if (r.status === 200) return renderDecode(card, box, await r.json());
       if (r.status !== 202 || cachedOnly) break;
       await new Promise(ok => setTimeout(ok, 2000));

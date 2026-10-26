@@ -223,6 +223,7 @@
       <nav class="exams" id="board-exam" aria-label="Exam"></nav>
       <nav class="exams" id="board-period" aria-label="Period"><button type="button" data-p="week">This week</button><button type="button" data-p="all">All time</button></nav>
     </div>
+    <section class="lb-summary banter" id="board-banter" aria-live="polite" hidden></section>
     <div class="board-me" id="board-me"></div>
     <section class="lb-summary" id="board-summary" aria-live="polite" hidden></section>
     <table class="board" id="board-table" aria-label="Leaderboard"><thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Done</th><th scope="col">Right</th><th scope="col">Wrong</th><th scope="col">Accuracy</th><th scope="col">Strongest topic</th><th scope="col">Weakest topic</th></tr></thead><tbody></tbody></table>
@@ -235,6 +236,8 @@
     <h2>Progress</h2>
     <p class="muted" id="stats-summary"></p>
     <div class="bars" id="stats-bars"></div>
+    <section class="lb-summary" id="stats-coach" aria-live="polite" hidden></section>
+    <section class="lb-summary" id="stats-mocks" hidden></section>
     <div class="danger">
       <h3>Bank</h3>
       <div class="row">
