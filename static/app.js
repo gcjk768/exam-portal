@@ -665,7 +665,7 @@
     clearTimeout(resetArmed); resetArmed = 0; setResetLabel("Reset progress");
     go("quiz");
     clearFeed(); state.feedLoaded = state.exam; state.home = null;   // drop stale cards and cached progress
-    localStorage.removeItem(EX.key()); EX.run = null; EX.cur = 0; clearInterval(EX.timer);   // and the saved mock exam, so the next one is a fresh shuffle
+    localStorage.removeItem(EX.key()); localStorage.removeItem(EX.last()); EX.run = null; EX.cur = 0; clearInterval(EX.timer);   // and the saved mock exam (and the last one's review), so the next one is a fresh shuffle
     await act("reset");
     state.home = await api("/home"); renderMode(state.home.progress);
   });
@@ -1094,12 +1094,20 @@
   });
 
   // ── Exam mode: timed, no feedback until submit, graded in one call ────────
-  const EX = { key: () => `exam:${state.exam}`, run: null, timer: null, cur: 0 };
+  // last: the result sheet of the last submitted mock (debrief included once it loads), kept so it can be reviewed again
+  const EX = { key: () => `exam:${state.exam}`, last: () => `exam-last:${state.exam}`, run: null, timer: null, cur: 0 };
+  const saveLast = (key, res) => { try { localStorage.setItem(key, JSON.stringify(res)); } catch (e) {} };   // full storage: no review later, the result still shows
   function loadExam() {
     const saved = JSON.parse(localStorage.getItem(EX.key()) || "null");
     if (saved && !saved.done) { EX.run = saved; EX.cur = Math.min(saved.cur || 0, saved.questions.length - 1); return showExamRun(); }   // back where you were
     EX.run = null;
     $("#exam-setup").hidden = false; $("#exam-run").hidden = true; $("#exam-result").hidden = true;
+    const last = JSON.parse(localStorage.getItem(EX.last()) || "null"), lastBtn = $("#exam-last");
+    lastBtn.hidden = !last;
+    if (last) {
+      $(".lbl", lastBtn).textContent = `Review your last mock: ${last.score}, ${last.right} of ${last.n}${last.when ? `, ${fmtWhen(last.when)}` : ""}`;
+      lastBtn.onclick = () => showExamResult(last, last.timedOut);
+    }
     const e = cur();
     const modeTasks = !!(e.tasks && e.mode === "tasks");
     const unit = modeTasks ? "tasks" : "questions";
@@ -1235,6 +1243,8 @@
     }
     localStorage.removeItem(EX.key());
     $("#exam-submit").disabled = false; submitLabel("Submit exam");
+    Object.assign(res, { timedOut, when: new Date().toISOString() });
+    saveLast(EX.last(), res);
     showExamResult(res, timedOut);
   }
   function showExamResult(res, timedOut) {
@@ -1286,13 +1296,14 @@
   $("#res-again").onclick = () => { EX.run = null; loadExam(); };
   // The coach's read of this mock (web.py /exam/debrief): headline, the domains to fix with their notes, the next step
   async function loadDebrief(res) {
-    const box = $("#res-debrief");
+    const box = $("#res-debrief"), key = EX.last();
     box.hidden = false; box.innerHTML = `<p class="muted">${ic("graduation-cap", "ic-accent")}The coach is reading your answers…</p>`;
-    let d;
-    try {
+    let d = res.debrief;                                   // a reviewed mock shows its saved debrief: no second Claude call
+    if (!d) try {
       const r = await post("/exam/debrief", { domains: res.domains, missed: res.results.filter(x => !x.right).map(x => x.id) });
       if (!r.ok) { box.innerHTML = `<p class="muted small">${esc((await r.json().catch(() => ({}))).detail || "The coach is not available right now.")}</p>`; return; }
-      d = await r.json();
+      d = res.debrief = await r.json();
+      saveLast(key, res);
     } catch (e) { box.hidden = true; return; }
     box.innerHTML = `<h3>${ic("graduation-cap", "ic-accent")}Coach's debrief</h3><p>${esc(d.headline)}</p>`;
     for (const f of d.focus) {
