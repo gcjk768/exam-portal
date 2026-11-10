@@ -382,7 +382,8 @@ def options_of(q: dict) -> list[dict]:
     return [{"l": line[0], "t": line[3:]} for line in q["options"].splitlines() if line[1:3] == ". "]
 
 
-SOURCE_TAG = {"Tutorials Dojo": "TD"}   # known question sources get a small label on the card; add "source": "tag" to label more
+SOURCE_TAG = {"Tutorials Dojo": "TD",   # known question sources get a small label on the card; add "source": "tag" to label more
+              "Matthew Purcell CCAR-P Practice Questions v2 (CC BY-NC 4.0)": "Purcell v2 · CC BY-NC"}   # licence requires credit where shown
 
 
 # Option letters as shown: the page shuffles the options and labels them A, B, C top to bottom, while the bank's verdicts,

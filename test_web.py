@@ -400,6 +400,9 @@ eid = next(i for i, q in web.EXAMS["ccarp"].mod.QUESTIONS.items() if q.get("exam
 if mfq := [i for i, q in mod.QUESTIONS.items() if q.get("source", "").startswith("Microsoft Forms mock")]:
     assert web.hidden_source(mod.QUESTIONS[mfq[0]]["source"]) and c.get(f"/api/ccarp/question/{mfq[0]}", headers=pub).status_code == 404
     assert c.get(f"/api/ccarp/question/{mfq[0]}").json()["tag"] == "UD"
+# CC BY-NC sources are public and credited on the card
+if mpq := [i for i in mod.QUESTIONS if i.startswith("MP2-")]:
+    assert c.get(f"/api/ccarp/question/{mpq[0]}", headers=pub).json()["tag"] == "Purcell v2 · CC BY-NC"
 
 # flashcards: keys are served with the study JSON; Again / Got it schedule them like questions
 cd = c.get("/api/ccarp/study").json()["reading"]["domains"][0]["cards"][0]
