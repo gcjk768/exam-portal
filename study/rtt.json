@@ -1,0 +1,632 @@
+{
+ "exam": "rtt",
+ "intro": "Singapore Riding Theory Test (Class 2B): 50 questions in 50 minutes, pass mark 45/50, taken at BBDC, CDC or SSDC after the BTT; the pass lasts one year, so book the practical within that year. Everything comes from TP's Riding Theory Booklet (2.1.2026) plus BTT rules.",
+ "start": [
+  {"title": "Riding Theory Booklet (official handbook)", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf", "note": "The whole RTT syllabus in 102 pages. Read it once end to end; the bank cites its page numbers.", "kind": "official"},
+  {"title": "Basic Theory of Driving (official handbook)", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/BT-ENG-2126.pdf", "note": "Signs, markings, traffic lights, DIPS demerit table. Riders still need these.", "kind": "official"},
+  {"title": "TP theory test practice", "url": "https://www.police.gov.sg/E-Services/Practise-Driving-and-Riding-Theory-Test", "note": "Free official RTT practice sets in English, Malay, Mandarin and Tamil, 20 minutes each.", "kind": "official"},
+  {"title": "Waiting times and pass rates", "url": "https://www.police.gov.sg/Knowledge-Hub/Traffic/Traffic-Matters/Waiting-Time-and-Passing-Rates-of-Theory-and-Practical-Tests", "note": "RTT first-attempt pass rate is about 96-97% at all three centres.", "kind": "official"},
+  {"title": "SPF Online Learning Portal", "url": "https://www.police.gov.sg/Knowledge-Hub/Traffic/Traffic-Matters/Online-Learning-Portal", "note": "Handbooks in all four languages.", "kind": "official"},
+  {"title": "SSDC FAQ", "url": "https://ssdcl.com.sg/faq/", "note": "Booking steps: theory lessons 1-4, Theory Trial Test, then RTT. RTT valid one year.", "kind": "free"}
+ ],
+ "domains": [
+  {
+   "domain": "1. Licensing, Law and Penalties",
+   "weight": 15,
+   "links": [
+    {"title": "RT handbook: licences, tests, probation", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=4", "note": "Pages 3 to 7 of the booklet."},
+    {"title": "BT handbook: DIPS demerit table", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/BT-ENG-2126.pdf#page=7", "note": "Every scheduled offence with points and fines."}
+   ],
+   "video": {"id": "rNv3EmDqR24", "title": "The REAL Cost of Getting a Class 2B Licence in Singapore (2026 BBDC Guide)", "channel": "Violet Blooms", "min": 4},
+   "diagram": "flowchart LR\n  BTT[Pass BTT] --> PDL[Apply for PDL, valid 2 years]\n  PDL --> RTT[Pass RTT, valid 1 year]\n  RTT --> PRT[Pass practical riding test]\n  PRT --> EFR[Expressway Familiarisation Ride]\n  EFR --> P[Class 2B on probation 1 year]\n  P --> A[After 1 year: Class 2A test]\n  A --> C[After 1 more year: Class 2 test]",
+   "notes": [
+    {
+     "objective": "Know the licence ladder and test sequence",
+     "title": "From learner to Class 2B, 2A and 2",
+     "gist": "Class 2B is the starting motorcycle licence. You pass the BTT, get a PDL, pass the RTT, then pass the practical within a year of the RTT.",
+     "points": [
+      "Class 2B: petrol below 200cc, electric below 15 kW.",
+      "Class 2A: 200 to 400cc or 15 to 25 kW, after holding 2B for at least one year.",
+      "Class 2: above 400cc or above 25 kW, after holding 2A for at least one year.",
+      "PDL after the BTT, valid 2 years. Eyesight: 6 characters and red, amber, green at 25 m.",
+      "RTT pass valid one year. Miss the practical in that window and you retake the RTT.",
+      "After the practical, the 100-minute Expressway Familiarisation Ride is compulsory before the licence."
+     ],
+     "tip": "Traps mix up the FTT (cars) and RTT (motorcycles), and the RTT validity: it is one year, not two.",
+     "diagram": "flowchart TB\n  A[Class 2B: below 200cc or 15 kW] -->|hold 1 year| B[Class 2A: 200 to 400cc]\n  B -->|hold 1 year| C[Class 2: above 400cc]",
+     "video": {"id": "QTS8QLPHCNU", "title": "How to Pass the Singapore Riding Theory Test (RTT) | Complete 2026 Guide", "channel": "Violet Blooms", "min": 20},
+     "source": {"title": "Riding Theory Booklet, Introduction", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=4"}
+    },
+    {
+     "objective": "Apply the probation and demerit point rules",
+     "title": "Probation and DIPS demerit points",
+     "gist": "New riders are on probation for a year and lose the licence at 13 points. Later, 24 points in 24 months brings a first suspension.",
+     "points": [
+      "Probation Plate front and rear: above or below the headlamp and the rear number plate.",
+      "Two offences of not showing the plate during probation: licence revoked.",
+      "13 or more points during probation: new licence revoked.",
+      "First suspension: 24 or more points within 24 months, 12 weeks.",
+      "With a past suspension: 12 or more points within 12 months.",
+      "12 months free of offences clears all demerit points."
+     ],
+     "tip": "Know the speeding ladder: up to 20 over is 6 points, 21 to 30 is 8, 31 to 40 is 12, above 40 is court. Red light is 12.",
+     "diagram": "flowchart LR\n  N[New rider, year 1] -->|13 points| R[Licence revoked]\n  O[Experienced rider] -->|24 points in 24 months| S[12 week suspension]\n  S -->|12 points in 12 months| S2[Next suspension]\n  O -->|12 months clean| Z[Points cleared]",
+     "video": null,
+     "source": {"title": "Basic Theory of Driving, DIPS", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/BT-ENG-2126.pdf#page=6"}
+    },
+    {
+     "objective": "Know the key riding laws",
+     "title": "Alcohol, helmets, phones and modifications",
+     "gist": "The laws riders are most often tested on: alcohol limits, helmet use, handheld phones and illegal modifications.",
+     "points": [
+      "Alcohol limit: 80 mg per 100 ml of blood, or 35 micrograms per 100 ml of breath.",
+      "You can be charged even below the limit if you are not in proper control.",
+      "Rider and pillion must wear an approved, fastened helmet. Only turbaned male Sikhs are exempt.",
+      "Phone offence: holding it, using any function, while moving. Hands-free is fine.",
+      "Illegal modification: fine up to $2,000 or up to 6 months in jail. Check LTA rules first.",
+      "Third-party insurance is the legal minimum."
+     ],
+     "tip": "Blood is milligrams, breath is micrograms: 80 and 35. Swapping the units is the classic distractor.",
+     "diagram": "flowchart LR\n  H[Hand holds device] --> X{All three true?}\n  F[Using any function] --> X\n  M[Vehicle moving] --> X\n  X -->|yes| OFF[Offence]\n  X -->|no| OK[Not this offence]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, mobile devices", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=101"}
+    }
+   ],
+   "summary": {
+    "tests": "Whether you know the licence classes and test order, the probation and DIPS rules, and the core laws on alcohol, helmets, phones and modifications.",
+    "must_know": [
+     "Class 2B is below 200cc petrol or below 15 kW electric.",
+     "BTT, then PDL, then RTT, then the practical within one year of the RTT.",
+     "Probation lasts one year: 13 points or two missing-plate offences revokes the licence.",
+     "First suspension at 24 points in 24 months, 12 weeks long.",
+     "Alcohol limits are 80 mg per 100 ml of blood and 35 micrograms per 100 ml of breath.",
+     "Helmet offence and excess pillion offence are each 3 points.",
+     "Red light 12 points. Speeding 6, 8, 12 points, then court above 40 km/h over."
+    ],
+    "traps": [
+     "Saying the RTT is valid two years: it is one year.",
+     "Thinking a hands-free headset is an offence: only holding and using the device while moving is.",
+     "Assuming you cannot be charged below the alcohol limit."
+    ]
+   },
+   "cards": [
+    {"q": "What engine size does a Class 2B licence cover?", "a": "Petrol motorcycles below 200cc, or electric motorcycles below 15 kW."},
+    {"q": "How long must you hold Class 2B before taking the Class 2A test?", "a": "At least one year."},
+    {"q": "How long is an RTT pass valid?", "a": "One year. Pass the practical within it or retake the RTT."},
+    {"q": "How long is a PDL valid?", "a": "Two years from the date of grant, renewable every two years."},
+    {"q": "What demerit total revokes a probationary rider's licence?", "a": "13 or more points within the one-year probation."},
+    {"q": "Where does the Probation Plate go on a Class 2B motorcycle?", "a": "Above or below the headlamp, and above or below the rear licence plate."},
+    {"q": "When is a first suspension triggered under DIPS?", "a": "24 or more demerit points within 24 months. It lasts 12 weeks."},
+    {"q": "What are the blood and breath alcohol limits?", "a": "80 mg per 100 ml of blood; 35 micrograms per 100 ml of breath."},
+    {"q": "Who is exempt from the motorcycle helmet law?", "a": "Male Sikhs wearing a turban."},
+    {"q": "Demerit points for riding without a helmet or with it unfastened?", "a": "3 points."},
+    {"q": "Demerit points for speeding by 20 km/h or less?", "a": "6 points. 21 to 30 over is 8, 31 to 40 over is 12."},
+    {"q": "Demerit points for beating a red light?", "a": "12 points, with a $400 to $500 fine."},
+    {"q": "Three conditions for the mobile device offence?", "a": "A hand holds the device, you use any function, and the vehicle is moving."},
+    {"q": "Penalty for unauthorised vehicle modification?", "a": "A fine up to $2,000 or up to 6 months' jail."},
+    {"q": "How do zone offences in School and Silver Zones and Friendly Streets change penalties?", "a": "Plus 2 demerit points and plus $100 on the fine, capped at $500."}
+   ]
+  },
+  {
+   "domain": "2. Rider Fitness, Gear and Checks",
+   "weight": 17,
+   "links": [
+    {"title": "RT handbook: human factors", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=7", "note": "Vision, fitness, alcohol and judgement."},
+    {"title": "RT handbook: protective clothing and posture", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=20", "note": "Helmet, visor, clothing, gloves, footwear, posture."},
+    {"title": "RT handbook: pre-riding checks", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=26", "note": "Fuel, tyres, controls, lights, horn, oil, chain, brakes, clutch, mirrors."}
+   ],
+   "video": {"id": "M5Cf7P0ymds", "title": "Pre-Ride Challenge: Can you do it in 20 Seconds?", "channel": "ROADS sg", "min": 10},
+   "diagram": "flowchart LR\n  R[Rider fit? not tired, angry, drunk] --> G[Gear on: helmet fastened, jacket, gloves, boots]\n  G --> C[Pre-ride check]\n  C --> F[Fuel]\n  C --> T[Tyres, 1.6 mm tread]\n  C --> L[Lights and horn]\n  C --> B[Brakes 15 to 20 mm play]\n  C --> K[Clutch 10 to 20 mm play]\n  C --> CH[Chain about 20 mm slack]",
+   "notes": [
+    {
+     "objective": "Recognise rider conditions that make riding unsafe",
+     "title": "Your eyes, body and mind",
+     "gist": "About 80% of riding information comes through the eyes, and tiredness, emotion, alcohol and drugs all slow perception and reaction.",
+     "points": [
+      "Riding is a chain of perception, judgement and reaction; most crashes come from poor perception and judgement.",
+      "Keep your eyes moving about every two seconds; your field of vision narrows as speed rises.",
+      "Do not ride when tired, giddy, unwell, angry or worried.",
+      "Check with your doctor whether medicine causes drowsiness.",
+      "Tiredness and alcohol increase reaction time."
+     ],
+     "tip": "If a question asks what to do when tired or unwell, the answer is do not ride, not ride slowly.",
+     "diagram": "flowchart LR\n  P[Perception] --> J[Judgement] --> R[Reaction]\n  T[Tired, angry, alcohol] -.->|slows| P\n  T -.->|slows| R",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, human factors", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=7"}
+    },
+    {
+     "objective": "Choose correct protective gear and posture",
+     "title": "Gear up and sit right",
+     "gist": "Most rider injuries are to the chest and limbs, so wear full protective gear, and use a posture that gives quick control and less fatigue.",
+     "points": [
+      "Approved helmet with the chin strap fastened; white helmet and reflective clothing at night.",
+      "Replace a badly scratched visor: it causes glare and dazzle.",
+      "Bright, tear-resistant clothing; no baggy or flared trousers.",
+      "Proper boots, never sandals or slippers; avoid loose laces.",
+      "Posture: look far ahead, elbows slightly bent about 120 degrees, sit close to the tank, light knee grip.",
+      "Feet on the footrest arches, covering the gear lever and brake pedal."
+     ],
+     "tip": "Looking at the front wheel is always wrong: it upsets your balance. Look far ahead.",
+     "diagram": "flowchart TB\n  E[Eyes far ahead] --> B[Good balance]\n  S[Shoulders relaxed, elbows bent] --> Q[Quick control]\n  K[Knees grip tank] --> B\n  F[Feet cover pedals] --> Q\n  B --> L[Less fatigue]\n  Q --> L",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, riding wear and posture", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=20"}
+    },
+    {
+     "objective": "Perform pre-riding and weekly checks",
+     "title": "The numbers in the checks",
+     "gist": "Pre-riding checks take minutes and come before every ride; weekly checks go deeper. The test asks for the specific figures.",
+     "points": [
+      "Tyre tread: replace below 1.6 mm. Uneven pressure upsets hard braking.",
+      "Chain slack: about 20 mm. A loose chain can come off and lock the rear wheel.",
+      "Brake lever and pedal free play: 15 to 20 mm.",
+      "Clutch lever free play: 10 to 20 mm.",
+      "Engine oil: check cold, upright, on flat ground; dipstick inserted without screwing in.",
+      "Mirrors: tip of your shoulder at the lower edge; do not adjust on the main stand."
+     ],
+     "tip": "Brakes 15 to 20, clutch 10 to 20, chain 20, tread 1.6: memorise these four numbers.",
+     "diagram": "flowchart LR\n  W[Weekly check] --> O[Oil level cold and upright]\n  W --> CH[Chain 20 mm slack]\n  W --> BR[Brake fluid above lower mark]\n  P[Every ride] --> T[Tyres and tread]\n  P --> LI[All lights and horn]\n  P --> CO[Throttle, clutch, brakes work]",
+     "video": {"id": "KRgOKPudB4o", "title": "JUST GOT YOUR MOTORCYCLE LICENCE??? | Essential Tips for New Riders Singapore", "channel": "TRI333PLE", "min": 4},
+     "source": {"title": "Riding Theory Booklet, weekly and pre-riding checks", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=16"}
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can tell when you are unfit to ride, choose the right gear and posture, and know the pre-ride and weekly check figures.",
+    "must_know": [
+     "About 80% of riding information comes through the eyes; move them every two seconds.",
+     "Tired, unwell, angry or on drowsy medicine: do not ride.",
+     "Helmet approved and fastened; replace a badly scratched visor.",
+     "No sandals, slippers or baggy trousers; bright, tear-resistant clothing.",
+     "Tread at least 1.6 mm, chain slack about 20 mm.",
+     "Brake free play 15 to 20 mm, clutch free play 10 to 20 mm.",
+     "Check engine oil cold and upright on flat ground."
+    ],
+    "traps": [
+     "Choosing to ride slowly when tired instead of not riding.",
+     "Mixing the brake and clutch free play ranges.",
+     "Thinking gloves are a legal requirement: they are recommended; the helmet is the law."
+    ]
+   },
+   "cards": [
+    {"q": "About how much riding information comes through your eyes?", "a": "About 80%."},
+    {"q": "What happens to your field of vision as speed increases?", "a": "It narrows."},
+    {"q": "What are the three links of the riding chain process?", "a": "Perception, judgement and reaction."},
+    {"q": "You feel tired before a ride. What should you do?", "a": "Do not ride."},
+    {"q": "What should you do with a badly scratched visor?", "a": "Replace it; it causes glare by day and dazzle at night."},
+    {"q": "Why avoid sandals or slippers when riding?", "a": "Feet can catch on the gear lever, and they give little protection."},
+    {"q": "Where should your feet rest when riding?", "a": "Arches on the footrests, toes ahead, covering the gear lever and brake pedal."},
+    {"q": "Minimum legal tyre tread depth?", "a": "1.6 mm."},
+    {"q": "Correct drive chain slack?", "a": "About 20 mm."},
+    {"q": "Free play for the brake lever and pedal?", "a": "15 to 20 mm."},
+    {"q": "Free play for the clutch lever?", "a": "10 to 20 mm."},
+    {"q": "How should you check engine oil?", "a": "Cold engine, motorcycle upright on flat ground, dipstick in without screwing."},
+    {"q": "How should the mirrors be adjusted?", "a": "Until the tip of your shoulder shows at the lower edge, while seated, not on the main stand."},
+    {"q": "Which lights must you check before riding?", "a": "Headlamp, hazard lights, turn signals, tail lamp and brake lamp."}
+   ]
+  },
+  {
+   "domain": "3. Controls, Gears and Braking",
+   "weight": 20,
+   "links": [
+    {"title": "RT handbook: controls", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=28", "note": "Throttle, clutch, brakes, gear pedal, instruments."},
+    {"title": "RT handbook: braking technique", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=38", "note": "Engine braking, normal and emergency braking."},
+    {"title": "RT handbook: circuit courses", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=92", "note": "S course, crank, slalom, plank, slope, emergency brake."}
+   ],
+   "video": {"id": "MXoL8RF_o0M", "title": "BBDC Emergency Braking | Singapore Motorcycle Riding Test", "channel": "Sharing The Art", "min": 1},
+   "diagram": "flowchart LR\n  ST[Need to stop] --> EB[Close throttle for engine braking]\n  EB --> BB[Both brakes early, pressure builds]\n  BB --> CL[Clutch in just before stopping]\n  CL --> G1[Change to 1st, left foot down]\n  BB -.->|wheel locks| RL[Release, then brake on and off]",
+   "notes": [
+    {
+     "objective": "Locate and operate the primary controls",
+     "title": "Which hand, which foot",
+     "gist": "Right hand: throttle and front brake. Left hand: clutch. Right foot: rear brake. Left foot: gear pedal.",
+     "points": [
+      "Twist the throttle towards you to accelerate; it springs back to idle.",
+      "Clutch lever in means no power to the rear wheel; the biting point is about halfway.",
+      "Pull the front brake gently; sudden braking makes the motorcycle wobble and fall.",
+      "Pressing the rear brake hard locks the rear wheel.",
+      "Gear pedal: lift for a higher gear, press for a lower one, one gear per move. Neutral sits between 1st and 2nd.",
+      "Some automatics and electrics have the rear brake lever on the left handlebar."
+     ],
+     "tip": "Before starting: green N lamp lit and the engine stop switch at RUN. Signal right to move off from the kerb.",
+     "diagram": "flowchart TB\n  RH[Right hand] --> TH[Throttle]\n  RH --> FB[Front brake]\n  LH[Left hand] --> CL[Clutch]\n  RF[Right foot] --> RB[Rear brake]\n  LF[Left foot] --> GP[Gear pedal]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, basic controls", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=28"}
+    },
+    {
+     "objective": "Select gears and use engine braking",
+     "title": "Gears and engine braking",
+     "gist": "Lower gears give more power and stronger engine braking. Change down before stopping, before corners and on slopes.",
+     "points": [
+      "1st gear 0 to 20 km/h for moving off; 2nd 15 to 35 km/h.",
+      "Change up at about 3,000 to 4,000 rpm; move off at 2,000 to 3,000 rpm.",
+      "Engine braking: throttle closed, gear engaged, clutch out.",
+      "Clutch in too early means freewheeling and a longer stopping distance.",
+      "Downhill: 3rd on gradual slopes, 2nd on steep slopes, 1st plus footbrake on short steep slopes.",
+      "Long footbrake use overheats the brakes and causes fade."
+     ],
+     "tip": "Harsh engine above a gear's range means change up; vibration or knocking below it means change down.",
+     "diagram": "flowchart LR\n  S[Slope] -->|gradual| G3[3rd gear]\n  S -->|steep| G2[2nd gear]\n  S -->|short and steep| G1[1st gear plus footbrake]\n  G3 --> EB[Engine braking, no fade]\n  G2 --> EB\n  G1 --> EB",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, speed changing and engine braking", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=38"}
+    },
+    {
+     "objective": "Brake correctly in normal and emergency stops",
+     "title": "Stopping short without locking up",
+     "gist": "Use both brakes early with engine braking. In an emergency, brake hard but short of locking the wheels.",
+     "points": [
+      "Stopping distance on a wet road is about twice the dry distance.",
+      "If a wheel skids, release the brake and use intermittent braking.",
+      "Emergency posture: body straight, eyes ahead, knees grip the tank, firm hands.",
+      "Pull the clutch in only as the motorcycle is about to stop.",
+      "Emergency brake course: stop within 11 m from about 30 km/h on a wet surface.",
+      "Stop about one motorcycle length behind a stationary vehicle."
+     ],
+     "tip": "Never brake and pull in the clutch together straight after closing the throttle: you lose engine braking.",
+     "diagram": "flowchart TB\n  A[Throttle closed] --> B[Front and rear brakes hard, no lock]\n  B --> C{Wheel locked?}\n  C -->|yes| D[Release and reapply]\n  C -->|no| E[Clutch in just before stop]\n  D --> B",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, correct and emergency braking", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=39"}
+    },
+    {
+     "objective": "Corner, climb and handle the circuit courses",
+     "title": "Cornering, slopes and the circuit",
+     "gist": "Slow down and change down before a bend, hold steady speed through it, and look where you want to go.",
+     "points": [
+      "Lean with for gradual bends, lean out for sharp low-speed bends, lean in at high speed.",
+      "In the bend: steady speed, no brake or clutch. Keep left on right-hand bends.",
+      "Centrifugal force grows with speed and sharpness; loads raise the centre of gravity.",
+      "Uphill: build speed first; stall on a slope means stamp on the foot brake.",
+      "Targets: S course under 11 s, crank and slalom under 6 s, plank 6 s or more.",
+      "Look at the next turning point; you ride towards what you stare at."
+     ],
+     "tip": "Going downhill, the ascending vehicle has the right of way.",
+     "diagram": "flowchart LR\n  B[Before bend: slow, change down] --> I[In bend: steady throttle, no brakes]\n  I --> X[Exit: pick up speed, look ahead]",
+     "video": {"id": "6rfQeliCu8E", "title": "BBDC S Course | Singapore Motorcycle Riding Test", "channel": "Sharing The Art", "min": 1},
+     "source": {"title": "Riding Theory Booklet, cornering", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=65"}
+    }
+   ],
+   "summary": {
+    "tests": "Whether you know each control, which gear to use when, how engine braking works, and how to brake, corner and climb safely.",
+    "must_know": [
+     "Right hand throttle and front brake, left hand clutch, right foot rear brake, left foot gears.",
+     "Lift the gear pedal to go up, press to go down; neutral between 1st and 2nd.",
+     "1st gear 0 to 20 km/h, 2nd 15 to 35 km/h.",
+     "Engine braking: throttle closed, gear engaged, clutch out.",
+     "Use both brakes early; clutch in only just before stopping.",
+     "Wet road stopping distance is about double.",
+     "In a bend hold steady speed with no brake or clutch."
+    ],
+    "traps": [
+     "Pulling the clutch in early, which causes freewheeling.",
+     "Locking the wheels in an emergency stop.",
+     "Coasting downhill in neutral instead of using a low gear."
+    ]
+   },
+   "cards": [
+    {"q": "How do you accelerate with the throttle?", "a": "Twist it towards you."},
+    {"q": "What is the clutch biting point?", "a": "About halfway out, where engine power starts to reach the rear wheel."},
+    {"q": "What happens if you press the rear brake pedal too hard?", "a": "The rear wheel locks and the motorcycle may skid and fall."},
+    {"q": "How do you change to a higher gear?", "a": "Clutch in, close throttle, lift the gear pedal once, then release the clutch gradually."},
+    {"q": "Where is neutral on a manual motorcycle?", "a": "Between 1st and 2nd gear."},
+    {"q": "Speed range for first gear?", "a": "About 0 to 20 km/h."},
+    {"q": "At what rpm is it standard to change up?", "a": "About 3,000 to 4,000 rpm."},
+    {"q": "What is engine braking?", "a": "Slowing with the throttle closed, a gear engaged and the clutch not pulled in."},
+    {"q": "What does pulling the clutch in too early cause?", "a": "Freewheeling and a longer stopping distance."},
+    {"q": "Gear for a steep downhill slope?", "a": "2nd or 1st gear."},
+    {"q": "What is the main cause of brake fade?", "a": "Brakes overheating, for example from long footbrake use downhill."},
+    {"q": "A wheel skids while braking. What should you do?", "a": "Release the brake, then brake on and off until you stop."},
+    {"q": "Emergency brake course target?", "a": "Stop within 11 m from about 30 km/h on a wet surface."},
+    {"q": "Which cornering posture suits a sharp bend at low speed?", "a": "Lean out."},
+    {"q": "Your engine stalls moving off on a slope. First action?", "a": "Step on the foot brake immediately."},
+    {"q": "Before lifting a fallen motorcycle, what must you do?", "a": "Switch off the ignition."}
+   ]
+  },
+  {
+   "domain": "4. Road Rules, Signs and Junctions",
+   "weight": 20,
+   "links": [
+    {"title": "RT handbook: turning, lanes, overtaking, junctions", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=46", "note": "Pages 45 to 60 of the booklet."},
+    {"title": "RT handbook: expressways", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=67", "note": "Banned vehicles, limits, lanes, breakdowns."},
+    {"title": "BT handbook: signs, markings and lights", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/BT-ENG-2126.pdf#page=10", "note": "Pages 9 to 46 of the BTT handbook."}
+   ],
+   "video": {"id": "MhETVXCwtrQ", "title": "Road Markings In Singapore", "channel": "Motorist Singapore", "min": 7},
+   "diagram": "flowchart TB\n  U[Uncontrolled junction] --> S[Going straight: give way to straight traffic from the right]\n  U --> L[Turning left: give way to straight traffic from the right]\n  U --> R[Turning right: give way to straight traffic from all sides]\n  R --> R2[Also right-turners from the right and left-turners from opposite]",
+   "notes": [
+    {
+     "objective": "Apply give-way rules at junctions and roundabouts",
+     "title": "Who gives way",
+     "gist": "Turning traffic gives way to straight-going traffic, and traffic from the right has priority. The rules only say who gives way; nobody owns the right of way.",
+     "points": [
+      "Major road traffic has priority. STOP means a full stop at the line; GIVE WAY means stop only if needed.",
+      "Right turns give way to the most traffic.",
+      "Roundabout: give way to traffic on your right; do not enter if your exit is blocked; signal left to leave.",
+      "Yellow box: never enter and block it, except when turning right waiting for oncoming traffic or held by pedestrians.",
+      "U-turn only where a U-turn sign allows it.",
+      "Pull out of a minor road when traffic from the right is more than 6 seconds away."
+     ],
+     "tip": "Never assume the other driver will give way just because the rule says so.",
+     "diagram": "flowchart LR\n  A[Approach junction] --> B{Sign?}\n  B -->|STOP| C[Full stop at line, give way]\n  B -->|GIVE WAY| D[Slow, stop if needed]\n  B -->|none| E[Give way to the right, turners give way to straight]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, give-way rules", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=57"}
+    },
+    {
+     "objective": "Keep lane discipline and overtake legally",
+     "title": "Lanes, lane changes and overtaking",
+     "gist": "Keep left, use the right lane only to overtake or turn right, signal at least 3 seconds, and do not squeeze between lanes.",
+     "points": [
+      "Two lanes: left for normal riding, right for overtaking and right turns. Three lanes: left for slower vehicles.",
+      "Lane change: mirrors, signal 3 seconds, blind spot, adjust speed, move, cancel signal.",
+      "Do not ride between two lanes or jump queues by squeezing between lanes.",
+      "Overtake on the right. Left only if the vehicle ahead turns right, you turn left, in slow queues, or on one-way streets.",
+      "No overtaking near crossings, junctions, bends, crests or double white lines.",
+      "Being overtaken: slow down and keep left."
+     ],
+     "tip": "Missed your turn or exit? Carry on to the next one; never stop, reverse or swerve.",
+     "diagram": "flowchart LR\n  M[Mirrors] --> S[Signal 3 s] --> B[Blind spot] --> A[Adjust speed] --> G[Move smoothly] --> C[Cancel signal]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, changing lanes and overtaking", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=50"}
+    },
+    {
+     "objective": "Ride expressways correctly",
+     "title": "Expressway rules",
+     "gist": "Expressways mean faster traffic and earlier reactions. Some vehicles, including learners, are banned.",
+     "points": [
+      "Most limits are 80 or 90 km/h; the KPE is 70 or 80 km/h. Default road limit is 50 km/h.",
+      "Banned: learners, bicycles, e-bikes, motorcycles with sidecars, trishaws and more. Learners only ride it on the supervised Expressway Familiarisation Ride.",
+      "Join: signal on the slip road and match speed in the acceleration lane.",
+      "Right lane is for overtaking and emergency vehicles; do not exceed the limit to overtake.",
+      "Shoulder only for breakdown or accident: riding on it is 6 points.",
+      "Leave: signal and move left early, slow on the deceleration lane."
+     ],
+     "tip": "Vehicles with a speed limit of 60 km/h or less must use the left lane of the expressway.",
+     "diagram": "flowchart LR\n  SL[Slip road: signal] --> AL[Acceleration lane: match speed] --> M[Merge]\n  M --> K[Keep steady speed, safe gap]\n  K --> EX[Exit: signal left early, slow on deceleration lane]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, riding on expressways", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=67"}
+    },
+    {
+     "objective": "Read signs, lights and road markings",
+     "title": "Lights, lines and bus lanes",
+     "gist": "The BTT signs still apply on the RTT: amber means stop if you safely can, double white lines are never crossed, and bus lanes have set hours.",
+     "points": [
+      "Flashing amber: lights out of order, proceed with caution and give way to the right.",
+      "Flickering green arrow: about to end; red arrow: no turn even if clear.",
+      "Single yellow line: no parking 7am to 7pm except Sundays and public holidays; double yellow: no parking at all times.",
+      "Double yellow zig-zag: no stopping at all times; white zig-zags: crossing ahead.",
+      "Normal bus lane Mon to Fri 7.30 to 9.30am and 5 to 8pm; full-day lane has a red line, Mon to Sat 7.30am to 11pm.",
+      "No parking within 9 m of a bus stop, 6 m of a junction, 3 m of a hydrant."
+     ],
+     "tip": "During bus lane hours a rider may enter the lane only to avoid a collision.",
+     "diagram": "flowchart TB\n  AM[Amber] -->|can stop safely| ST[Stop]\n  AM -->|too close| GO[Proceed]\n  FA[Flashing amber] --> CA[Lights faulty: caution, give way right]",
+     "video": {"id": "Nrxm14kuw20", "title": "Explaining Confusing Road Signs That Even Seasoned Drivers Might Not Know", "channel": "The Blue Cats", "min": 3},
+     "source": {"title": "Basic Theory of Driving, road markings and signals", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/BT-ENG-2126.pdf#page=38"}
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can apply the give-way rules, lane discipline, overtaking limits, expressway rules, and the signs, lights and markings shared with the BTT.",
+    "must_know": [
+     "Default speed limit 50 km/h; most expressways 80 or 90 km/h.",
+     "Learners and motorcycles with sidecars are banned from expressways; the only learner exception is the Expressway Familiarisation Ride.",
+     "Signal at least 3 seconds before turning or changing lanes.",
+     "Turning traffic gives way to straight-going traffic; give way to traffic from the right.",
+     "Do not enter a yellow box and block it, even on green.",
+     "Overtake on the right; never near crossings, junctions, bends or crests.",
+     "Amber means stop unless too close to stop safely."
+    ],
+    "traps": [
+     "Thinking the give-way rules grant you the right of way.",
+     "Squeezing between lanes in a jam: the handbook calls it courting disaster.",
+     "Reversing to a missed expressway exit."
+    ]
+   },
+   "cards": [
+    {"q": "Default speed limit on Singapore roads?", "a": "50 km/h unless signs say otherwise."},
+    {"q": "Speed limits on most expressways?", "a": "80 or 90 km/h. The KPE is 70 or 80 km/h."},
+    {"q": "Can a learner ride on the expressway?", "a": "No, except on the compulsory Expressway Familiarisation Ride after passing the practical."},
+    {"q": "What is the right outermost expressway lane for?", "a": "Overtaking and emergency vehicles."},
+    {"q": "Going straight at an uncontrolled junction, who do you give way to?", "a": "Straight-going traffic from the right."},
+    {"q": "Turning right at an uncontrolled junction, who do you give way to?", "a": "Straight traffic from all directions, right-turners from the right, left-turners from opposite."},
+    {"q": "When may you wait in a yellow box?", "a": "Turning right waiting for oncoming traffic, or turning and held by crossing pedestrians."},
+    {"q": "Roundabout: who has priority?", "a": "Traffic on your right already in the roundabout."},
+    {"q": "Where are U-turns allowed?", "a": "Only where a U-turn sign permits."},
+    {"q": "When may you overtake on the left?", "a": "Vehicle ahead turning right, you turning left, slow queues, or one-way streets."},
+    {"q": "What does flashing amber mean?", "a": "Lights out of order: proceed with caution and give way to traffic on the right."},
+    {"q": "Unbroken double white lines?", "a": "Never cross them. No U-turns or right turns across them, no parking."},
+    {"q": "Normal bus lane hours?", "a": "Monday to Friday, 7.30 to 9.30am and 5.00 to 8.00pm, not on public holidays."},
+    {"q": "How close to a bus stop may you park?", "a": "Not within 9 metres."},
+    {"q": "Merging arrows: who goes into the single lane?", "a": "Alternate vehicles from each lane."},
+    {"q": "You missed your turn. What should you do?", "a": "Carry on to the next turn. Do not stop suddenly, reverse or swerve."}
+   ]
+  },
+  {
+   "domain": "5. Defensive Riding and Hazards",
+   "weight": 16,
+   "links": [
+    {"title": "RT handbook: defensive riding", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=69", "note": "Six conditions, other road users, crash positions."},
+    {"title": "RT handbook: following and stopping distance", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=44", "note": "3, 6 and 12-second rules and the stopping distance table."}
+   ],
+   "video": {"id": "W7--BqhZpkk", "title": "Do the new bike lessons help? (Defensive Riding Pt 2)", "channel": "SPH Razor", "min": 3},
+   "diagram": "flowchart LR\n  N[Normal riding] -->|3 s gap| A[Safe following]\n  T[Tailgated, heavy vehicle ahead, wet, dark, pillion] -->|6 s gap| B[Bigger cushion]\n  O[Scanning and overtaking] -->|12 s ahead| C[See hazards early]",
+   "notes": [
+    {
+     "objective": "Keep a safe following distance and know stopping distances",
+     "title": "The 3, 6 and 12-second rules",
+     "gist": "Gaps are measured in seconds so they scale with speed. Stopping distance is reaction distance plus braking distance.",
+     "points": [
+      "3 seconds normally, counted from a fixed point the vehicle ahead passes.",
+      "6 seconds when tailgated, behind a heavy vehicle, in poor conditions, loaded or tired.",
+      "Scan about 12 seconds ahead; overtaking takes about 12 seconds with the gap.",
+      "Average reaction time is 3/4 second.",
+      "Dry stopping distance: about 32 m at 50 km/h and 112 m at 100 km/h.",
+      "Look ahead at least 3 times your speed in metres: 90 m at 30 km/h."
+     ],
+     "tip": "Being tailgated? Do not speed up or brake-check. Widen the gap ahead to six seconds.",
+     "diagram": "flowchart LR\n  S[Sees hazard] -->|reaction distance| B[Starts braking]\n  B -->|braking distance| X[Stops]\n  W[Wet, worn tyres, load] -.->|longer| B",
+     "video": {"id": "8NO08zW1_70", "title": "12 Second Rule and Fisherman Vision will make You 90% Safer!", "channel": "Moto Control", "min": 8},
+     "source": {"title": "Riding Theory Booklet, following and stopping distance", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=44"}
+    },
+    {
+     "objective": "Protect vulnerable road users",
+     "title": "Pedestrians, cyclists and parked cars",
+     "gist": "Pedestrians, especially the young and old, are the most vulnerable. Give clear space and expect sudden moves.",
+     "points": [
+      "Children under 15 are impulsive; take care near schools and playgrounds.",
+      "White walking stick: slow down, stop and give way.",
+      "Gaps: 1 m from pedestrians facing you, 1.5 m from those facing away, 1.5 m from cyclists and moving vehicles.",
+      "About 1 m past parked vehicles; watch for doors and smoking exhausts.",
+      "At least 0.5 m from fixed obstacles; give way to oncoming traffic if the obstruction is on your side.",
+      "A cyclist glancing back may be about to change lanes."
+     ],
+     "tip": "A vehicle slowing near a zebra crossing likely hides a pedestrian. Never overtake it.",
+     "diagram": "flowchart TB\n  P1[Pedestrian facing you] -->|1 m| G[Minimum gap]\n  P2[Pedestrian facing away] -->|1.5 m| G\n  C[Cyclist or moving vehicle] -->|1.5 m| G\n  F[Fixed obstacle] -->|0.5 m| G",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, pedestrians and cyclists", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=73"}
+    },
+    {
+     "objective": "Avoid the six positions of a two-vehicle crash",
+     "title": "Six crash positions and their defences",
+     "gist": "Two-vehicle crashes cause the most deaths and injuries. Each position has a defence: gap, blind spot check, scanning or speed choice.",
+     "points": [
+      "Front: keep the 3-second gap and anticipate sudden stops such as taxis.",
+      "Behind: widen your front gap to six seconds to protect the tailgater and you.",
+      "Oncoming: read the road, move left, reduce speed, and ride off the road as a last resort.",
+      "Side: Know, Slow, Show, Go at intersections.",
+      "Overtaking you: match traffic speed, then slow and keep left.",
+      "Being overtaken by you: overtaking saves little time here; return left when its front shows in your mirror."
+     ],
+     "tip": "Rear-end the vehicle ahead and you are usually blamed. The gap is your defence.",
+     "diagram": "flowchart LR\n  Y[You] --- F[Front: 3 s gap]\n  Y --- B[Behind: 6 s gap]\n  Y --- O[Oncoming: move left, slow]\n  Y --- S[Side: Know Slow Show Go]\n  Y --- OT[Overtaking you: keep left]\n  Y --- OV[You overtaking: 12 s scan]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, six positions of two-vehicle crash", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=79"}
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can keep a safety cushion, judge stopping distances, check blind spots, protect vulnerable road users and defend against the six crash positions.",
+    "must_know": [
+     "3-second gap normally, 6 seconds in risky conditions, scan 12 seconds ahead.",
+     "Stopping distance is reaction plus braking; about 32 m at 50 km/h.",
+     "Check mirrors every 5 to 10 seconds; turn your head for blind spots.",
+     "Heavy vehicles have blind spots at the sides, rear and front.",
+     "Gaps: 1.5 m for cyclists and moving vehicles, 1 m past parked cars, 0.5 m from fixed obstacles.",
+     "Head-on defence: read the road, move left, slow down, ride off the road.",
+     "Intersections: Know, Slow, Show, Go."
+    ],
+    "traps": [
+     "Speeding up when tailgated instead of widening the gap ahead.",
+     "Passing a large vehicle on the side it is turning towards.",
+     "Assuming the give-way rules mean others will give way to you."
+    ]
+   },
+   "cards": [
+    {"q": "How do you apply the 3-second rule?", "a": "Count three seconds after the vehicle ahead passes a fixed point. Reaching it sooner means too close."},
+    {"q": "When should you use a 6-second gap?", "a": "When tailgated, behind heavy vehicles, in wet or dark conditions, loaded, or tired."},
+    {"q": "What is the 12-second rule for?", "a": "Scanning far ahead for hazards and checking there is room to overtake."},
+    {"q": "Average rider reaction time?", "a": "About three quarters of a second."},
+    {"q": "Approximate dry stopping distance at 50 km/h?", "a": "About 32 m: 14 m reaction plus 18 m braking."},
+    {"q": "How far ahead should you look at 30 km/h?", "a": "At least 90 metres, three times your speed."},
+    {"q": "How often should you check your mirrors?", "a": "Every 5 to 10 seconds."},
+    {"q": "Gap when passing a cyclist?", "a": "At least 1.5 metres where practicable."},
+    {"q": "Gap when passing parked vehicles?", "a": "About 1 metre, watching for opening doors."},
+    {"q": "Someone with a white walking stick is crossing. What do you do?", "a": "Slow down, stop and give way."},
+    {"q": "Name the four head-on collision avoidance rules.", "a": "Read the road ahead, move left, reduce speed, ride off the road."},
+    {"q": "What are the intersection safety rules?", "a": "Know, Slow, Show, Go."},
+    {"q": "When should you return left after overtaking?", "a": "When you see the overtaken vehicle's front in your mirror, after a blind spot check."},
+    {"q": "Which factor causes most traffic accidents?", "a": "Road users, mainly errors of judgement and riding without due care."}
+   ]
+  },
+  {
+   "domain": "6. Weather, Night, Pillion and Emergencies",
+   "weight": 12,
+   "links": [
+    {"title": "RT handbook: weather and lighting", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=63", "note": "Glare, headlights, rain, floods, wind."},
+    {"title": "RT handbook: pillion and malfunctions", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=89", "note": "Pillions, heavy vehicles, brake failure, punctures, accidents."}
+   ],
+   "video": {"id": "ezgQVb_iGsM", "title": "Tips for riding in the rain (With any motorcycle in Singapore) 2024", "channel": "Motorgrapher - Barry Seah", "min": 18},
+   "diagram": "flowchart TB\n  R[Rain] --> S[Slow down: stopping distance doubles]\n  R --> A[Aquaplaning: steering goes light]\n  R --> P[Avoid steel plates, manholes, paint]\n  R --> V[Very poor visibility: stop at side, hazard lights]\n  F[Flood] --> L[Low gear, steady throttle, half clutch]\n  L --> D[After: brake on and off to dry brakes]",
+   "notes": [
+    {
+     "objective": "Ride safely in rain, floods and wind",
+     "title": "Wet roads and aquaplaning",
+     "gist": "Early rain turns road grime into a slippery film, stopping distance doubles, and fast riding on worn tyres causes aquaplaning.",
+     "points": [
+      "Aquaplaning: a wedge of water lifts the tyre; the steering feels extremely light.",
+      "Speed and shallow tread make it worse; even good tyres cannot prevent it.",
+      "Slippery when wet: steel plates, manhole covers, painted markings.",
+      "If you skid, steer in the direction of the skid and straighten when grip returns.",
+      "Floods: low gear, steady throttle, half clutch; then brake on and off to dry the brakes.",
+      "Strong wind: slow down, lower gear, firm grip with both hands."
+     ],
+     "tip": "Light rain can be as slippery as the start of a downpour because it does not wash the grime away.",
+     "diagram": "flowchart LR\n  W[Water on road] --> SP{Fast or worn tread?}\n  SP -->|yes| AQ[Aquaplaning, steering light]\n  SP -->|no| G[Tyre clears water]\n  AQ --> SL[Ease off and slow gently]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, riding in rainy weather", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=64"}
+    },
+    {
+     "objective": "Use lights correctly by day and night",
+     "title": "Headlights, glare and night riding",
+     "gist": "Motorcycles ride with headlights on at all times. At night, dip to avoid dazzling others and never outride your headlight.",
+     "points": [
+      "Headlights on day and night; do not ride if the headlight fails.",
+      "Dazzled by oncoming lights: look left, use the road edge, stop if blinded.",
+      "Dip when following, when meeting traffic, and as soon as an overtaking vehicle passes.",
+      "High beam on poorly lit roads and at blind bends; it reaches about 100 m.",
+      "Glare from the sun: sunglasses or a sun visor, and slow down.",
+      "Wear bright clothing, a white helmet and reflective gear at night."
+     ],
+     "tip": "Tunnels: headlights on, no overtaking, no horn except emergencies, no stopping unless in trouble.",
+     "diagram": "flowchart TB\n  N[Night riding] --> D[Dip: following or meeting traffic]\n  N --> H[High beam: dark roads, blind bends]\n  N --> S[Speed within headlight range, about 100 m]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, daylight and low lighting", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=63"}
+    },
+    {
+     "objective": "Carry pillions and handle emergencies",
+     "title": "Pillions, breakdowns and accidents",
+     "gist": "A pillion changes balance and braking. When things go wrong, keep control first, warn others, then get clear of traffic.",
+     "points": [
+      "No pillion below 10 years old. Pillion sits astride, close, feet always on footrests, leans with you.",
+      "Adjust mirrors after the pillion sits; check clothing and tyre pressure.",
+      "Front brake failure: rear brake plus engine braking in 2nd. Rear failure: gentle front brake.",
+      "Puncture: grip firmly, steer against the pull, brake gently.",
+      "Expressway breakdown: shoulder, hazard lights, stand behind guardrails, triangle 20 m or more back.",
+      "Accident with no injury: clear the road and settle or inform insurers. With injury: police and ambulance."
+     ],
+     "tip": "In an injury accident, move vehicles only to take someone to hospital, free someone trapped, prevent fire or remove a serious hazard.",
+     "diagram": "flowchart LR\n  E[Emergency] --> C[Keep control]\n  C --> W[Warn: horn and hazard lights]\n  W --> S[Move to the side safely]\n  S --> X{Injury?}\n  X -->|no| N[Clear road, settle or tell insurer]\n  X -->|yes| Y[Police and ambulance]",
+     "video": null,
+     "source": {"title": "Riding Theory Booklet, pillion, malfunctions and accidents", "url": "https://www.police.gov.sg/-/media/SPF/Advisories/TP/RT-ENG-2126.pdf#page=89"}
+    }
+   ],
+   "summary": {
+    "tests": "Whether you can ride safely in rain, glare and darkness, carry a pillion correctly, and handle breakdowns, failures and accidents.",
+    "must_know": [
+     "Rain doubles stopping distance; early rain is especially slippery.",
+     "Aquaplaning makes the steering feel extremely light.",
+     "Headlights on day and night; dip when following or meeting traffic.",
+     "High beam reaches about 100 m; do not outride it.",
+     "No pillion under 10; pillion sits astride with feet on the footrests.",
+     "Front brake failure: rear brake plus engine braking in a lower gear.",
+     "Always stop after an accident; no-injury cases need not be reported to police."
+    ],
+    "traps": [
+     "Braking hard in the rain, which locks the wheels.",
+     "Adjusting mirrors before the pillion gets on.",
+     "Waiting beside the motorcycle on the expressway shoulder instead of behind the guardrail."
+    ]
+   },
+   "cards": [
+    {"q": "Why is the road slippery when rain first starts?", "a": "Oil, grease and dirt mix with water into a slippery film."},
+    {"q": "Stopping distance in rain compared with dry?", "a": "About twice as long."},
+    {"q": "How does steering feel when aquaplaning starts?", "a": "Extremely light."},
+    {"q": "Which wet surfaces are especially slippery?", "a": "Steel plates, manhole covers and painted road markings."},
+    {"q": "What should you do after riding through a flood?", "a": "Brake on and off repeatedly to dry the brakes before speeding up."},
+    {"q": "How should you ride in strong wind?", "a": "Slow down, use a lower gear and grip the handlebar firmly with both hands."},
+    {"q": "Must motorcycle headlights be on during the day?", "a": "Yes, day and night."},
+    {"q": "Oncoming headlights dazzle you. What do you do?", "a": "Look to the left, follow the road edge, and stop if blinded."},
+    {"q": "Range of a typical high beam?", "a": "About 100 metres."},
+    {"q": "Minimum age for a pillion?", "a": "10 years."},
+    {"q": "When do you adjust mirrors with a pillion?", "a": "After the pillion is seated."},
+    {"q": "Front brake fails. What do you do?", "a": "Hazard lights, rear brake, change down for engine braking, move to the side, switch off."},
+    {"q": "Where do rider and pillion wait after an expressway breakdown?", "a": "Behind the impact guardrails, clear of the carriageway."},
+    {"q": "Signs of an overheating engine?", "a": "A sudden increase in engine noise and revolutions."},
+    {"q": "Accident with no injury: must you report it to police?", "a": "No. Clear the road and settle it or inform your insurers. You must still stop."}
+   ]
+  }
+ ]
+}

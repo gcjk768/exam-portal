@@ -19,8 +19,8 @@
 
   // ── Exams ─────────────────────────────────────────────────────────────────
   async function init() {
-    state.exams = await (await fetch("/api/exams")).json();
-    const access = await (await fetch("/api/access")).json();
+    state.exams = await (await fetch("api/exams")).json();
+    const access = await (await fetch("api/access")).json();
     state.public = access.public;                                        // public visitor: no report or bank refresh, Claude within a daily budget, nothing recorded
     state.shared = access.shared;                                        // no personal numbers: a public visitor who has not chosen to save their progress
     state.track = access.track;                                          // a public visitor who saves their progress (own score, plan, readiness)
@@ -36,7 +36,7 @@
 
   // ── Leaderboard: opt-in; public visitors, and the owner for the public exams (web.py /api/board) ───────────────
   const LB = { exam: "all", period: "week", board: "practice" };   // board: practice (first tries) or mock (best mock-exam score), same names
-  const lbPost = (p, body) => fetch(`/api/board/${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  const lbPost = (p, body) => fetch(`api/board/${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
   async function lbJoin(name) {
     const r = await lbPost("join", { name });
     if (!r.ok) { const e = $("#lb-err"); e.textContent = (await r.json()).detail || "Could not join."; e.hidden = false; return false; }
@@ -47,9 +47,9 @@
     ev.preventDefault();
     const err = $("#lb-err"), name = $("#lb-name").value.trim();
     if (!state.public && !name) { err.textContent = "Type a name to join."; err.hidden = false; return; }
-    if (state.public && !(await fetch("/api/track/on", { method: "POST" })).ok) { err.textContent = "Could not save your progress."; err.hidden = false; return; }
+    if (state.public && !(await fetch("api/track/on", { method: "POST" })).ok) { err.textContent = "Could not save your progress."; err.hidden = false; return; }
     if (name && !(await lbJoin(name))) {                                  // name taken or refused: undo the tracking switched on just above
-      if (state.public && !state.track) await fetch("/api/track/off", { method: "POST" });
+      if (state.public && !state.track) await fetch("api/track/off", { method: "POST" });
       return;
     }
     localStorage.setItem("lb-asked", "1"); location.reload();            // reload so the score, plan and readiness appear
@@ -58,14 +58,14 @@
   $("#track-off").addEventListener("click", async (ev) => {
     const b = ev.currentTarget;
     if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Click again to delete everything saved"; return; }
-    await fetch("/api/track/off", { method: "POST" }); await lbPost("leave"); localStorage.setItem("lb-asked", "1");   // they just said no: don't ask again at once
+    await fetch("api/track/off", { method: "POST" }); await lbPost("leave"); localStorage.setItem("lb-asked", "1");   // they just said no: don't ask again at once
     location.hash = "home"; location.reload();                          // Stats has nothing to show once the saved progress is gone
   });
   $("#lb-no").addEventListener("click", () => { localStorage.setItem("lb-asked", "1"); $("#lb-join").close(); });
   const fmtWhen = (iso) => new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   async function loadBoard() {
     const mock = LB.board === "mock";
-    const d = await (await fetch(mock ? `/api/board/mock?exam=${LB.exam}` : `/api/board?exam=${LB.exam}&period=${LB.period}`)).json();
+    const d = await (await fetch(mock ? `api/board/mock?exam=${LB.exam}` : `api/board?exam=${LB.exam}&period=${LB.period}`)).json();
     const nav = $("#board-exam");
     if (!nav.children.length) {                                         // the board lists the public exams, whichever link you are on
       for (const [k, t] of [["all", "All"], ...d.exams.map(e => [e.key, e.short])]) {
@@ -109,7 +109,7 @@
   // The commentator: Claude's friendly banter on the standings, the same for everyone (web.py /api/board/banter)
   async function loadBanter(board, tries = 4) {
     const box = $("#board-banter"), want = `${LB.exam}/${board}`;
-    const r = await fetch(`/api/board/banter?exam=${LB.exam}&board=${board}`).catch(() => null);
+    const r = await fetch(`api/board/banter?exam=${LB.exam}&board=${board}`).catch(() => null);
     if (!r || !r.ok || `${LB.exam}/${LB.board === "mock" ? "mock" : "practice"}` !== want) { if (!r || !r.ok) box.hidden = true; return; }
     const d = await r.json();
     box.hidden = !d.text;
@@ -119,7 +119,7 @@
   // Your strengths, weak spots and the shortest way to the pass mark (web.py summary: same numbers as the predicted score),
   // and on a board exam how you stack up against the gang. Leaderboard page and Stats.
   async function renderSummary(box = $("#board-summary")) {
-    const r = state.shared ? null : await fetch(`/api/${state.exam}/summary`);
+    const r = state.shared ? null : await fetch(`api/${state.exam}/summary`);
     if (!r || !r.ok) { box.hidden = true; return; }
     const s = await r.json(), pct = (a) => a == null ? "not started" : `${Math.round(100 * a)}%`;
     const list = (xs) => xs.map(x => `${esc(x.domain)} (${pct(x.acc)})`).join(", ");
@@ -161,8 +161,8 @@
   }
   const cur = () => state.exams.find(e => e.key === state.exam);
   const isTask = () => !!(cur() && cur().tasks);
-  const api = (p) => fetch(`/api/${state.exam}${p}`).then(r => r.json());
-  const post = (p, body) => fetch(`/api/${state.exam}${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const api = (p) => fetch(`api/${state.exam}${p}`).then(r => r.json());
+  const post = (p, body) => fetch(`api/${state.exam}${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
   // ── Home ──────────────────────────────────────────────────────────────────
   async function loadHome() {
@@ -211,7 +211,7 @@
     if (!cur()?.board) { box.hidden = true; return; }               // only the public exams have a board: no request, no 404
     let d = null, period = "this week";
     for (const p of ["week", "all"]) {
-      const r = await fetch(`/api/board?exam=${state.exam}&period=${p}`);
+      const r = await fetch(`api/board?exam=${state.exam}&period=${p}`);
       if (!r.ok) { box.hidden = true; return; }                        // an exam that is not on the public board (SAP-C03, CKA...): no leader card
       d = await r.json();
       if (d.rows.length) { if (p === "all") period = "all time"; break; }
@@ -468,7 +468,7 @@
         const icon = text && open !== "{" && !/["<>`]/.test(text) && !iconised.has(id) && iconFor(text);
         if (!icon) continue;
         iconised.add(id);                                      // the icon sits above the text inside the same node shape
-        src = src.replace(id + open + label + CLOSE[open], `${id}${open}"<img src='/static/icons/${icon}' alt='' class='ni' width='36' height='36' style='display:block;margin:2px auto 6px;object-fit:contain;box-sizing:border-box;padding:4px'/>${esc(text)}"${CLOSE[open]}`);
+        src = src.replace(id + open + label + CLOSE[open], `${id}${open}"<img src='static/icons/${icon}' alt='' class='ni' width='36' height='36' style='display:block;margin:2px auto 6px;object-fit:contain;box-sizing:border-box;padding:4px'/>${esc(text)}"${CLOSE[open]}`);
       }
     const tint = (c, t) => `fill:${mix(c, PAL.bg, t)},stroke:${c},stroke-width:1.6px,color:${PAL.text}`;
     const defs = [
@@ -486,7 +486,7 @@
   let mermaidP = null, mmdN = 0;
   function mermaidLib() {
     // Served by the portal (the Dockerfile bakes static/vendor/mermaid.min.js into the image); the pinned CDN copy is the fallback.
-    return mermaidP ||= loadScript("/static/vendor/mermaid.min.js")
+    return mermaidP ||= loadScript("static/vendor/mermaid.min.js")
       .catch(() => loadScript(`https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_VERSION}/dist/mermaid.min.js`))
       .then(() => {
         const m = window.mermaid;
@@ -648,7 +648,7 @@
   // Your own mock exams (20+ questions) with the ready-to-book verdict, for every exam (web.py /api/{exam}/mocks)
   async function renderMocks() {
     const box = $("#stats-mocks");
-    const r = state.shared ? null : await fetch(`/api/${state.exam}/mocks`).catch(() => null);
+    const r = state.shared ? null : await fetch(`api/${state.exam}/mocks`).catch(() => null);
     if (!r || !r.ok) { box.hidden = true; return; }
     const d = await r.json();
     box.innerHTML = `<h3>${ic("exam", "ic-accent")}Your mock exams · ${esc(d.exam)}</h3>` + (d.rows.length
@@ -698,7 +698,7 @@
   $$("#mode-bar [data-mode]").forEach(b => b.onclick = async () => {
     const p = await (await post("/mode", { mode: b.dataset.mode })).json();
     if (state.home) { state.home.progress = p; state.home.mode = p.mode; }
-    state.exams = await (await fetch("/api/exams")).json();   // the mock exam's size and mode follow the switch
+    state.exams = await (await fetch("api/exams")).json();   // the mock exam's size and mode follow the switch
     renderMode(p);
   });
   async function openQuiz() {
@@ -997,7 +997,7 @@
     ev.preventDefault();
     const f = flagging; $("#flag-dlg").close();
     if (!f) return;
-    const r = await fetch(`/api/${f.exam}/flag`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: f.qid, note: $("#flag-note").value }) });
+    const r = await fetch(`api/${f.exam}/flag`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: f.qid, note: $("#flag-note").value }) });
     f.b.innerHTML = r.ok ? `${ic("check")}Flagged, thank you` : `${ic("warning")}Could not flag`;
     f.b.classList.toggle("done", r.ok);
   });
@@ -1012,7 +1012,7 @@
     for (let i = 0; i < 45; i++) {                         // prefetched when the question was shown; usually ready at once
       let r;
       const q = new URLSearchParams({ ...(cachedOnly ? { cached: 1 } : {}), order: shownOrder(card).join(",") });
-      try { r = await fetch(`/api/${exam}/decode/${encodeURIComponent(qid)}?${q}`); } catch (e) { break; }
+      try { r = await fetch(`api/${exam}/decode/${encodeURIComponent(qid)}?${q}`); } catch (e) { break; }
       if (r.status === 200) return renderDecode(card, box, await r.json());
       if (r.status !== 202 || cachedOnly) break;
       await new Promise(ok => setTimeout(ok, 2000));

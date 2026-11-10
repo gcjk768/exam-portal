@@ -712,4 +712,13 @@ _st = {"ok": {"a": 1}, "bad": {"b": 2}, "srs": {"x": ["2026-11-09T09:00+08:00", 
 assert _bm.due_ids(_st, "2026-11-10T12:00+08:00") == plan.due_keys(_st, "2026-11-10T12:00+08:00") == ["x", "b"]
 for _k, _v in _env0.items():
     os.environ.pop(_k, None) if _v is None else os.environ.__setitem__(_k, _v)
+
+# PATH_EXAMS: one URL per exam. /s/... shows only sapc03 (the page gets <base href="/s/">), the root still shows everything
+web.PATH_EXAMS.update({"s": "sapc03"})
+pc = TestClient(web.by_path(web.app))
+assert [e["key"] for e in pc.get("/s/api/exams").json()] == ["sapc03"], pc.get("/s/api/exams").json()
+assert pc.get("/s/api/ccarp/summary").status_code == 404 and pc.get("/s/api/sapc03/summary").status_code == 200
+assert '<base href="/s/">' in pc.get("/s").text and '<base href="/s/">' in pc.get("/s/").text and pc.get("/s/static/app.js").status_code == 200
+assert len(pc.get("/api/exams").json()) > 1 and "<base" not in pc.get("/").text
+web.PATH_EXAMS.clear()
 print("ok: all web tests passed")

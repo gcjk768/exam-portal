@@ -55,3 +55,36 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
     mem_limit: 1g
+
+  # A separate portal for the Singapore RTT and AWS SAA-C03 (the owner, 2026-11-10): same image and code, its own exams,
+  # progress, leaderboard and tracker. One link per exam: /rtt/ and /saa/ (PATH_EXAMS), published as Tailscale Funnel
+  # path mounts on :10000 -> http://127.0.0.1:3005/rtt and /saa.
+  exam-portal-sg:
+    image: exam-portal:local      # built by the exam-portal service above
+    pull_policy: never
+    container_name: exam-portal-sg
+    restart: unless-stopped
+    init: true
+    network_mode: bridge
+    ports:
+      - "3005:8000"
+    env_file: web.env
+    environment:
+      EXAMS: "rtt:/exams/rtt:/vault/rtt,saac03:/exams/saac03:/vault/saac03"
+      PATH_EXAMS: "rtt=rtt,saa=saac03"
+      PUBLIC_EXAMS: ""            # empty = every loaded exam (the two above)
+      PRIVATE_EXAMS: ""
+      PERSONAL_EXAMS: ""
+      LEADERBOARD_DIR: "/exams/rtt/data/leaderboard"
+      TRACKER_DIR: "/exams/rtt/data/tracker"
+    volumes:
+      - "${RTT_DIR:-/volume1/docker/rtt-quiz}:/exams/rtt:ro"
+      - "${RTT_DIR:-/volume1/docker/rtt-quiz}/data:/exams/rtt/data"
+      - "${SAAC03_DIR:-/volume1/docker/saac03-quiz}:/exams/saac03:ro"
+      - "${SAAC03_DIR:-/volume1/docker/saac03-quiz}/data:/exams/saac03/data"
+      - "${RTT_VAULT:-./vault/rtt}:/vault/rtt"
+      - "${SAAC03_VAULT:-./vault/saac03}:/vault/saac03"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    mem_limit: 1g

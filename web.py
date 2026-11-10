@@ -64,7 +64,15 @@ META = {"ccarp": ("CCAR-P", "Claude Certified Architect Professional", 63, 120),
         "aipc01": ("AIP-C01", "AWS Generative AI Developer Professional", 75, 180),
         "cka": ("CKA", "Certified Kubernetes Administrator", 17, 120),   # ~17 hands-on tasks in 120 min
         "gitlabci": ("GitLab CI/CD", "GitLab Certified CI/CD Associate", 50, 75),
-        "tfassoc": ("Terraform", "HashiCorp Terraform Associate (003)", 57, 60)}
+        "tfassoc": ("Terraform", "HashiCorp Terraform Associate (003)", 57, 60),
+        "saac03": ("SAA-C03", "AWS Solutions Architect Associate", 65, 130),
+        "rtt": ("RTT", "Singapore Riding Theory Test (Class 2B)", 50, 50)}
+
+# One URL per exam (the owner, 2026-11-10): PATH_EXAMS="rtt=rtt,saa=saac03" serves /rtt/... with only the rtt exam and /saa/...
+# with only saac03, so one container gives two links (Funnel path mounts). Unset = the whole portal at /, as before.
+PATH_EXAMS = dict(p.split("=", 1) for p in os.environ.get("PATH_EXAMS", "").replace(" ", "").split(",") if "=" in p)
+ONLY: ContextVar[str] = ContextVar("only", default="")       # the exam this request's URL path pins, if any
+BASE: ContextVar[str] = ContextVar("base", default="")       # that path's prefix ("/rtt"), for the page's <base href>
 
 
 # Which loaded exams each link shows (the owner, 2026-10-23): the public name shows the Claude certifications, the owner's
@@ -75,6 +83,8 @@ EXAM_LISTS = {a: {x.strip() for x in os.environ.get(f"{a.upper()}_EXAMS", "").sp
 
 
 def visible(key: str, audience: str) -> bool:
+    if ONLY.get() and key != ONLY.get():
+        return False
     allowed = EXAM_LISTS[audience]
     return not allowed or key in allowed
 
@@ -2023,9 +2033,25 @@ def index(req: Request):
         page = page.replace("<html", '<html data-public="1"', 1)
     if is_public(req) and not tracked():
         page = page.replace("<html", '<html data-shared="1"', 1)      # no personal numbers unless the visitor saves their progress
+    if BASE.get():                             # the page's relative URLs (static/, api/) resolve under /rtt/ even without the slash
+        page = page.replace("<head>", f'<head><base href="{BASE.get()}/">', 1)
     return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+
+
+def by_path(asgi):
+    """PATH_EXAMS: /rtt/api/x -> /api/x with ONLY=rtt. Pure ASGI around the app, so routing, cookies and the middleware
+    see a normal path. Tailscale Serve strips its mount point, so the Funnel mount proxies to http://host:port/rtt."""
+    async def wrap(scope, receive, send):
+        if scope["type"] == "http" and PATH_EXAMS:
+            head, _, rest = scope["path"].lstrip("/").partition("/")
+            if head in PATH_EXAMS:
+                ONLY.set(PATH_EXAMS[head])
+                BASE.set("/" + head)
+                scope = {**scope, "path": "/" + rest, "raw_path": ("/" + rest).encode(), "root_path": ""}
+        await asgi(scope, receive, send)
+    return wrap
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8000")), log_level="info")
+    uvicorn.run(by_path(app), host="0.0.0.0", port=int(os.environ.get("PORT", "8000")), log_level="info")
