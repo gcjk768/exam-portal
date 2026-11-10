@@ -699,6 +699,17 @@ try:
 except RuntimeError as exc:
     assert "boom" in str(exc) and not web.KEY_BACK
 web.claude_once = _once
+# the CCAR-P bot copies plan.py's scheduler for Telegram answers (same state.json): both must give the same next review
+import plan  # noqa: E402
+from datetime import datetime as _dtm  # noqa: E402
+_now, _bm = _dtm(2026, 11, 10, 12, 0, tzinfo=web.SGT), web.EXAMS["ccarp"].mod
+assert _bm.LADDER_MIN == plan.LADDER_MIN and _bm.FIRST_SURE == plan.FIRST_SURE
+_sb, _sp = {"srs": {}}, {"srs": {}}
+for _right in (True, False, True, True, True, True, True, True, True):
+    _bm.schedule(_sb, "x", _right, _now); plan.schedule(_sp, "x", _right, _now)
+    assert _sb == _sp, (_sb, _sp)
+_st = {"ok": {"a": 1}, "bad": {"b": 2}, "srs": {"x": ["2026-11-09T09:00+08:00", 1], "y": ["2026-12-01T00:00+08:00", 2], "c:12345678": ["2026-11-01T00:00+08:00", 0]}}
+assert _bm.due_ids(_st, "2026-11-10T12:00+08:00") == plan.due_keys(_st, "2026-11-10T12:00+08:00") == ["x", "b"]
 for _k, _v in _env0.items():
     os.environ.pop(_k, None) if _v is None else os.environ.__setitem__(_k, _v)
 print("ok: all web tests passed")
